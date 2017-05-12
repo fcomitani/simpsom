@@ -14,21 +14,22 @@ RGB space to the 2D network map and clustered according to their similarity in t
 ## Example of usage:
 
 ```
-	#Build a network 20x20 with a weights format taken from the raw_data. 
-	net = somNet(20, 20, raw_data)
-	#Train the network for 10000 epochs and with initial learning rate of 0.1. 
-	net.train(10000, 0.01)
+#Build a network 20x20 with a weights format taken from the raw_data. 
+net = somNet(20, 20, raw_data)
 
-	#Save the weights to file """
-	net.save('colorExample_weights')
+#Train the network for 10000 epochs and with initial learning rate of 0.1. 
+net.train(10000, 0.01)
+
+#Save the weights to file
+net.save('colorExample_weights')
 	
-	#Print a map of the network nodes and colour them according to the first feature of the dataset
-		and then according to the distance between each node and its neighbours.
-	net.nodes_graph(colnum=0)
-	net.diff_graph()
+#Print a map of the network nodes and colour them according to the first feature of the dataset
+	and then according to the distance between each node and its neighbours.
+net.nodes_graph(colnum=0)
+net.diff_graph()
 	
-	#Project the datapoints on the new 2D network map.
-	net.proj_graph(raw_data, labels=labels)
+#Project the datapoints on the new 2D network map.
+net.proj_graph(raw_data, labels=labels)
 ```
 
 ## TO DOs:
