@@ -288,7 +288,7 @@ class somNet:
 		return [[pos[0],pos[1]] for pos in bmuList] 
 		
 		
-	def cluster(self, array, type='qtresh', cutoff=5, quant=0.2, \
+	def cluster(self, array, type='qthresh', cutoff=5, quant=0.2, \
 					savefile=True, show=False, printout=True):
 	
 		"""Clusters the data in a given array according to the SOM trained map.
@@ -296,9 +296,9 @@ class somNet:
 
 		Args:
 			array (np.array): An array containing datapoints to be clustered.
-			type (str, optional): The type of clustering to be applied, so far only quality treshold (qtresh) 
+			type (str, optional): The type of clustering to be applied, so far only quality threshold (qthresh) 
 				algorithm is directly implemented, other algorithms require sklearn.
-			cutoff(float, optional): Cutoff for the quality treshold algorithm. This also doubles as
+			cutoff(float, optional): Cutoff for the quality threshold algorithm. This also doubles as
 				maximum distance of two points to be considered in the same cluster with DBSCAN.
 			quant(float, optional): Quantile used to calculate the bandwidth of the mean shift algorithm.
 			mdist(float, optional): 
@@ -316,9 +316,9 @@ class somNet:
 		bmuList = self.project(array, show=False, printout=False)
 		clusters=[]
 
-		if type=='qtresh':
+		if type=='qthresh':
 			
-			""" Cluster according to the quality treshold algorithm (slow!). """
+			""" Cluster according to the quality threshold algorithm (slow!). """
 	
 			tmpList=range(len(bmuList))
 			while len(tmpList)!=0:
