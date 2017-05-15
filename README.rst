@@ -22,7 +22,8 @@ Dependencies
 Example of Usage
 ----------------
 
-::
+Here is a quick example on how to use the library with a ``raw_data`` dataset::
+
 	#Import the library
 	import SimpSOM as sps
 
@@ -33,9 +34,9 @@ Example of Usage
 	net.train(10000, 0.01)
 
 	#Save the weights to file
-	net.save('colorExample_weights')
+	net.save('filename_weights')
 	
-	#Print a map of the network nodes and colour them according to the first feature of the dataset
+	#Print a map of the network nodes and colour them according to the first feature (column number 0) of the dataset
 	#and then according to the distance between each node and its neighbours.
 	net.nodes_graph(colnum=0)
 	net.diff_graph()
@@ -45,7 +46,6 @@ Example of Usage
 
 	#Cluster the datapoints according to the Mean Shift algorithm from sklearn.
 	net.cluster(raw_data, type='MeanShift')
-
 	
 Version 1.1.1 What's New
 ------------------------
