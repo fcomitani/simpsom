@@ -22,7 +22,7 @@ Dependencies
 Example of Usage
 ----------------
 
- ::
+::
 	#Import the library
 	import SimpSOM as sps
 
@@ -34,12 +34,12 @@ Example of Usage
 
 	#Save the weights to file
 	net.save('colorExample_weights')
-		
+	
 	#Print a map of the network nodes and colour them according to the first feature of the dataset
 	#and then according to the distance between each node and its neighbours.
 	net.nodes_graph(colnum=0)
 	net.diff_graph()
-		
+	
 	#Project the datapoints on the new 2D network map.
 	net.project(raw_data, labels=labels)
 
