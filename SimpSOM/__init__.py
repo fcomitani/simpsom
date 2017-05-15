@@ -481,7 +481,7 @@ class somNode:
 				self.weights[i] = self.weights[i] - gauss*lrate*(self.weights[i]-inputVec[i])
 
 		
-if __name__ == "__main__":	
+def run_colorsExample():	
 
 	"""Here an example of the usage of the library is run: a number of vectors of length three
 		(corresponding to the RGB values of a color) are used to briefly train a small network.
@@ -508,5 +508,6 @@ if __name__ == "__main__":
 	net.nodes_graph()
 	net.diff_graph()
 	net.project(raw_data, labels=labels)
+	net.cluster(raw_data, type='qthresh', cutoff=8)
 	
 	print "done!"
