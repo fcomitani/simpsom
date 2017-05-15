@@ -17,7 +17,7 @@ Dependencies
 
 - Numpy 1.11.0 (older versions may work);
 - Matplotlib 1.5.1 (older versions may work);
-- Sklearn 0.15 (older versions may work), optional, needed only for clustering with algorithms other than Quality Threshold. (use the option ``-e .[cluster]`` when installing)
+- Sklearn 0.15 (older versions may work), optional, needed only for clustering with algorithms other than Quality Threshold.
 
 Example of Usage
 ----------------
@@ -58,3 +58,4 @@ TO DOs:
 
 - Update the available cluster algorithms from sklearn;
 - Add compatibility with cvs format.
+- Add documentation.
