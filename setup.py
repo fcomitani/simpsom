@@ -17,11 +17,10 @@ setup(
     long_description=long_description,
 
     url='https://github.com/fcomitani/SimpSOM',
-
+	download_url = 'https://github.com/fcomitani/SimpSOM/archive/1.1.1.tar.gz', # I'll explain this in a second
     author='Federico Comitani',
     author_email='federico.comitani@gmail.com',
 
-    # Choose your license
     license='MIT',
 
     classifiers=[
