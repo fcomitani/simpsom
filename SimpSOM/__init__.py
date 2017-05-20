@@ -1,9 +1,12 @@
+"""
 #########################################################################
-################ SimpSOM (Simple Self Organizing Maps) ##################
+################ SimpSOM (Simple Self-Organizing Maps) ##################
 ############################### v1.1.0 ##################################
 ######################### F. Comitani @2017 #############################
 #########################################################################
-
+ 
+ A lightweight python library for Kohonen Self-Organising Maps (SOM).
+"""
 
 import sys
 import numpy as np
@@ -11,7 +14,7 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 
 class somNet:
-	""" Kohoen SOM Network class. """
+	""" Kohonen SOM Network class. """
 
 	def __init__(self, netHeight, netWidth, data, loadFile=None):
 
@@ -127,7 +130,7 @@ class somNet:
 			
 		"""
 		
-		print "Training SOM... 0%",
+		print("Training SOM... 0%"),
 
 		self.startSigma = max(self.netHeight, self.netWidth)/2
 		self.startLearnRate = startLearnRate
@@ -137,7 +140,7 @@ class somNet:
 		for i in range(self.epochs):
 
 			if i%100==0:
-				print "\rTraining SOM... "+str(int(i*100.0/self.epochs))+"%" ,
+				print("\rTraining SOM... "+str(int(i*100.0/self.epochs))+"%" ),
 
 			self.update_sigma(i)
 			self.update_lrate(i)
@@ -154,7 +157,7 @@ class somNet:
 			for node in self.nodeList:
 				node.update_weights(inputVec, self.sigma, self.lrate, bmu)
 
-		print "\rTraining SOM... done!"
+		print("\rTraining SOM... done!")
 
 		
 	def nodes_graph(self, colnum=0, show=False, printout=True):
@@ -362,7 +365,7 @@ class somNet:
 							clList.append(j)
 					clusters.append(clList)		
 			except:
-				print 'Unexpected error: ', sys.exc_info()[0]
+				print('Unexpected error: ', sys.exc_info()[0])
 				raise
 		
 		if savefile==True:
@@ -403,7 +406,7 @@ class somNet:
 		
 class somNode:
 
-	""" Single Kohoen SOM Node class. """
+	""" Single Kohonen SOM Node class. """
 	
 	def __init__(self, x, y, numWeights, weiArray=[]):
 	
@@ -483,7 +486,7 @@ class somNode:
 		
 def run_colorsExample():	
 
-	"""Here an example of the usage of the library is run: a number of vectors of length three
+	"""Example of usage of SimpSOM: a number of vectors of length three
 		(corresponding to the RGB values of a color) are used to briefly train a small network.
 		Different example graphs are then printed from the trained network.		
 	"""	
@@ -493,21 +496,21 @@ def run_colorsExample():
 	raw_data =np.asarray([[1, 0, 0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[0.2,0.2,0.5]])
 	labels=['red','green','blue','yellow','magenta','cyan','indigo']
 
-	print "Welcome to SimpSOM (Simple Self Organizing Maps) v1.0.0!\nHere is a quick example of what this library can do.\n"
-	print "The algorithm will now try to map the following colors: ",
+	print("Welcome to SimpSOM (Simple Self Organizing Maps) v1.0.0!\nHere is a quick example of what this library can do.\n")
+	print("The algorithm will now try to map the following colors: "),
 	for i in range(len(labels)-1):
-			print labels[i] + ", ", 
-	print "and " + labels[-1]+ ".\n"
+			print(labels[i] + ", "), 
+	print("and " + labels[-1]+ ".\n")
 	
 	net = somNet(20, 20, raw_data)
 	net.colorEx=True
 	net.train(10000, 0.01)
 
-	print "Saving weights and a few graphs...",
+	print("Saving weights and a few graphs..."),
 	net.save('colorExample_weights')
 	net.nodes_graph()
 	net.diff_graph()
 	net.project(raw_data, labels=labels)
 	net.cluster(raw_data, type='qthresh', cutoff=8)
 	
-	print "done!"
+	print("done!")

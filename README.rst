@@ -1,10 +1,10 @@
-SimpSOM (Simple Self Organizing Maps) 
+SimpSOM (Simple Self-Organizing Maps) 
 =====================================
 
 Version 1.1.1
 -------------
 
-SimpSOM is a lightweight implementation of Kohonen Self Organising Maps (SOM) for Python 2.7, 
+SimpSOM is a lightweight implementation of Kohonen Self-Organising Maps (SOM) for Python 2.7, 
 useful for unsupervised learning, clustering and dimensionality reduction.
 
 It allows to build and train SOM on your dataset, save/load the trained network weights, and display or print graphs 
@@ -47,7 +47,7 @@ Here is a quick example on how to use the library with a ``raw_data`` dataset::
 	#Cluster the datapoints according to the Mean Shift algorithm from sklearn.
 	net.cluster(raw_data, type='MeanShift')
 	
-Version 1.1.1 What's New
+What's New
 ------------------------
 
 - Clustering is now possible with the ``cluster`` command, Quality Threshold and a few sklearn clustering algorithms are availabe;
@@ -58,4 +58,4 @@ TO DOs:
 
 - Update the available cluster algorithms from sklearn;
 - Add compatibility with cvs format.
-- Add documentation.
+- Add documentation
