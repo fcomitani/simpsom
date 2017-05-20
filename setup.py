@@ -11,13 +11,13 @@ setup(
 
     name='SimpSOM',
 
-    version='1.1.1',
+    version='1.1.2',
 
     description='A lightweight Python library for Kohonen Self-Organising Maps',
     long_description=long_description,
 
     url='https://github.com/fcomitani/SimpSOM',
-	download_url = 'https://github.com/fcomitani/SimpSOM/archive/1.1.1.tar.gz', # I'll explain this in a second
+	download_url = 'https://github.com/fcomitani/SimpSOM/archive/1.1.2.tar.gz', 
     author='Federico Comitani',
     author_email='federico.comitani@gmail.com',
 
