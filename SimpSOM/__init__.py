@@ -292,7 +292,7 @@ class somNet:
 		
 		
 	def cluster(self, array, type='qthresh', cutoff=5, quant=0.2, \
-					savefile=True, show=False, printout=True):
+					savefile=True, filetype='dat', show=False, printout=True):
 	
 		"""Clusters the data in a given array according to the SOM trained map.
 			The clusters can also be plotted.
@@ -304,8 +304,8 @@ class somNet:
 			cutoff(float, optional): Cutoff for the quality threshold algorithm. This also doubles as
 				maximum distance of two points to be considered in the same cluster with DBSCAN.
 			quant(float, optional): Quantile used to calculate the bandwidth of the mean shift algorithm.
-			mdist(float, optional): 
-			saveFile (bool, optional): Choose to save the resulting clusters in a text file.
+			savefile (bool, optional): Choose to save the resulting clusters in a text file.
+			filetype (string, optional): Format of the file where the clusters will be saved (csv or dat)
 			show (bool, optional): Choose to display the plot.
 			printout (bool, optional): Choose to save the plot to a file.
 			
@@ -369,9 +369,13 @@ class somNet:
 				raise
 		
 		if savefile==True:
-			file=open(type+'_clusters.txt', 'w')
+			file=open(type+'_clusters.'+filetype, 'w')
+			if filetype=='csv':
+				separator=','
+			else: 
+				separator=' '
 			for line in clusters:
-				for id in line: file.write(str(id)+' ')
+				for id in line: file.write(str(id)+separator)
 				file.write('\n')
 			file.close()
 		

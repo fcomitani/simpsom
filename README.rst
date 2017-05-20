@@ -7,6 +7,9 @@ Version 1.1.1
 SimpSOM is a lightweight implementation of Kohonen Self-Organising Maps (SOM) for Python 2.7, 
 useful for unsupervised learning, clustering and dimensionality reduction.
 
+The package is now available on PyPI, to retrieve it just type ``pip install SimpSOM`` or download it from here
+and install with ``python setup.py install``.
+
 It allows to build and train SOM on your dataset, save/load the trained network weights, and display or print graphs 
 of the network with selected features. 
 The function ``run_colorsExample()`` will run a toy model, where a number of colors will be mapped from the 3D
@@ -50,12 +53,10 @@ Here is a quick example on how to use the library with a ``raw_data`` dataset::
 What's New
 ------------------------
 
-- Clustering is now possible with the ``cluster`` command, Quality Threshold and a few sklearn clustering algorithms are availabe;
-- It is now possible to install SimpSOM through ``python setup.py install``.
+- Clustering is now possible with the ``cluster`` command, Quality Threshold and a few sklearn clustering algorithms are availabe.
 	
 TO DOs:
 -------
 
 - Update the available cluster algorithms from sklearn;
-- Add compatibility with cvs format.
-- Add documentation
+- Add documentation.
