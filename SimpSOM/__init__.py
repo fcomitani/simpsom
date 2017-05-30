@@ -1,17 +1,15 @@
 """
-#########################################################################
-################ SimpSOM (Simple Self-Organizing Maps) ##################
-############################### v1.1.2 ##################################
-######################### F. Comitani @2017 #############################
-#########################################################################
+SimpSOM (Simple Self-Organizing Maps) v1.1.2a
+F. Comitani @2017 
  
- A lightweight python library for Kohonen Self-Organising Maps (SOM).
+A lightweight python library for Kohonen Self-Organising Maps (SOM).
 """
 
 import sys
 import numpy as np
 from matplotlib import cm
 import matplotlib.pyplot as plt
+import densityPeak
 
 class somNet:
 	""" Kohonen SOM Network class. """
