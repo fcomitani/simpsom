@@ -61,3 +61,4 @@ TO DOs:
 
 - Update the available cluster algorithms from sklearn;
 - Implement Density-Peak Clustering
+- Test for Python 3
