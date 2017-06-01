@@ -204,6 +204,7 @@ class collection:
 		pmax.set_dist(self)
 		pmax.rho=max(pmax.dists)
 
+
 def dist(p1,p2, metric='euclid'):
 
 	"""Calculate the distance between two point objects in a N dimensional space according to a given metric.
