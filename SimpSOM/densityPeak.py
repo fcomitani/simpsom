@@ -228,7 +228,7 @@ class collection:
 			alpha=0.8, s=100, edgecolors='none', color='#AA3333')
 
 		if printout==True:
-			plt.savefig('nodesDifference.png', bbox_inches='tight', dpi=600)
+			plt.savefig('decisionGraph.png', bbox_inches='tight', dpi=600)
 		if show==True:
 			plt.show()
 		plt.clf()
