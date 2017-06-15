@@ -42,10 +42,14 @@ class pt:
 
 	def set_dist(self, coll):
 	
-	 	"""Calculate the distances from all other points in a collection. 
+	 	"""Calculate the distances from all other points in a collection. [Deprecated]
 
 	 	Args:
-			coll (collection): collection containing all the points of the dataset used to calculate the distances. """
+			coll (collection): collection containing all the points of the dataset used to calculate the distances. 
+
+		"""
+
+		warnings.warn('Setting individual distances is deprecated, use the collection.set_dists() instead!', DeprecationWarning)
 
 	 	for p2 in coll.points:
 	 			if self!=p2: self.dists.append(dist(self,p2))
@@ -127,21 +131,14 @@ class collection:
 		for coors in coorArray:
 			self.points.append(pt(coors))	
 
-		#Not sure about this... quintile of distances?
-		##########CHECK#############################
-
-		self.set_dists()
-		#############fix this#####################
 		index=int(np.round(len(self.points)*percent))
 
-		alldists=[]
-		for p1 in self.points:
-			for p2 in self.points:
-				if p1<p2: alldists.append(dist(p1,p2))
+		self.alldists=[]
+		self.set_dists()
 
-		alldists.sort()
-		self.refd=alldists[index]
-
+		self.alldists.sort()
+		self.refd=self.alldists[index]
+		
 		""" Make sure rhos are set before setting deltas """
 
 		self.set_rhos(typeFunc)
@@ -154,9 +151,9 @@ class collection:
 
 	 	for p1 in self.points:
 	 		for p2 in self.points:
-	 			if p1<p2: 
+	 			if self.points.index(p1)<self.points.index(p2): 
 	 				d=dist(p1,p2)
-	 				p1.dists.append(d), p2.dists.append(d)
+	 				self.alldists.append(d), p1.dists.append(d), p2.dists.append(d)
 
 
 	def set_rhos(self, typeFunc='step'):
@@ -170,7 +167,7 @@ class collection:
 
 		for p1 in self.points:
 			for p2 in self.points:
-				if p1<p2: 
+				if self.points.index(p1)<self.points.index(p2): 
 					if typeFunc=='step':
 						p1.rho=p1.rho+step(p1,p2,self.refd)
 						p2.rho=p2.rho+step(p1,p2,self.refd)
@@ -181,7 +178,6 @@ class collection:
 						p1.rho=p1.rho+sigmoid(p1,p2,self.refd)
 						p2.rho=p2.rho+sigmoid(p1,p2,self.refd)
 					else:
-						""" Raise exception if metric other then euclidean is used """
 						raise NotImplementedError('Only step, gaussian kernel or logistic functions are implemented')
 
 	def set_deltas(self):
@@ -194,16 +190,50 @@ class collection:
 			 	# No need to re-set the distances
 				d=dist(p1,p2)
 				#p1.dists.append(d), p2.dists.append(d)
-				if p1<p2: 
+				if self.points.index(p1)<self.points.index(p2): 
 					if p1.rho<p2.rho and d<p1.delta: p1.delta=d
 					elif p1.rho>p2.rho and d<p2.delta: p2.delta=d
 	
 		""" If the point has maximal rho, then return max distance """
 
 		pmax=max(self.points, key=attrgetter('rho'))
-		pmax.set_dist(self)
-		pmax.rho=max(pmax.dists)
+		pmax.delta=max(pmax.dists)
 
+	def decision_graph(self, show=False, printout=True):
+
+		"""Calculate the decision graph, delta vs rho for the points belonging to the collection 
+			and find the cluster centers.
+
+			Args:
+				show (bool, optional): Choose to display the plot.
+				printout (bool, optional): Choose to save the plot to a file.
+
+		"""
+
+		fig, ax = plt.subplots()
+		pRhos, pDeltas = [p.rho for p in self.points], [p.delta for p in self.points]
+		meanDeltas, sdevDeltas = np.mean(pDeltas), np.std(pDeltas)
+		ctrs, ctrRhos, ctrDeltas= [], [], []
+		
+		for p in self.points:
+			if p.delta> meanDeltas+1.5*sdevDeltas:
+				ctrs.append(p) 
+				ctrRhos.append(p.rho), ctrDeltas.append(p.delta) 
+				pRhos.pop(pRhos.index(p.rho)), pDeltas.pop(pDeltas.index(p.delta))
+
+		plt.scatter(pRhos, pDeltas, \
+			alpha=0.8, s=100, edgecolors='none', color='#3333AA')
+
+		plt.scatter(ctrRhos, ctrDeltas, \
+			alpha=0.8, s=100, edgecolors='none', color='#AA3333')
+
+		if printout==True:
+			plt.savefig('nodesDifference.png', bbox_inches='tight', dpi=600)
+		if show==True:
+			plt.show()
+		plt.clf()
+
+		return ctrs
 
 def dist(p1,p2, metric='euclid'):
 
@@ -225,9 +255,11 @@ def dist(p1,p2, metric='euclid'):
 			diffs=0
 			for i in range(len(p1.coor)): 
 				diffs=diffs+((p1.coor[i]-p2.coor[i])*(p1.coor[i]-p2.coor[i]))
-				return np.sqrt(diffs)
+			return np.sqrt(diffs)
 	else:
+		
 		""" Raise exception if metric other then euclidean is used """
+		
 		raise NotImplementedError('Only euclidean metric is implemented')
 
 
@@ -285,16 +317,18 @@ def sigmoid(p1, p2, sigma):
 if __name__ == "__main__":
 
   	print("Testing...")
-	samples1 = np.random.multivariate_normal([0, 0], [[1, 0.1],[0.1, 1]], 100)
-	samples2 = np.random.multivariate_normal([10, 10], [[2, 0.5],[0.5, 2]], 100)
-	samples = np.concatenate((samples1,samples2), axis=0)
+  	np.random.seed(100)
+	samples1 = np.random.multivariate_normal([0, 0], [[1, 0.1],[0.1, 1]], 10)
+	samples2 = np.random.multivariate_normal([10, 10], [[2, 0.5],[0.5, 2]], 10)
+	samples3 = np.random.multivariate_normal([0, 10], [[2, 0.5],[0.5, 2]], 10)
+	samplesTmp = np.concatenate((samples1,samples2), axis=0)
+	samples = np.concatenate((samplesTmp,samples3), axis=0)
 #	plt.plot(samples[:, 0], samples[:, 1], '.')
 #	plt.show()
 
   	pts=collection(samples)
-  	print samples[0]
-  	print pts.points[0].coor
-  	print pts.points[0].delta
-  	print pts.points[0].rho
 
+  	ctrs=pts.decision_graph(show=True)
+  	print ctrs
+  	print("Done!")
 

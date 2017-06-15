@@ -9,7 +9,7 @@ import sys
 import numpy as np
 from matplotlib import cm
 import matplotlib.pyplot as plt
-import densityPeak
+#import densityPeak
 
 class somNet:
 	""" Kohonen SOM Network class. """
@@ -195,7 +195,7 @@ class somNet:
 					 
 	def diff_graph(self, show=False, printout=True):
 	
-		"""Plot a 2D map with nodes and weights difference among neighbouring nodes
+		"""Plot a 2D map with nodes and weights difference among neighbouring nodes.
 
 		Args:
 			show (bool, optional): Choose to display the plot.
