@@ -11,3 +11,4 @@ docs/build/
 docs/source/
 docs/make.bat
 docs/Makefile
+docs/.doctrees/

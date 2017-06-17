@@ -1,7 +1,7 @@
 SimpSOM (Simple Self-Organizing Maps) 
 =====================================
 
-Version 1.1.2a
+Version 1.2.0
 ------------
 
 SimpSOM is a lightweight implementation of Kohonen Self-Organising Maps (SOM) for Python 2.7, 
@@ -53,12 +53,11 @@ Here is a quick example on how to use the library with a ``raw_data`` dataset::
 What's New
 ------------------------
 
-- Clustering is now possible with the ``cluster`` command, Quality Threshold and a few sklearn clustering algorithms are availabe.
-- Added PDF Manual
+- Density-Peak Clustering is now available under the ``dpeak`` command.
 	
 TO DOs:
 -------
 
+- Improve efficiency of Density-Peak Clustering
 - Update the available cluster algorithms from sklearn;
-- Implement Density-Peak Clustering
 - Test for Python 3

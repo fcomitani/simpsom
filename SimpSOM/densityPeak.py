@@ -1,5 +1,4 @@
 """
-#########################################################################
 Density-Peak Clustering
 
 A Rodriguez, A Laio,
@@ -7,10 +6,6 @@ Clustering by fast search and find of density peaks
 SCIENCE, 1492, vol 322 (2014) 
 
 F. Comitani @2017 
-#########################################################################
-
-WARNING: Work in Progress... Not tested!
-
 """
 
 import sys
@@ -18,6 +13,8 @@ import numpy as np
 from operator import attrgetter
 import warnings
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+
 
 class pt:
 	""" Class for the points to cluster. """
@@ -35,10 +32,16 @@ class pt:
 		for c in coordinates:
 			self.coor.append(c)
 
-		""" Initialise empty density (rho), higher-density distance (delta) and list of distances."""
+		""" Initialise empty density (rho), higher-density distance (delta), list of distances, 
+			the nearest neighbour of higher density, and the cluster."""
+
 		self.rho=0
 		self.delta=sys.maxsize
-		self.dists=[]
+		self.dists={}
+		self.nneigh=None
+		self.cl=[0]
+		self.core=True
+
 
 	def set_dist(self, coll):
 	
@@ -52,7 +55,7 @@ class pt:
 		warnings.warn('Setting individual distances is deprecated, use the collection.set_dists() instead!', DeprecationWarning)
 
 	 	for p2 in coll.points:
-	 			if self!=p2: self.dists.append(dist(self,p2))
+	 			if self!=p2: self.dists[p2]=dist(self,p2)
 
 
 	def set_rho(self, coll, typeFunc='step'):
@@ -82,9 +85,10 @@ class pt:
 					""" Raise exception if metric other then euclidean is used. """
 					raise NotImplementedError('Only step, gaussian kernel or logistic functions are implemented')
 
+
 	def set_delta(self, coll):
 
-		"""Calculate the distance of the point from higher density points. [Deprecated]
+		"""Calculate the distance of the point from higher density points and set the nearest neighbour. [Deprecated]
 
 		Args:
 			coll (collection): collection containing all the points of the dataset used to calculate the distance.
@@ -101,10 +105,13 @@ class pt:
 		
 		for p2 in coll.points:
 			if self!=p2:
+				d=dist(self,p2)
 				if self.rho<p2.rho:
-					distHigh.append(dist(self,p2))
+					distHigh.append(d)
+					""" Choose nearest neighbour and handle empty list """
+					if d < np.min(distHigh or [999]): self.nneigh=p2
 				else:
-					distsLow.append(dist(self,p2))
+					distsLow.append(d)
 		
 		""" If the point has maximal rho, then return max distance """
 
@@ -116,7 +123,7 @@ class collection:
 
 	"""Class for a collection of point objects. """
 
-	def __init__(self, coorArray, typeFunc='gaussian', percent=0.2):
+	def __init__(self, coorArray, typeFunc='gaussian', percent=0.02):
 		
 		"""	Generate a collection of point objects from an array containing their coordinates.
 	
@@ -138,11 +145,13 @@ class collection:
 
 		self.alldists.sort()
 		self.refd=self.alldists[index]
-		
+				
 		""" Make sure rhos are set before setting deltas """
 
 		self.set_rhos(typeFunc)
 		self.set_deltas()	
+
+		self.clusters={}
 
 
 	def set_dists(self):
@@ -153,7 +162,9 @@ class collection:
 	 		for p2 in self.points:
 	 			if self.points.index(p1)<self.points.index(p2): 
 	 				d=dist(p1,p2)
-	 				self.alldists.append(d), p1.dists.append(d), p2.dists.append(d)
+	 				self.alldists.append(d) 
+	 				p1.dists[p2]=d 
+	 				p2.dists[p1]=d
 
 
 	def set_rhos(self, typeFunc='step'):
@@ -180,24 +191,27 @@ class collection:
 					else:
 						raise NotImplementedError('Only step, gaussian kernel or logistic functions are implemented')
 
+
 	def set_deltas(self):
 
 		"""Calculate the distance from higher density points for each point in the dataset. """
 
-		distHigh, distLow= [], []
 		for p1 in self.points:
 			for p2 in self.points:
-			 	# No need to re-set the distances
-				d=dist(p1,p2)
-				#p1.dists.append(d), p2.dists.append(d)
 				if self.points.index(p1)<self.points.index(p2): 
-					if p1.rho<p2.rho and d<p1.delta: p1.delta=d
-					elif p1.rho>p2.rho and d<p2.delta: p2.delta=d
+					d=p1.dists[p2]
+					if p1.rho<p2.rho and d<p1.delta: 
+						p1.delta=d
+						p1.nneigh=p2
+					elif p1.rho>p2.rho and d<p2.delta: 
+						p2.delta=d
+						p2.nneigh=p1
 	
 		""" If the point has maximal rho, then return max distance """
 
 		pmax=max(self.points, key=attrgetter('rho'))
-		pmax.delta=max(pmax.dists)
+		pmax.delta=max(pmax.dists.values())
+
 
 	def decision_graph(self, show=False, printout=True):
 
@@ -212,12 +226,16 @@ class collection:
 
 		fig, ax = plt.subplots()
 		pRhos, pDeltas = [p.rho for p in self.points], [p.delta for p in self.points]
+
 		meanDeltas, sdevDeltas = np.mean(pDeltas), np.std(pDeltas)
-		ctrs, ctrRhos, ctrDeltas= [], [], []
+		self.ctrs, ctrRhos, ctrDeltas= [], [], []
 		
+		i=1
 		for p in self.points:
 			if p.delta> meanDeltas+1.5*sdevDeltas:
-				ctrs.append(p) 
+				self.ctrs.append(p) 
+				p.cl[0]=i
+				i+=1
 				ctrRhos.append(p.rho), ctrDeltas.append(p.delta) 
 				pRhos.pop(pRhos.index(p.rho)), pDeltas.pop(pDeltas.index(p.delta))
 
@@ -233,7 +251,60 @@ class collection:
 			plt.show()
 		plt.clf()
 
-		return ctrs
+
+	def cluster_assign(self):
+
+		"""Assign a cluster to each point according according to its nearest neighbour with higher density."""
+
+		""" Temporary workaround until I can make mutable p.cl work, SLOW! """
+
+		while [0] in [p.cl for p in self.points]:	
+			for p in self.points: 
+				if p.cl==[0]: p.cl=p.nneigh.cl
+
+
+	def core_assign(self):
+		
+		"""Assign points as belonging to the core or the halo of a cluster."""
+
+		for c in range(1,len(self.ctrs)+1):
+			self.clusters[c]=[]
+
+			border=[]
+			for p in self.points:
+				if p.cl==[c]:
+					self.clusters[c].append(p)
+					for key,value in p.dists.iteritems():
+						if key.cl!=c and value<self.refd:
+							border.append(p)
+							continue
+
+			if border!=[]:
+				pmax=max(border, key=attrgetter('rho'))				
+				refRho=pmax.rho
+
+				for p in self.clusters[c]:
+					if p.rho<refRho: p.core=False	
+
+
+	def get_clusterList(self):
+
+		""" Returns the indeces of the clustered points as a list.
+			
+			Returns:
+				clusters (list, int): a list of lists containing the points indices belonging to each cluster
+		"""	
+
+		clusters=[]
+
+  		for val in self.clusters.values():
+  			inds=[]
+  			for p in val:
+  				inds.append(self.points.index(p))
+  			clusters.append(inds)
+
+  		return clusters	
+
 
 def dist(p1,p2, metric='euclid'):
 
@@ -280,6 +351,7 @@ def step(p1, p2, cutoff):
 	if dist(p1,p2)<cutoff: return 1
 	else: return 0	
 
+
 def gaussian(p1, p2, sigma):
 
 	"""Gaussian function of the distance between two points scaled with sigma.
@@ -295,6 +367,7 @@ def gaussian(p1, p2, sigma):
 	"""
 
 	return np.exp(-1.0*dist(p1,p2)*dist(p1,p2)/sigma*sigma)
+
 
 def sigmoid(p1, p2, sigma):
 
@@ -313,22 +386,67 @@ def sigmoid(p1, p2, sigma):
 	return np.exp(-1.0*(1.0+np.exp((dist(p1,p2))/sigma)))
 
 
+def densityPeak(sample, show=False, printout=False, percent=0.02):
 
-if __name__ == "__main__":
+	""" Run the complete clustering algorithm in one go and returns the clustered indeces as a list.
 
-  	print("Testing...")
+		Args:
+			sample (array): The input dataset
+			show (bool, optional): Choose to display the decision graph.
+			printout (bool, optional): Choose to save the decision graph to a file.
+		
+		Returns:
+			clusters (list, int): a list of lists containing the points indices belonging to each cluster
+	"""		
+	
+	pts=collection(sample, percent=percent)
+  	pts.decision_graph(show=show, printout=printout)
+  	pts.cluster_assign()
+  	pts.core_assign()
+
+  	return pts.get_clusterList()
+
+
+def test():
+
+	""" Run the complete clustering algorithm on a test case and print the clustered points graph. """
+
+	print("Testing...")
+  	
   	np.random.seed(100)
-	samples1 = np.random.multivariate_normal([0, 0], [[1, 0.1],[0.1, 1]], 10)
-	samples2 = np.random.multivariate_normal([10, 10], [[2, 0.5],[0.5, 2]], 10)
-	samples3 = np.random.multivariate_normal([0, 10], [[2, 0.5],[0.5, 2]], 10)
+	samples1 = np.random.multivariate_normal([0, 0], [[1, 0.1],[0.1, 1]], 100)
+	samples2 = np.random.multivariate_normal([10, 10], [[2, 0.5],[0.5, 2]], 100)
+	samples3 = np.random.multivariate_normal([0, 10], [[2, 0.5],[0.5, 2]], 100)
+	samples4 = np.random.uniform(0, 14, [50,2])
 	samplesTmp = np.concatenate((samples1,samples2), axis=0)
-	samples = np.concatenate((samplesTmp,samples3), axis=0)
+	samplesTmp2 = np.concatenate((samplesTmp,samples3), axis=0)
+	samples = np.concatenate((samplesTmp2,samples4), axis=0)
 #	plt.plot(samples[:, 0], samples[:, 1], '.')
 #	plt.show()
 
   	pts=collection(samples)
 
-  	ctrs=pts.decision_graph(show=True)
-  	print ctrs
-  	print("Done!")
+  	pts.decision_graph(printout=False)
+  	pts.cluster_assign()
+  	pts.core_assign()
 
+  	print pts.get_clusterList()
+
+ 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==0], [p.coor[1] for p in pts.points if p.cl[0]==0], 'o', c='black')
+	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==1 and p.core==True], [p.coor[1] for p in pts.points if p.cl[0]==1 and p.core==True], 'o', c="#ff0000")
+	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==1 and p.core==False], [p.coor[1] for p in pts.points if p.cl[0]==1 and p.core==False], 'o', c="#ffaaaa")
+ 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==2 and p.core==True], [p.coor[1] for p in pts.points if p.cl[0]==2 and p.core==True], 'o', c="#00ff00")
+	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==2 and p.core==False], [p.coor[1] for p in pts.points if p.cl[0]==2 and p.core==False], 'o', c="#aaffaa")
+ 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==3 and p.core==True], [p.coor[1] for p in pts.points if p.cl[0]==3 and p.core==True], 'o', c="#ffff00")
+	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==3 and p.core==False], [p.coor[1] for p in pts.points if p.cl[0]==3 and p.core==False], 'o', c="#ffffaa")
+	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==4 and p.core==True], [p.coor[1] for p in pts.points if p.cl[0]==4 and p.core==True], 'o', c="#0000ff")
+	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==4 and p.core==False], [p.coor[1] for p in pts.points if p.cl[0]==4 and p.core==False], 'o', c="#aaaaff")
+  	
+	plt.show()
+	
+   	print("Done!")
+
+
+if __name__ == "__main__":
+
+	test()

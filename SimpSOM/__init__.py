@@ -1,5 +1,5 @@
 """
-SimpSOM (Simple Self-Organizing Maps) v1.1.2a
+SimpSOM (Simple Self-Organizing Maps) v1.2.0
 F. Comitani @2017 
  
 A lightweight python library for Kohonen Self-Organising Maps (SOM).
@@ -9,7 +9,7 @@ import sys
 import numpy as np
 from matplotlib import cm
 import matplotlib.pyplot as plt
-#import densityPeak
+import densityPeak as dp
 
 class somNet:
 	""" Kohonen SOM Network class. """
@@ -58,6 +58,7 @@ class somNet:
 					self.nodeList.append(somNode(x,y, self.data.shape[1], weiArray[countWei]))
 					countWei+=1
 
+
 	def save(self, fileName='somNet_trained'):
 	
 		"""Saves the nodes weights to a file.
@@ -87,6 +88,7 @@ class somNet:
 	
 		self.sigma = self.startSigma * np.exp(-iter/self.tau);
 	
+
 	def update_lrate(self, iter):
 	
 		"""Update the learning rate.
@@ -98,6 +100,7 @@ class somNet:
 		
 		self.lrate =  self.startLearnRate * np.exp(-iter/self.epochs);
 	
+
 	def find_bmu(self, vec):
 	
 		"""Find the best matching unit (BMU) for a given vector.
@@ -118,6 +121,7 @@ class somNet:
 				bmu=node
 		return bmu	
 			
+
 	def train(self, epochs=5000, startLearnRate=0.01):
 	
 		"""Train the SOM.
@@ -192,7 +196,8 @@ class somNet:
 			plt.show()
 		if show!=False and printout!=False:
 			plt.clf()
-					 
+			
+
 	def diff_graph(self, show=False, printout=True):
 	
 		"""Plot a 2D map with nodes and weights difference among neighbouring nodes.
@@ -230,6 +235,7 @@ class somNet:
 		if show==True:
 			plt.show()
 		plt.clf()
+
 
 	def project(self, array, colnum=0, labels=[], show=False, printout=True):
 
@@ -289,7 +295,7 @@ class somNet:
 		return [[pos[0],pos[1]] for pos in bmuList] 
 		
 		
-	def cluster(self, array, type='qthresh', cutoff=5, quant=0.2, \
+	def cluster(self, array, type='qthresh', cutoff=5, quant=0.2, percent=0.02, \
 					savefile=True, filetype='dat', show=False, printout=True):
 	
 		"""Clusters the data in a given array according to the SOM trained map.
@@ -299,9 +305,10 @@ class somNet:
 			array (np.array): An array containing datapoints to be clustered.
 			type (str, optional): The type of clustering to be applied, so far only quality threshold (qthresh) 
 				algorithm is directly implemented, other algorithms require sklearn.
-			cutoff(float, optional): Cutoff for the quality threshold algorithm. This also doubles as
+			cutoff (float, optional): Cutoff for the quality threshold algorithm. This also doubles as
 				maximum distance of two points to be considered in the same cluster with DBSCAN.
-			quant(float, optional): Quantile used to calculate the bandwidth of the mean shift algorithm.
+			percent (float, optional): The percentile that defines the reference distance in density peak clustering (dpeak).
+			quant (float, optional): Quantile used to calculate the bandwidth of the mean shift algorithm.
 			savefile (bool, optional): Choose to save the resulting clusters in a text file.
 			filetype (string, optional): Format of the file where the clusters will be saved (csv or dat)
 			show (bool, optional): Choose to display the plot.
@@ -336,6 +343,12 @@ class somNet:
 				clusters.append(max(qtList,key=len))
 				for el in clusters[-1]:
 					tmpList.remove(el)
+
+		elif type=='dpeak':
+
+			""" Cluster according to the density peak algorithm. """
+
+			clusters = dp.densityPeak(bmuList)
 
 		else:
 		
@@ -513,6 +526,11 @@ def run_colorsExample():
 	net.nodes_graph()
 	net.diff_graph()
 	net.project(raw_data, labels=labels)
-	net.cluster(raw_data, type='qthresh', cutoff=8)
+	net.cluster(raw_data, type='qtresh')
 	
 	print("done!")
+
+
+if __name__ == "__main__":
+
+	run_colorsExample()
