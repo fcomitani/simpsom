@@ -276,7 +276,7 @@ class somNet:
 				plt.title('Datapoints Projection')
 			else:
 				printName='projection_'+str(colnum)+'.png'
-				plt.scatter([pos[1] for pos in bmuList],[pos[0] for pos in bmuList], color=cls, edgecolor='black', cmap=cm.viridis)
+				plt.scatter([pos[1] for pos in bmuList],[pos[0] for pos in bmuList], c=cls, edgecolor='black', cmap=cm.viridis)
 				plt.title('Datapoints Projection #' +  str(colnum))
 
 			if labels!=[]:
