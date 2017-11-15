@@ -311,14 +311,16 @@ class somNet:
 		
 			self.nodes_graph(colnum, False, False)
 
-			#be careful, x,y are inverted in nodes_graph imshow()		
+			#be careful, x,y are inverted in nodes_graph imshow()
+			#a random perturbation is added to the points positions so that data 
+			#belonging plotted to the same bmu will be visible in the plot		
 			if self.colorEx==True:
 				printName='colorProjection.png'
 				plt.scatter([pos[1] for pos in bmuList],[pos[0] for pos in bmuList], color=cls, edgecolor='black')
 				plt.title('Datapoints Projection')
 			else:
 				printName='projection_'+str(colnum)+'.png'
-				plt.scatter([pos[1] for pos in bmuList],[pos[0] for pos in bmuList], c=cls, s=10, edgecolor='black', cmap=cm.viridis)
+				plt.scatter([pos[1]+(np.random.random()-0.5)*0.5 for pos in bmuList],[pos[0]+(np.random.random()-0.5)*0.5 for pos in bmuList], c=cls, s=10, edgecolor='black', cmap=cm.viridis)
 				plt.title('Datapoints Projection #' +  str(colnum))
 
 			if labels!=[]:
