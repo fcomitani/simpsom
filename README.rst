@@ -1,7 +1,7 @@
 SimpSOM (Simple Self-Organizing Maps) 
 =====================================
 
-Version 1.2.0
+Version 1.3.0
 ------------
 
 SimpSOM is a lightweight implementation of Kohonen Self-Organising Maps (SOM) for Python 2.7, 
@@ -22,9 +22,6 @@ Mandatory:
 - Numpy 1.11.0 (older versions may work);
 - Matplotlib 1.5.1 (older versions may work);
 - Sklearn 0.15 (older versions may work);
-
-Optional:
-##### NOT YET  - Seaborn 0.6.0 (older versions may work).
 
 Example of Usage
 ----------------
