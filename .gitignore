@@ -12,3 +12,7 @@ docs/source/
 docs/make.bat
 docs/Makefile
 docs/.doctrees/
+SimpSOM/*png
+SimpSOM/*dat
+SimpSOM/*npy
+SimpSOM/temp*
