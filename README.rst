@@ -18,9 +18,13 @@ RGB space to the 2D network map and clustered according to their similarity in t
 Dependencies
 ------------
 
+Mandatory:
 - Numpy 1.11.0 (older versions may work);
 - Matplotlib 1.5.1 (older versions may work);
-- Sklearn 0.15 (older versions may work), optional, needed only for clustering with algorithms other than Quality Threshold.
+- Sklearn 0.15 (older versions may work);
+
+Optional:
+##### NOT YET  - Seaborn 0.6.0 (older versions may work).
 
 Example of Usage
 ----------------
@@ -30,11 +34,11 @@ Here is a quick example on how to use the library with a ``raw_data`` dataset::
 	#Import the library
 	import SimpSOM as sps
 
-	#Build a network 20x20 with a weights format taken from the raw_data. 
-	net = sps.somNet(20, 20, raw_data)
+	#Build a network 20x20 with a weights format taken from the raw_data and activate Periodic Boundary Conditions. 
+	net = sps.somNet(20, 20, raw_data, PBC=True)
 
 	#Train the network for 10000 epochs and with initial learning rate of 0.1. 
-	net.train(10000, 0.01)
+	net.train(0.01, 10000)
 
 	#Save the weights to file
 	net.save('filename_weights')
@@ -47,17 +51,20 @@ Here is a quick example on how to use the library with a ``raw_data`` dataset::
 	#Project the datapoints on the new 2D network map.
 	net.project(raw_data, labels=labels)
 
-	#Cluster the datapoints according to the Mean Shift algorithm from sklearn.
-	net.cluster(raw_data, type='MeanShift')
+	#Cluster the datapoints according to the Quality Threshold algorithm.
+	net.cluster(raw_data, type='qthresh')
 	
 What's New
 ------------------------
 
-- Density-Peak Clustering is now available under the ``dpeak`` command.
-	
+- If no epochs are selected for the training, automatically chose 10*number of datapoints;
+- It is now possible to activate periodic boundary conditions, but only Quality Threshold can be used with PBC;
+- Fixed the random selection of weights, as now the random vectors span the space of the data;
+- Implemented PCA initialisations (activate with PCI=1);
+- Scikit learn is now a mandatory requirement.
+
 TO DOs:
 -------
 
-- Improve efficiency of Density-Peak Clustering
 - Update the available cluster algorithms from sklearn;
-- Test for Python 3
+- Make compatible with Python 3

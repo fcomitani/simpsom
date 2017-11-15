@@ -10,11 +10,15 @@ import numpy as np
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import densityPeak as dp
+from sklearn.decomposition import PCA
+from sklearn import cluster
+
+
 
 class somNet:
 	""" Kohonen SOM Network class. """
 
-	def __init__(self, netHeight, netWidth, data, loadFile=None):
+	def __init__(self, netHeight, netWidth, data, loadFile=None, PCI=0, PBC=0):
 
 		"""Initialise the SOM network.
 
@@ -24,25 +28,61 @@ class somNet:
 			data (np.array or list): N-dimensional dataset.
 			loadFile (str, optional): Name of file to load containing information 
 				to initialise the network weights.
+			PCI (boolean): Activate/Deactivate Principal Component Analysis to set
+				the initial value of weights
+			PBC (boolean): Activate/Deactivate periodic boundary conditions,
+				warning: only quality threshold clustering algorithm works with PBC.
 				
 		"""
 	
-		""" Switch to activate special workflows if running the colours example. """
+		""" Switch to activate special workflow if running the colours example. """
 		self.colorEx=False
+		
+		""" Switch to activate periodic PCA weights initialisation. """
+		self.PCI=bool(PCI)
+
+		""" Switch to activate periodic boundary conditions. """
+		self.PBC=bool(PBC)
+
+		if self.PBC==True:
+			print "Periodic Boundary Conditions active."
+		else:
+			print "Periodic Boundary Conditions inactive."
 
 		self.nodeList=[]
 		self.data=data.reshape(np.array([data.shape[0], data.shape[1]]))
 
-		""" Load the weights from file or generate them randomly. """
-		
+		""" Load the weights from file, generate them randomly or from PCA. """
+
 		if loadFile==None:
 			self.netHeight = netHeight
 			self.netWidth = netWidth
 
+			minVal,maxVal=[],[]
+			pcaVec=[]
+
+			if self.PCI==True:
+				print "The weights will be initialised with PCA."
+			
+				pca = PCA(n_components = 2)
+				pca.fit(self.data)
+				pcaVec=pca.components_
+			
+			else:
+				print "The weights will be initialised randomly."
+
+				for i in range(self.data.shape[1]):
+					minVal.append(np.min(self.data[:,i]))
+					maxVal.append(np.max(self.data[:,i]))
+			
 			for x in range(self.netWidth):
 				for y in range(self.netHeight):
-					self.nodeList.append(somNode(x,y, self.data.shape[1]))
+					self.nodeList.append(somNode(x,y, self.data.shape[1], self.netHeight, self.netWidth, self.PBC,\
+						minVal=minVal, maxVal=maxVal, pcaVec=pcaVec))
+
 		else: 	
+			print 'The weights will be loaded from file.'
+
 			if loadFile.endswith('.npy')==False:
 				loadFile=loadFile+'.npy'
 			weiArray=np.load(loadFile)
@@ -50,14 +90,14 @@ class somNet:
 			#or that they are mutually exclusive
 			self.netHeight = int(weiArray[0][0])
 			self.netWidth = int(weiArray[0][1])
+			self.PBC= bool(weiArray[0][2])
 
 			#start from 1 because 0 contains info on the size of the network
 			countWei=1
 			for x in range(self.netWidth):
 				for y in range(self.netHeight):
-					self.nodeList.append(somNode(x,y, self.data.shape[1], weiArray[countWei]))
+					self.nodeList.append(somNode(x,y, self.data.shape[1], self.netHeight, self.netWidth, self.PBC, weiArray=weiArray[countWei]))
 					countWei+=1
-
 
 	def save(self, fileName='somNet_trained'):
 	
@@ -68,9 +108,9 @@ class somNet:
 			
 		"""
 		
-		#save network dimensions
+		#save network dimensions and PBC
 		weiArray=[np.zeros(len(self.nodeList[0].weights))]
-		weiArray[0][0],weiArray[0][1]=self.netHeight, self.netWidth
+		weiArray[0][0],weiArray[0][1],weiArray[0][2]=self.netHeight, self.netWidth, int(self.PBC)
 		#save the weights
 		for node in self.nodeList:
 			weiArray.append(node.weights)
@@ -122,20 +162,22 @@ class somNet:
 		return bmu	
 			
 
-	def train(self, epochs=5000, startLearnRate=0.01):
+	def train(self, startLearnRate=0.01, epochs=-1):
 	
 		"""Train the SOM.
 
 		Args:
-			epochs (int): Number of training iterations.
 			startLearnRate (float): Initial learning rate.
+			epochs (int): Number of training iterations. If not selected (or -1)
+				automatically set epochs as 10 times the number of datapoints
 			
 		"""
 		
 		print("Training SOM... 0%"),
-
 		self.startSigma = max(self.netHeight, self.netWidth)/2
 		self.startLearnRate = startLearnRate
+		if epochs==-1:
+			epochs=self.data.shape[0]*10
 		self.epochs=epochs
 		self.tau = self.epochs/np.log(self.startSigma)
 	
@@ -147,8 +189,8 @@ class somNet:
 			self.update_sigma(i)
 			self.update_lrate(i)
 			
-			""" Train with the random point method: 
-				instead of using all the training points, a random datapoint is chosen
+			""" Train with the bootstrap-like method: 
+				instead of using all the training points, a random datapoint is chosen with substitution
 				for each iteration and used to update the weights of all the nodes.
 			"""
 			
@@ -276,7 +318,7 @@ class somNet:
 				plt.title('Datapoints Projection')
 			else:
 				printName='projection_'+str(colnum)+'.png'
-				plt.scatter([pos[1] for pos in bmuList],[pos[0] for pos in bmuList], c=cls, edgecolor='black', cmap=cm.viridis)
+				plt.scatter([pos[1] for pos in bmuList],[pos[0] for pos in bmuList], c=cls, s=10, edgecolor='black', cmap=cm.viridis)
 				plt.title('Datapoints Projection #' +  str(colnum))
 
 			if labels!=[]:
@@ -337,8 +379,22 @@ class somNet:
 				for i in tmpList:
 					qtList.append([])
 					for j in tmpList:
-						if np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
-							+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1])) <= cutoff:
+						if self.PBC==True:
+							distBmu=np.min([np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
+								+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1])),
+							np.sqrt((bmuList[j][0]-bmuList[i][0]+self.netHeight)*(bmuList[j][0]-bmuList[i][0]+self.netHeight)\
+								+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1])),
+							np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
+								+(bmuList[j][1]-bmuList[i][1]+self.netWidth)*(bmuList[j][1]-bmuList[i][1]+self.netWidth)),
+							np.sqrt((bmuList[j][0]-bmuList[i][0]-self.netHeight)*(bmuList[j][0]-bmuList[i][0]-self.netHeight)\
+								+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1])),
+							np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
+								+(bmuList[j][1]-bmuList[i][1]-self.netWidth)*(bmuList[j][1]-bmuList[i][1]-self.netWidth))])
+						else:
+							distBmu=np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
+							+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1]))
+
+						if distBmu <= cutoff:
 							qtList[-1].append(j)
 				clusters.append(max(qtList,key=len))
 				for el in clusters[-1]:
@@ -348,16 +404,20 @@ class somNet:
 
 			""" Cluster according to the density peak algorithm. """
 
+			if self.PBC==True:
+				"Warning: Only Quality Threshold clustering works with PBC"
+
 			clusters = dp.densityPeak(bmuList)
 
-		else:
+		elif type in ['MeanShift', 'DBSCAN']:
 		
 			""" Cluster according to algorithms implemented in sklearn. """
-			#TODO: for now only MeanShift and DBSCAN are implemented, add the rest of the algorithms	
 		
+			if self.PBC==True:
+				"Warning: Only Quality Threshold clustering works with PBC"
+
 			try:
 				#TODO: clean all this mess
-				from sklearn import cluster
 		
 				if type=='MeanShift':
 					bandwidth = cluster.estimate_bandwidth(np.asarray(bmuList), quantile=quant, n_samples=500)
@@ -378,6 +438,9 @@ class somNet:
 			except:
 				print('Unexpected error: ', sys.exc_info()[0])
 				raise
+		else:
+			sys.exit("Error: unkown clustering algorithm " + type)
+
 		
 		if savefile==True:
 			file=open(type+'_clusters.'+filetype, 'w')
@@ -423,7 +486,7 @@ class somNode:
 
 	""" Single Kohonen SOM Node class. """
 	
-	def __init__(self, x, y, numWeights, weiArray=[]):
+	def __init__(self, x, y, numWeights, netHeight, netWidth, PBC, minVal=[], maxVal=[], pcaVec=[], weiArray=[]):
 	
 		"""Initialise the SOM node.
 
@@ -431,17 +494,32 @@ class somNode:
 			x (int): Position along the first network dimension.
 			y (int): Position along the second network dimension
 			numWeights (int): Length of the weights vector.
+			netHeight (int): Network height, needed for periodic boundary conditions (PBC)
+			netWidth (int): Network width, needed for periodic boundary conditions (PBC)
+			PBC (bool): Activate/deactivate periodic boundary conditions.
+			minVal(np.array, optional): minimum values for the weights found in the data
+			maxVal(np.array, optional): maximum values for the weights found in the data
+			pcaVec(np.array, optional): Array containing the two PCA vectors.
 			weiArray (np.array, optional): Array containing the weights to give
 				to the node if a file was loaded.
+
 				
 		"""
 	
+		self.PBC=PBC
 		self.pos = [x,y]
 		self.weights = []
-		
-		if weiArray==[]:
+
+		self.netHeight=netHeight
+		self.netWidth=netWidth
+
+		if weiArray==[] and pcaVec==[]:
+			#select randomly in the space spanned by the data
 			for i in range(numWeights):
-				self.weights.append(np.random.random())
+				self.weights.append(np.random.random()*(maxVal[i]-minVal[i])+minVal[i])
+		elif weiArray==[] and pcaVec!=[]:
+			#select uniformly in the space spanned by the PCA vectors
+			self.weights= (x-self.netWidth/2)*2.0/self.netWidth * pcaVec[0] + (y-self.netHeight/2)*2.0/self.netHeight *pcaVec[1]
 		else:
 			for i in range(numWeights):
 				self.weights.append(weiArray[i])
@@ -477,10 +555,24 @@ class somNode:
 			(float): The distance between the two nodes.
 			
 		"""
-	
-		return np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
-			+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1]))		
-		
+
+		if self.PBC==True:
+			return np.min([np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
+				+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
+			np.sqrt((self.pos[0]-node.pos[0]+self.netHeight)*(self.pos[0]-node.pos[0]+self.netHeight)\
+				+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
+			np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
+				+(self.pos[1]-node.pos[1]+self.netWidth)*(self.pos[1]-node.pos[1]+self.netWidth)),
+			np.sqrt((self.pos[0]-node.pos[0]-self.netHeight)*(self.pos[0]-node.pos[0]-self.netHeight)\
+				+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
+			np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
+				+(self.pos[1]-node.pos[1]-self.netHeight)*(self.pos[1]-node.pos[1]-self.netHeight))])
+		else:
+			return np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
+				+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1]))
+
+
+
 	def update_weights(self, inputVec, sigma, lrate, bmu):
 	
 		"""Update the node Weights.
@@ -511,22 +603,22 @@ def run_colorsExample():
 	raw_data =np.asarray([[1, 0, 0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[0.2,0.2,0.5]])
 	labels=['red','green','blue','yellow','magenta','cyan','indigo']
 
-	print("Welcome to SimpSOM (Simple Self Organizing Maps) v1.0.0!\nHere is a quick example of what this library can do.\n")
+	print("Welcome to SimpSOM (Simple Self Organizing Maps) v1.2.0!\nHere is a quick example of what this library can do.\n")
 	print("The algorithm will now try to map the following colors: "),
 	for i in range(len(labels)-1):
 			print(labels[i] + ", "), 
 	print("and " + labels[-1]+ ".\n")
 	
-	net = somNet(20, 20, raw_data)
+	net = somNet(20, 20, raw_data, PBC=True)
 	net.colorEx=True
-	net.train(10000, 0.01)
+	net.train(0.01, 10000)
 
 	print("Saving weights and a few graphs..."),
 	net.save('colorExample_weights')
 	net.nodes_graph()
 	net.diff_graph()
 	net.project(raw_data, labels=labels)
-	net.cluster(raw_data, type='qtresh')
+	net.cluster(raw_data, type='qthresh')
 	
 	print("done!")
 
