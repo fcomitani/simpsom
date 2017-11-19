@@ -1,5 +1,5 @@
 """
-SimpSOM (Simple Self-Organizing Maps) v1.2.0
+SimpSOM (Simple Self-Organizing Maps) v1.3.0
 F. Comitani @2017 
  
 A lightweight python library for Kohonen Self-Organising Maps (SOM).
@@ -7,9 +7,14 @@ A lightweight python library for Kohonen Self-Organising Maps (SOM).
 
 import sys
 import numpy as np
-from matplotlib import cm
+
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 import densityPeak as dp
+import hexagons as hx
+
 from sklearn.decomposition import PCA
 from sklearn import cluster
 
@@ -101,17 +106,16 @@ class somNet:
 
 	def save(self, fileName='somNet_trained'):
 	
-		"""Saves the nodes weights to a file.
+		"""Saves the network dimensions, the pbc and nodes weights to a file.
 
 		Args:
-			fileName (str, optional): Name of file where the weights will be saved.
+			fileName (str, optional): Name of file where the data will be saved.
 			
 		"""
 		
-		#save network dimensions and PBC
+		
 		weiArray=[np.zeros(len(self.nodeList[0].weights))]
 		weiArray[0][0],weiArray[0][1],weiArray[0][2]=self.netHeight, self.netWidth, int(self.PBC)
-		#save the weights
 		for node in self.nodeList:
 			weiArray.append(node.weights)
 		np.save(fileName, np.asarray(weiArray))
@@ -206,7 +210,7 @@ class somNet:
 		
 	def nodes_graph(self, colnum=0, show=False, printout=True):
 	
-		"""Plot a 2D map with nodes and weights values
+		"""Plot a 2D map with hexagonal nodes and weights values
 
 		Args:
 			colnum (int): The index of the weight that will be shown as colormap.
@@ -214,31 +218,41 @@ class somNet:
 			printout (bool, optional): Choose to save the plot to a file.
 			
 		"""
-	
-		fig, ax = plt.subplots()
-		
-		if self.colorEx==True:
-			cols = [(node.weights[0],node.weights[1],node.weights[2]) for node in self.nodeList]
-			cols=np.asarray(cols).reshape((self.netHeight, self.netWidth, len(cols[0])))
-			cax=ax.imshow(cols, interpolation='none')
-			ax.set_title('Node Grid w Color Features')
-			printName='nodesColors.png'
-		else:
-			cols = [node.weights[colnum] for node in self.nodeList]
-			cols=np.asarray(cols).reshape((self.netHeight, self.netWidth))
-			cax=ax.imshow(cols, interpolation='none', cmap=cm.viridis)
-			cbar=fig.colorbar(cax)
-			cbar.set_label('Feature #' +  str(colnum)+' value')
-			ax.set_title('Node Grid w Feature #' +  str(colnum))
-			printName='nodesFeature_'+str(colnum)+'.png'
 
+		centers = [[node.pos[0],node.pos[1]] for node in self.nodeList]
+
+		widthP=250
+		dpi=72
+		xInch = self.netWidth*widthP/dpi 
+		yInch = self.netHeight*widthP/dpi 
+		fig=plt.figure(figsize=(xInch, yInch), dpi=dpi)
+
+		if self.colorEx==True:
+			cols = [[node.weights[0],node.weights[1],node.weights[2]] for node in self.nodeList]	
+			ax = hx.plot_hex(fig, centers, cols)
+			ax.set_title('Node Grid w Color Features', size=150)
+			printName='nodesColors.png'
+
+		else:
+		 	cols = [node.weights[colnum] for node in self.nodeList]
+			ax = hx.plot_hex(fig, centers, cols)
+			ax.set_title('Node Grid w Feature #' +  str(colnum), size=150)
+			#deactivate the divider for now, as it gives problems with points projections
+			#from mpl_toolkits.axes_grid1 import make_axes_locatable
+			#divider = make_axes_locatable(ax)
+			#cax = divider.append_axes("right", size="5%", pad=0.0)
+			cbar=plt.colorbar(ax.collections[0],ax=ax)
+			cbar.set_label('Feature #' +  str(colnum)+' value', size=150, labelpad=50)
+			cbar.ax.tick_params(labelsize=100)
+			printName='nodesFeature_'+str(colnum)+'.png'
+		
 		if printout==True:
-			plt.savefig(printName, bbox_inches='tight', dpi=600)
+			plt.savefig(printName, bbox_inches='tight', dpi=dpi)
 		if show==True:
 			plt.show()
 		if show!=False and printout!=False:
 			plt.clf()
-			
+
 
 	def diff_graph(self, show=False, printout=True):
 	
@@ -254,26 +268,37 @@ class somNet:
 		for node in self.nodeList:
 			nodelist=[]
 			for nodet in self.nodeList:
-				if node != nodet and node.get_nodeDistance(nodet) <= np.sqrt(2):
+				if node != nodet and node.get_nodeDistance(nodet) <= 1.001:
 					nodelist.append(nodet)
 			neighbours.append(nodelist)		
 			
-		diffs = np.zeros((self.netHeight, self.netWidth))
+		diffs = []
 		for node, neighbours in zip(self.nodeList, neighbours):
 			diff=0
 			for nb in neighbours:
 				diff=diff+node.get_distance(nb.weights)
-			diffs[node.pos[0],node.pos[1]]=diff	
+			diffs.append(diff)	
 
-		fig, ax = plt.subplots()
-		cax=ax.imshow(diffs, interpolation='none', cmap=cm.Blues)
-		cbar=fig.colorbar(cax)
+		centers = [[node.pos[0],node.pos[1]] for node in self.nodeList]
 
-		cbar.set_label('Weights Difference')
-		ax.set_title('Nodes Grid w Weights Difference ')
+		widthP=250
+		dpi=72
+		xInch = self.netWidth*widthP/dpi 
+		yInch = self.netHeight*widthP/dpi 
+		fig=plt.figure(figsize=(xInch, yInch), dpi=dpi)
+
+		ax = hx.plot_hex(fig, centers, diffs)
+		ax.set_title('Nodes Grid w Weights Difference', size=150)
+		divider = make_axes_locatable(ax)
+		cax = divider.append_axes("right", size="5%", pad=0.0)
+		cbar=plt.colorbar(ax.collections[0],cax=cax)
+		cbar.set_label('Weights Difference', size=150, labelpad=50)
+		cbar.ax.tick_params(labelsize=100)
+		printName='nodesDifference.png'
+
 
 		if printout==True:
-			plt.savefig('nodesDifference.png', bbox_inches='tight', dpi=600)
+			plt.savefig(printName, bbox_inches='tight', dpi=dpi)
 		if show==True:
 			plt.show()
 		plt.clf()
@@ -311,25 +336,25 @@ class somNet:
 		
 			self.nodes_graph(colnum, False, False)
 
-			#be careful, x,y are inverted in nodes_graph imshow()
 			#a random perturbation is added to the points positions so that data 
 			#belonging plotted to the same bmu will be visible in the plot		
 			if self.colorEx==True:
 				printName='colorProjection.png'
-				plt.scatter([pos[1] for pos in bmuList],[pos[0] for pos in bmuList], color=cls, edgecolor='black')
-				plt.title('Datapoints Projection')
+				plt.scatter([pos[0] for pos in bmuList],[pos[1] for pos in bmuList], color=cls,  
+						s=2500, edgecolor='black', linewidth=10, zorder=10)
+				plt.title('Datapoints Projection', size=150)
 			else:
 				printName='projection_'+str(colnum)+'.png'
-				plt.scatter([pos[1]+(np.random.random()-0.5)*0.5 for pos in bmuList],[pos[0]+(np.random.random()-0.5)*0.5 for pos in bmuList], c=cls, s=10, edgecolor='black', cmap=cm.viridis)
-				plt.title('Datapoints Projection #' +  str(colnum))
+				plt.scatter([pos[0] for pos in bmuList],[pos[1] for pos in bmuList], c=cls, cmap=cm.viridis,
+						s=2500, edgecolor='black', linewidth=10, zorder=10)
+				plt.title('Datapoints Projection #' +  str(colnum), size=150)
 
 			if labels!=[]:
-				for label, x, y in zip(labels, [pos[1] for pos in bmuList],[pos[0] for pos in bmuList]):
-					plt.annotate(label, xy=(x,y), xytext=(-0.25, 0.25), textcoords='offset points', ha='right', va='bottom') 
+				for label, x, y in zip(labels, [pos[0] for pos in bmuList],[pos[1] for pos in bmuList]):
+					plt.annotate(label, xy=(x,y), xytext=(-0.25, 0.25), textcoords='offset points', ha='right', va='bottom', size=100) 
 			
-
 			if printout==True:
-				plt.savefig(printName, bbox_inches='tight', dpi=600)
+				plt.savefig(printName, bbox_inches='tight', dpi=72)
 			if show==True:
 				plt.show()
 			plt.clf()
@@ -382,16 +407,41 @@ class somNet:
 					qtList.append([])
 					for j in tmpList:
 						if self.PBC==True:
-							distBmu=np.min([np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
+
+							""" Hexagonal Periodic Boundary Conditions """
+						
+							if self.netHeight%2==0:
+								offset=0
+							else: 
+								offset=0.5
+						 
+						 	distBmu=np.min([np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
 								+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1])),
-							np.sqrt((bmuList[j][0]-bmuList[i][0]+self.netHeight)*(bmuList[j][0]-bmuList[i][0]+self.netHeight)\
+							#right
+							np.sqrt((bmuList[j][0]-bmuList[i][0]+self.netWidth)*(bmuList[j][0]-bmuList[i][0]+self.netWidth)\
 								+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1])),
-							np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
-								+(bmuList[j][1]-bmuList[i][1]+self.netWidth)*(bmuList[j][1]-bmuList[i][1]+self.netWidth)),
-							np.sqrt((bmuList[j][0]-bmuList[i][0]-self.netHeight)*(bmuList[j][0]-bmuList[i][0]-self.netHeight)\
+							#bottom 
+							np.sqrt((bmuList[j][0]-bmuList[i][0]+offset)*(bmuList[j][0]-bmuList[i][0]+offset)\
+								+(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)),
+							#left
+							np.sqrt((bmuList[j][0]-bmuList[i][0]-self.netWidth)*(bmuList[j][0]-bmuList[i][0]-self.netWidth)\
 								+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1])),
-							np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
-								+(bmuList[j][1]-bmuList[i][1]-self.netWidth)*(bmuList[j][1]-bmuList[i][1]-self.netWidth))])
+							#top 
+							np.sqrt((bmuList[j][0]-bmuList[i][0]-offset)*(bmuList[j][0]-bmuList[i][0]-offset)\
+								+(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4)),
+							#bottom right
+							np.sqrt((bmuList[j][0]-bmuList[i][0]+self.netWidth+offset)*(bmuList[j][0]-bmuList[i][0]+self.netWidth+offset)\
+								+(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)),
+							#bottom left
+							np.sqrt((bmuList[j][0]-bmuList[i][0]-self.netWidth+offset)*(bmuList[j][0]-bmuList[i][0]-self.netWidth+offset)\
+								+(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)),
+							#top right
+							np.sqrt((bmuList[j][0]-bmuList[i][0]+self.netWidth-offset)*(bmuList[j][0]-bmuList[i][0]+self.netWidth-offset)\
+								+(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4)),
+							#top left
+							np.sqrt((bmuList[j][0]-bmuList[i][0]-self.netWidth-offset)*(bmuList[j][0]-bmuList[i][0]-self.netWidth-offset)\
+								+(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4))])
+						
 						else:
 							distBmu=np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
 							+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1]))
@@ -509,7 +559,7 @@ class somNode:
 		"""
 	
 		self.PBC=PBC
-		self.pos = [x,y]
+		self.pos = hx.coorToHex(x,y)
 		self.weights = []
 
 		self.netHeight=netHeight
@@ -559,16 +609,41 @@ class somNode:
 		"""
 
 		if self.PBC==True:
-			return np.min([np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
-				+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
-			np.sqrt((self.pos[0]-node.pos[0]+self.netHeight)*(self.pos[0]-node.pos[0]+self.netHeight)\
-				+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
-			np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
-				+(self.pos[1]-node.pos[1]+self.netWidth)*(self.pos[1]-node.pos[1]+self.netWidth)),
-			np.sqrt((self.pos[0]-node.pos[0]-self.netHeight)*(self.pos[0]-node.pos[0]-self.netHeight)\
-				+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
-			np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
-				+(self.pos[1]-node.pos[1]-self.netHeight)*(self.pos[1]-node.pos[1]-self.netHeight))])
+
+			""" Hexagonal Periodic Boundary Conditions """
+			
+			if self.netHeight%2==0:
+				offset=0
+			else: 
+				offset=0.5
+
+			return 	np.min([np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
+								+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
+							#right
+							np.sqrt((self.pos[0]-node.pos[0]+self.netWidth)*(self.pos[0]-node.pos[0]+self.netWidth)\
+								+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
+							#bottom 
+							np.sqrt((self.pos[0]-node.pos[0]+offset)*(self.pos[0]-node.pos[0]+offset)\
+								+(self.pos[1]-node.pos[1]+self.netHeight*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.netHeight*2/np.sqrt(3)*3/4)),
+							#left
+							np.sqrt((self.pos[0]-node.pos[0]-self.netWidth)*(self.pos[0]-node.pos[0]-self.netWidth)\
+								+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
+							#top 
+							np.sqrt((self.pos[0]-node.pos[0]-offset)*(self.pos[0]-node.pos[0]-offset)\
+								+(self.pos[1]-node.pos[1]-self.netHeight*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.netHeight*2/np.sqrt(3)*3/4)),
+							#bottom right
+							np.sqrt((self.pos[0]-node.pos[0]+self.netWidth+offset)*(self.pos[0]-node.pos[0]+self.netWidth+offset)\
+								+(self.pos[1]-node.pos[1]+self.netHeight*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.netHeight*2/np.sqrt(3)*3/4)),
+							#bottom left
+							np.sqrt((self.pos[0]-node.pos[0]-self.netWidth+offset)*(self.pos[0]-node.pos[0]-self.netWidth+offset)\
+								+(self.pos[1]-node.pos[1]+self.netHeight*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.netHeight*2/np.sqrt(3)*3/4)),
+							#top right
+							np.sqrt((self.pos[0]-node.pos[0]+self.netWidth-offset)*(self.pos[0]-node.pos[0]+self.netWidth-offset)\
+								+(self.pos[1]-node.pos[1]-self.netHeight*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.netHeight*2/np.sqrt(3)*3/4)),
+							#top left
+							np.sqrt((self.pos[0]-node.pos[0]-self.netWidth-offset)*(self.pos[0]-node.pos[0]-self.netWidth-offset)\
+								+(self.pos[1]-node.pos[1]-self.netHeight*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.netHeight*2/np.sqrt(3)*3/4))])
+						
 		else:
 			return np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
 				+(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1]))
@@ -605,22 +680,23 @@ def run_colorsExample():
 	raw_data =np.asarray([[1, 0, 0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[0.2,0.2,0.5]])
 	labels=['red','green','blue','yellow','magenta','cyan','indigo']
 
-	print("Welcome to SimpSOM (Simple Self Organizing Maps) v1.2.0!\nHere is a quick example of what this library can do.\n")
+	print("Welcome to SimpSOM (Simple Self Organizing Maps) v1.3.0!\nHere is a quick example of what this library can do.\n")
 	print("The algorithm will now try to map the following colors: "),
 	for i in range(len(labels)-1):
 			print(labels[i] + ", "), 
 	print("and " + labels[-1]+ ".\n")
 	
-	net = somNet(20, 20, raw_data, PBC=True)
+	net = somNet(20, 20, raw_data, loadFile='colorExample_weights', PBC=True) 
 	net.colorEx=True
-	net.train(0.01, 10000)
+	#net.train(0.01, 10000)
 
 	print("Saving weights and a few graphs..."),
 	net.save('colorExample_weights')
 	net.nodes_graph()
+	
 	net.diff_graph()
 	net.project(raw_data, labels=labels)
-	net.cluster(raw_data, type='qthresh')
+	#net.cluster(raw_data, type='qthresh')
 	
 	print("done!")
 
