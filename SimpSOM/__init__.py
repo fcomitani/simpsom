@@ -12,8 +12,9 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-import densityPeak as dp
 import hexagons as hx
+import densityPeak as dp
+import qualityThreshold as qt
 
 from sklearn.decomposition import PCA
 from sklearn import cluster
@@ -221,7 +222,7 @@ class somNet:
 
 		centers = [[node.pos[0],node.pos[1]] for node in self.nodeList]
 
-		widthP=250
+		widthP=100
 		dpi=72
 		xInch = self.netWidth*widthP/dpi 
 		yInch = self.netHeight*widthP/dpi 
@@ -237,15 +238,14 @@ class somNet:
 		 	cols = [node.weights[colnum] for node in self.nodeList]
 			ax = hx.plot_hex(fig, centers, cols)
 			ax.set_title('Node Grid w Feature #' +  str(colnum), size=150)
-			#deactivate the divider for now, as it gives problems with points projections
-			#from mpl_toolkits.axes_grid1 import make_axes_locatable
-			#divider = make_axes_locatable(ax)
-			#cax = divider.append_axes("right", size="5%", pad=0.0)
-			cbar=plt.colorbar(ax.collections[0],ax=ax)
+			divider = make_axes_locatable(ax)
+			cax = divider.append_axes("right", size="5%", pad=0.0)
+			cbar=plt.colorbar(ax.collections[0], cax=cax)
 			cbar.set_label('Feature #' +  str(colnum)+' value', size=150, labelpad=50)
 			cbar.ax.tick_params(labelsize=100)
+			plt.sca(ax)
 			printName='nodesFeature_'+str(colnum)+'.png'
-		
+			
 		if printout==True:
 			plt.savefig(printName, bbox_inches='tight', dpi=dpi)
 		if show==True:
@@ -289,22 +289,25 @@ class somNet:
 
 		ax = hx.plot_hex(fig, centers, diffs)
 		ax.set_title('Nodes Grid w Weights Difference', size=150)
+		
 		divider = make_axes_locatable(ax)
 		cax = divider.append_axes("right", size="5%", pad=0.0)
-		cbar=plt.colorbar(ax.collections[0],cax=cax)
+		cbar=plt.colorbar(ax.collections[0], cax=cax)
 		cbar.set_label('Weights Difference', size=150, labelpad=50)
 		cbar.ax.tick_params(labelsize=100)
+		plt.sca(ax)
+
 		printName='nodesDifference.png'
-
-
+		
 		if printout==True:
 			plt.savefig(printName, bbox_inches='tight', dpi=dpi)
 		if show==True:
 			plt.show()
-		plt.clf()
+		if show!=False and printout!=False:
+			plt.clf()
 
 
-	def project(self, array, colnum=0, labels=[], show=False, printout=True):
+	def project(self, array, colnum=-1, labels=[], show=False, printout=True):
 
 		"""Project the datapoints of a given array to the 2D space of the 
 			SOM by calculating the bmus. If requested plot a 2D map with as 
@@ -313,7 +316,8 @@ class somNet:
 
 		Args:
 			array (np.array): An array containing datapoints to be mapped.
-			colnum (int): The index of the weight that will be shown as colormap.
+			colnum (int): The index of the weight that will be shown as colormap. 
+				If not chosen, the difference map will be used instead.
 			show (bool, optional): Choose to display the plot.
 			printout (bool, optional): Choose to save the plot to a file.
 			
@@ -328,27 +332,37 @@ class somNet:
 			if self.colorEx==True:
 				cls.append(array[i,:])
 			else: 
-				cls.append(array[i,colnum])
+				if colnum==-1:
+					cls.append('#ffffff')
+				else:	
+					cls.append(array[i,colnum])
 
 		if show==True or printout==True:
 		
-			""" Call nodes_graph to first build the 2D map of the nodes. """
+			""" Call nodes_graph/diff_graph to first build the 2D map of the nodes. """
 		
-			self.nodes_graph(colnum, False, False)
-
-			#a random perturbation is added to the points positions so that data 
-			#belonging plotted to the same bmu will be visible in the plot		
 			if self.colorEx==True:
 				printName='colorProjection.png'
+				self.nodes_graph(colnum, False, False)
 				plt.scatter([pos[0] for pos in bmuList],[pos[1] for pos in bmuList], color=cls,  
-						s=2500, edgecolor='black', linewidth=10, zorder=10)
+						s=2500, edgecolor='#ffffff', linewidth=10, zorder=10)
 				plt.title('Datapoints Projection', size=150)
 			else:
-				printName='projection_'+str(colnum)+'.png'
-				plt.scatter([pos[0] for pos in bmuList],[pos[1] for pos in bmuList], c=cls, cmap=cm.viridis,
-						s=2500, edgecolor='black', linewidth=10, zorder=10)
-				plt.title('Datapoints Projection #' +  str(colnum), size=150)
-
+				#a random perturbation is added to the points positions so that data 
+				#belonging plotted to the same bmu will be visible in the plot		
+				if colnum==-1:
+					printName='projection_difference.png'
+					self.diff_graph(False, False)
+					plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmuList],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmuList], c=cls, cmap=cm.viridis,
+							s=2500, linewidth=0, zorder=10)
+					plt.title('Datapoints Projection on Nodes Difference', size=150)
+				else:	
+					printName='projection_feature'+str(colnum)+'.png'
+					self.nodes_graph(colnum, False, False)
+					plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmuList],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmuList], c=cls, cmap=cm.viridis,
+							s=2000, edgecolor='#ffffff', linewidth=8, zorder=10)
+					plt.title('Datapoints Projection #' +  str(colnum), size=150)
+				
 			if labels!=[]:
 				for label, x, y in zip(labels, [pos[0] for pos in bmuList],[pos[1] for pos in bmuList]):
 					plt.annotate(label, xy=(x,y), xytext=(-0.25, 0.25), textcoords='offset points', ha='right', va='bottom', size=100) 
@@ -397,60 +411,7 @@ class somNet:
 			
 			""" Cluster according to the quality threshold algorithm (slow!). """
 	
-			tmpList=range(len(bmuList))
-			while len(tmpList)!=0:
-				qtList=[]
-				#the cluster list for each point contains the point itself
-				#so that it gets automatically
-				#deleted at the next loop without having to worry about it
-				for i in tmpList:
-					qtList.append([])
-					for j in tmpList:
-						if self.PBC==True:
-
-							""" Hexagonal Periodic Boundary Conditions """
-						
-							if self.netHeight%2==0:
-								offset=0
-							else: 
-								offset=0.5
-						 
-						 	distBmu=np.min([np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
-								+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1])),
-							#right
-							np.sqrt((bmuList[j][0]-bmuList[i][0]+self.netWidth)*(bmuList[j][0]-bmuList[i][0]+self.netWidth)\
-								+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1])),
-							#bottom 
-							np.sqrt((bmuList[j][0]-bmuList[i][0]+offset)*(bmuList[j][0]-bmuList[i][0]+offset)\
-								+(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)),
-							#left
-							np.sqrt((bmuList[j][0]-bmuList[i][0]-self.netWidth)*(bmuList[j][0]-bmuList[i][0]-self.netWidth)\
-								+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1])),
-							#top 
-							np.sqrt((bmuList[j][0]-bmuList[i][0]-offset)*(bmuList[j][0]-bmuList[i][0]-offset)\
-								+(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4)),
-							#bottom right
-							np.sqrt((bmuList[j][0]-bmuList[i][0]+self.netWidth+offset)*(bmuList[j][0]-bmuList[i][0]+self.netWidth+offset)\
-								+(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)),
-							#bottom left
-							np.sqrt((bmuList[j][0]-bmuList[i][0]-self.netWidth+offset)*(bmuList[j][0]-bmuList[i][0]-self.netWidth+offset)\
-								+(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]+self.netHeight*2/np.sqrt(3)*3/4)),
-							#top right
-							np.sqrt((bmuList[j][0]-bmuList[i][0]+self.netWidth-offset)*(bmuList[j][0]-bmuList[i][0]+self.netWidth-offset)\
-								+(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4)),
-							#top left
-							np.sqrt((bmuList[j][0]-bmuList[i][0]-self.netWidth-offset)*(bmuList[j][0]-bmuList[i][0]-self.netWidth-offset)\
-								+(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4)*(bmuList[j][1]-bmuList[i][1]-self.netHeight*2/np.sqrt(3)*3/4))])
-						
-						else:
-							distBmu=np.sqrt((bmuList[j][0]-bmuList[i][0])*(bmuList[j][0]-bmuList[i][0])\
-							+(bmuList[j][1]-bmuList[i][1])*(bmuList[j][1]-bmuList[i][1]))
-
-						if distBmu <= cutoff:
-							qtList[-1].append(j)
-				clusters.append(max(qtList,key=len))
-				for el in clusters[-1]:
-					tmpList.remove(el)
+			clusters = qt.qualityThreshold(bmuList, cutoff, self.PBC, self.netHeight, self.netWidth)
 
 		elif type=='dpeak':
 
@@ -517,13 +478,14 @@ class somNet:
 				xc,yc=[],[]
 				for c in clusters[i]:
 					#again, invert y and x to be consistent with the previous maps
-					xc.append(bmuList[int(c)][1])
-					yc.append(bmuList[int(c)][0])	
+					xc.append(bmuList[int(c)][0])
+					yc.append(self.netHeight-bmuList[int(c)][1])	
 				ax.scatter(xc, yc, color=randCl, label='cluster'+str(i))
 
 			plt.gca().invert_yaxis()
 			plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)			
 			ax.set_title('Clusters')
+			ax.axis('off')
 
 			if printout==True:
 				plt.savefig(printName, bbox_inches='tight', dpi=600)
@@ -675,8 +637,6 @@ def run_colorsExample():
 		Different example graphs are then printed from the trained network.		
 	"""	
 
-	#np.random.seed(0)
-	#raw_data = np.random.random((20, 3))
 	raw_data =np.asarray([[1, 0, 0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[0.2,0.2,0.5]])
 	labels=['red','green','blue','yellow','magenta','cyan','indigo']
 
@@ -686,9 +646,10 @@ def run_colorsExample():
 			print(labels[i] + ", "), 
 	print("and " + labels[-1]+ ".\n")
 	
-	net = somNet(20, 20, raw_data, loadFile='colorExample_weights', PBC=True) 
+	net = somNet(20, 20, raw_data, PBC=True) 
+	
 	net.colorEx=True
-	#net.train(0.01, 10000)
+	net.train(0.01, 10000)
 
 	print("Saving weights and a few graphs..."),
 	net.save('colorExample_weights')
@@ -696,7 +657,7 @@ def run_colorsExample():
 	
 	net.diff_graph()
 	net.project(raw_data, labels=labels)
-	#net.cluster(raw_data, type='qthresh')
+	net.cluster(raw_data, type='qthresh')
 	
 	print("done!")
 
