@@ -18,7 +18,6 @@ RGB space to the 2D network map and clustered according to their similarity in t
 Dependencies
 ------------
 
-Mandatory:
 - Numpy 1.11.0 (older versions may work);
 - Matplotlib 1.5.1 (older versions may work);
 - Sklearn 0.15 (older versions may work);
