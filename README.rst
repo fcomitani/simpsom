@@ -53,7 +53,7 @@ Here is a quick example on how to use the library with a ``raw_data`` dataset::
 What's New
 ------------------------
 
-- If no epochs are selected for the training, automatically chose 10*number of datapoints;
+- If the number of epochs for the training is not explicitly stated, automatically choose 10*number of datapoints;
 - It is now possible to activate periodic boundary conditions, but only Quality Threshold and Density Peak clustering can be used with PBC;
 - Fixed the random selection of weights, as now the random vectors span the space of the data;
 - Implemented PCA initialisations (activate with PCI=1);
