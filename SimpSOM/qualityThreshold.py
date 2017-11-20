@@ -18,6 +18,8 @@ def qualityThreshold(sample, cutoff=5, PBC=False, netHeight=0, netWidth=0):
 			sample (array): The input dataset
 			cutoff (float, optional): The clustering cutoff distance.
 			PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.
+			netHeight (int, optional): Number of nodes along the first dimension, required for PBC.
+			netWidth (int, optional): Numer of nodes along the second dimension, required for PBC.
 			
 
 		Returns:

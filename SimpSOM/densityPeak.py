@@ -1,5 +1,5 @@
 """
-Density-Peak Clustering
+Density Peak Clustering
 
 A Rodriguez, A Laio,
 Clustering by fast search and find of density peaks
@@ -78,9 +78,9 @@ class pt:
 				if typeFunc=='step':
 					self.rho=self.rho+step(self,p2,self.refd)
 				elif typeFunc=='gaussian':
-					self.rho=self.rho+step(self,p2,self.refd)
+					self.rho=self.rho+gaussian(self,p2,self.refd)
 				elif typeFunc=='logistic':
-					self.rho=self.rho+step(self,p2,self.refd)
+					self.rho=self.rho+logistic(self,p2,self.refd)
 				else:
 					""" Raise exception if metric other then euclidean is used. """
 					raise NotImplementedError('Only step, gaussian kernel or logistic functions are implemented')
@@ -123,14 +123,17 @@ class collection:
 
 	"""Class for a collection of point objects. """
 
-	def __init__(self, coorArray, typeFunc='gaussian', percent=0.02):
+	def __init__(self, coorArray, typeFunc='gaussian', percent=0.02, PBC=False, netHeight=0, netWidth=0):
 		
 		"""	Generate a collection of point objects from an array containing their coordinates.
 	
 		Args:
 			coorArray (np.array): Array containing the coordinates of the points to cluster.
-			typeFunc (str): step function for calculating rho (step, gaussian kernel or logistic)
-			percent (float): average percentage of neighbours
+			typeFunc (str): step function for calculating rho (step, gaussian kernel or logistic).
+			percent (float): average percentage of neighbours.
+			PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.
+			netHeight (int, optional): Number of nodes along the first dimension, required for PBC.
+			netWidth (int, optional): Numer of nodes along the second dimension, required for PBC.
 
 		"""
 	
@@ -139,6 +142,10 @@ class collection:
 			self.points.append(pt(coors))	
 
 		index=int(np.round(len(self.points)*percent))
+
+		self.PBC=PBC
+		self.netHeight=netHeight
+		self.netWidth=netWidth
 
 		self.alldists=[]
 		self.set_dists()
@@ -152,7 +159,7 @@ class collection:
 		self.set_deltas()	
 
 		self.clusters={}
-
+		
 
 	def set_dists(self):
 	
@@ -161,7 +168,7 @@ class collection:
 	 	for p1 in self.points:
 	 		for p2 in self.points:
 	 			if self.points.index(p1)<self.points.index(p2): 
-	 				d=dist(p1,p2)
+	 				d=dist(p1,p2, 'euclid', self.PBC, self.netHeight, self.netWidth)
 	 				self.alldists.append(d) 
 	 				p1.dists[p2]=d 
 	 				p2.dists[p1]=d
@@ -180,14 +187,14 @@ class collection:
 			for p2 in self.points:
 				if self.points.index(p1)<self.points.index(p2): 
 					if typeFunc=='step':
-						p1.rho=p1.rho+step(p1,p2,self.refd)
-						p2.rho=p2.rho+step(p1,p2,self.refd)
+						p1.rho=p1.rho+step(p1,p2,self.refd,PBC=self.PBC,netHeight=self.netHeight,netWidth=self.netWidth)
+						p2.rho=p2.rho+step(p1,p2,self.refd,PBC=self.PBC,netHeight=self.netHeight,netWidth=self.netWidth)
 					elif typeFunc=='gaussian':
-						p1.rho=p1.rho+gaussian(p1,p2,self.refd)
-						p2.rho=p2.rho+gaussian(p1,p2,self.refd)
+						p1.rho=p1.rho+gaussian(p1,p2,self.refd,PBC=self.PBC,netHeight=self.netHeight,netWidth=self.netWidth)
+						p2.rho=p2.rho+gaussian(p1,p2,self.refd,PBC=self.PBC,netHeight=self.netHeight,netWidth=self.netWidth)
 					elif typeFunc=='logistic':
-						p1.rho=p1.rho+sigmoid(p1,p2,self.refd)
-						p2.rho=p2.rho+sigmoid(p1,p2,self.refd)
+						p1.rho=p1.rho+sigmoid(p1,p2,self.refd,PBC=self.PBC,netHeight=self.netHeight,netWidth=self.netWidth)
+						p2.rho=p2.rho+sigmoid(p1,p2,self.refd,PBC=self.PBC,netHeight=self.netHeight,netWidth=self.netWidth)
 					else:
 						raise NotImplementedError('Only step, gaussian kernel or logistic functions are implemented')
 
@@ -306,7 +313,7 @@ class collection:
   		return clusters	
 
 
-def dist(p1,p2, metric='euclid'):
+def dist(p1,p2, metric='euclid', PBC=False, netHeight=0, netWidth=0):
 
 	"""Calculate the distance between two point objects in a N dimensional space according to a given metric.
 
@@ -314,19 +321,59 @@ def dist(p1,p2, metric='euclid'):
 		p1 (point): First point object for the distance.
 		p2 (point): Second point object for the distance.
 		metric (string): Metric to use. For now only euclidean distance is implemented.
+		PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.
+		netHeight (int, optional): Number of nodes along the first dimension, required for PBC.
+		netWidth (int, optional): Numer of nodes along the second dimension, required for PBC.
 
 	Returns:
-		float): The distance between the two points.
+		(float): The distance between the two points.
 
 	"""
 
 	if metric=='euclid':
 		if len(p1.coor)!=len(p2.coor): raise ValueError('Points must have the same dimensionality!')
 		else:
-			diffs=0
-			for i in range(len(p1.coor)): 
-				diffs=diffs+((p1.coor[i]-p2.coor[i])*(p1.coor[i]-p2.coor[i]))
-			return np.sqrt(diffs)
+			if PBC==True:
+				""" Hexagonal Periodic Boundary Conditions """
+
+				if netHeight%2==0:
+					offset=0
+				else: 
+					offset=0.5
+			
+				return np.min([np.sqrt((p1.coor[0]-p2.coor[0])*(p1.coor[0]-p2.coor[0])\
+						+(p1.coor[1]-p2.coor[1])*(p1.coor[1]-p2.coor[1])),
+					#right
+					np.sqrt((p1.coor[0]-p2.coor[0]+netWidth)*(p1.coor[0]-p2.coor[0]+netWidth)\
+						+(p1.coor[1]-p2.coor[1])*(p1.coor[1]-p2.coor[1])),
+					#bottom 
+					np.sqrt((p1.coor[0]-p2.coor[0]+offset)*(p1.coor[0]-p2.coor[0]+offset)\
+						+(p1.coor[1]-p2.coor[1]+netHeight*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]+netHeight*2/np.sqrt(3)*3/4)),
+					#left
+					np.sqrt((p1.coor[0]-p2.coor[0]-netWidth)*(p1.coor[0]-p2.coor[0]-netWidth)\
+						+(p1.coor[1]-p2.coor[1])*(p1.coor[1]-p2.coor[1])),
+					#top 
+					np.sqrt((p1.coor[0]-p2.coor[0]-offset)*(p1.coor[0]-p2.coor[0]-offset)\
+						+(p1.coor[1]-p2.coor[1]-netHeight*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]-netHeight*2/np.sqrt(3)*3/4)),
+					#bottom right
+					np.sqrt((p1.coor[0]-p2.coor[0]+netWidth+offset)*(p1.coor[0]-p2.coor[0]+netWidth+offset)\
+						+(p1.coor[1]-p2.coor[1]+netHeight*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]+netHeight*2/np.sqrt(3)*3/4)),
+					#bottom left
+					np.sqrt((p1.coor[0]-p2.coor[0]-netWidth+offset)*(p1.coor[0]-p2.coor[0]-netWidth+offset)\
+						+(p1.coor[1]-p2.coor[1]+netHeight*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]+netHeight*2/np.sqrt(3)*3/4)),
+					#top right
+					np.sqrt((p1.coor[0]-p2.coor[0]+netWidth-offset)*(p1.coor[0]-p2.coor[0]+netWidth-offset)\
+						+(p1.coor[1]-p2.coor[1]-netHeight*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]-netHeight*2/np.sqrt(3)*3/4)),
+					#top left
+					np.sqrt((p1.coor[0]-p2.coor[0]-netWidth-offset)*(p1.coor[0]-p2.coor[0]-netWidth-offset)\
+						+(p1.coor[1]-p2.coor[1]-netHeight*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]-netHeight*2/np.sqrt(3)*3/4))])
+
+			else:
+				diffs=0
+				for i in range(len(p1.coor)): 
+					diffs=diffs+((p1.coor[i]-p2.coor[i])*(p1.coor[i]-p2.coor[i]))
+				return np.sqrt(diffs)
+
 	else:
 		
 		""" Raise exception if metric other then euclidean is used """
@@ -334,7 +381,7 @@ def dist(p1,p2, metric='euclid'):
 		raise NotImplementedError('Only euclidean metric is implemented')
 
 
-def step(p1, p2, cutoff):
+def step(p1, p2, cutoff, PBC=False, netHeight=0, netWidth=0):
 
 	"""Step function activated when the distance of two points is less than the cutoff.
 
@@ -342,17 +389,20 @@ def step(p1, p2, cutoff):
 		p1 (point): First point object for the distance.
 		p2 (point): Second point object for the distance.
 		cutoff (float): The cutoff to define the proximity of the points.
+		PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.
+		netHeight (int, optional): Number of nodes along the first dimension, required for PBC.
+		netWidth (int, optional): Numer of nodes along the second dimension, required for PBC.
 
 	Returns:
 		(int): 1 if the points are closer than the cutoff, 0 otherwise.
 
 	"""
 
-	if dist(p1,p2)<cutoff: return 1
+	if dist(p1,p2, 'euclid', PBC, netHeight, netWidth)<cutoff: return 1
 	else: return 0	
 
 
-def gaussian(p1, p2, sigma):
+def gaussian(p1, p2, sigma, PBC=False, netHeight=0, netWidth=0):
 
 	"""Gaussian function of the distance between two points scaled with sigma.
 
@@ -360,16 +410,20 @@ def gaussian(p1, p2, sigma):
 		p1 (point): First point object for the distance.
 		p2 (point): Second point object for the distance.
 		sigma (float): The scaling factor for the distance.
+		PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.
+		netHeight (int, optional): Number of nodes along the first dimension, required for PBC.
+		netWidth (int, optional): Numer of nodes along the second dimension, required for PBC.
 
 	Returns:
 		(float): value of the gaussian function.
 
 	"""
 
-	return np.exp(-1.0*dist(p1,p2)*dist(p1,p2)/sigma*sigma)
+	return np.exp(-1.0*dist(p1,p2, 'euclid', PBC, netHeight, netWidth)*\
+			dist(p1,p2, 'euclid', PBC, netHeight, netWidth)/sigma*sigma)
 
 
-def sigmoid(p1, p2, sigma):
+def sigmoid(p1, p2, sigma, PBC=False, netHeight=0, netWidth=0):
 
 	"""Logistic function of the distance between two points scaled with sigma.
 
@@ -377,16 +431,19 @@ def sigmoid(p1, p2, sigma):
 		p1 (point): First point object for the distance.
 		p2 (point): Second point object for the distance.
 		sigma (float): The scaling factor for the distance.
+		PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.
+		netHeight (int, optional): Number of nodes along the first dimension, required for PBC.
+		netWidth (int, optional): Numer of nodes along the second dimension, required for PBC.
 
 	Returns:
 		(float): value of the logistic function.
 
 	"""
 
-	return np.exp(-1.0*(1.0+np.exp((dist(p1,p2))/sigma)))
+	return np.exp(-1.0*(1.0+np.exp((dist(p1,p2, 'euclid', PBC, netHeight, netWidth))/sigma)))
 
 
-def densityPeak(sample, show=False, printout=False, percent=0.02):
+def densityPeak(sample, show=False, printout=False, percent=0.02, PBC=False, netHeight=0, netWidth=0):
 
 	""" Run the complete clustering algorithm in one go and returns the clustered indeces as a list.
 
@@ -399,7 +456,7 @@ def densityPeak(sample, show=False, printout=False, percent=0.02):
 			clusters (list, int): a list of lists containing the points indices belonging to each cluster
 	"""		
 	
-	pts=collection(sample, percent=percent)
+	pts=collection(sample, percent=percent, PBC=PBC, netHeight=netHeight, netWidth=netWidth)
   	pts.decision_graph(show=show, printout=printout)
   	pts.cluster_assign()
   	pts.core_assign()

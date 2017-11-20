@@ -417,10 +417,7 @@ class somNet:
 
 			""" Cluster according to the density peak algorithm. """
 
-			if self.PBC==True:
-				"Warning: Only Quality Threshold clustering works with PBC"
-
-			clusters = dp.densityPeak(bmuList)
+			clusters = dp.densityPeak(bmuList, PBC=self.PBC, netHeight=self.netHeight, netWidth=self.netWidth)
 
 		elif type in ['MeanShift', 'DBSCAN']:
 		
@@ -657,7 +654,7 @@ def run_colorsExample():
 	
 	net.diff_graph()
 	net.project(raw_data, labels=labels)
-	net.cluster(raw_data, type='qthresh')
+	net.cluster(raw_data, type='qthresh') 
 	
 	print("done!")
 

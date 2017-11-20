@@ -15,4 +15,5 @@ docs/.doctrees/
 SimpSOM/*png
 SimpSOM/*dat
 SimpSOM/*npy
+SimpSOM/*pyc
 SimpSOM/temp*
