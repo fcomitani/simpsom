@@ -229,20 +229,20 @@ class somNet:
 		fig=plt.figure(figsize=(xInch, yInch), dpi=dpi)
 
 		if self.colorEx==True:
-			cols = [[node.weights[0],node.weights[1],node.weights[2]] for node in self.nodeList]	
+			cols = [[np.float(node.weights[0]),np.float(node.weights[1]),np.float(node.weights[2])]for node in self.nodeList]	
 			ax = hx.plot_hex(fig, centers, cols)
-			ax.set_title('Node Grid w Color Features', size=150)
+			ax.set_title('Node Grid w Color Features', size=80)
 			printName='nodesColors.png'
 
 		else:
 		 	cols = [node.weights[colnum] for node in self.nodeList]
 			ax = hx.plot_hex(fig, centers, cols)
-			ax.set_title('Node Grid w Feature #' +  str(colnum), size=150)
+			ax.set_title('Node Grid w Feature #' +  str(colnum), size=80)
 			divider = make_axes_locatable(ax)
 			cax = divider.append_axes("right", size="5%", pad=0.0)
 			cbar=plt.colorbar(ax.collections[0], cax=cax)
-			cbar.set_label('Feature #' +  str(colnum)+' value', size=150, labelpad=50)
-			cbar.ax.tick_params(labelsize=100)
+			cbar.set_label('Feature #' +  str(colnum)+' value', size=80, labelpad=50)
+			cbar.ax.tick_params(labelsize=60)
 			plt.sca(ax)
 			printName='nodesFeature_'+str(colnum)+'.png'
 			
@@ -281,20 +281,20 @@ class somNet:
 
 		centers = [[node.pos[0],node.pos[1]] for node in self.nodeList]
 
-		widthP=250
+		widthP=100
 		dpi=72
 		xInch = self.netWidth*widthP/dpi 
 		yInch = self.netHeight*widthP/dpi 
 		fig=plt.figure(figsize=(xInch, yInch), dpi=dpi)
 
 		ax = hx.plot_hex(fig, centers, diffs)
-		ax.set_title('Nodes Grid w Weights Difference', size=150)
+		ax.set_title('Nodes Grid w Weights Difference', size=80)
 		
 		divider = make_axes_locatable(ax)
 		cax = divider.append_axes("right", size="5%", pad=0.0)
 		cbar=plt.colorbar(ax.collections[0], cax=cax)
-		cbar.set_label('Weights Difference', size=150, labelpad=50)
-		cbar.ax.tick_params(labelsize=100)
+		cbar.set_label('Weights Difference', size=80, labelpad=50)
+		cbar.ax.tick_params(labelsize=60)
 		plt.sca(ax)
 
 		printName='nodesDifference.png'
@@ -340,13 +340,13 @@ class somNet:
 		if show==True or printout==True:
 		
 			""" Call nodes_graph/diff_graph to first build the 2D map of the nodes. """
-		
+
 			if self.colorEx==True:
 				printName='colorProjection.png'
 				self.nodes_graph(colnum, False, False)
 				plt.scatter([pos[0] for pos in bmuList],[pos[1] for pos in bmuList], color=cls,  
-						s=2500, edgecolor='#ffffff', linewidth=10, zorder=10)
-				plt.title('Datapoints Projection', size=150)
+						s=500, edgecolor='#ffffff', linewidth=5, zorder=10)
+				plt.title('Datapoints Projection', size=80)
 			else:
 				#a random perturbation is added to the points positions so that data 
 				#belonging plotted to the same bmu will be visible in the plot		
@@ -354,18 +354,18 @@ class somNet:
 					printName='projection_difference.png'
 					self.diff_graph(False, False)
 					plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmuList],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmuList], c=cls, cmap=cm.viridis,
-							s=2500, linewidth=0, zorder=10)
-					plt.title('Datapoints Projection on Nodes Difference', size=150)
+							s=400, linewidth=0, zorder=10)
+					plt.title('Datapoints Projection on Nodes Difference', size=80)
 				else:	
 					printName='projection_feature'+str(colnum)+'.png'
 					self.nodes_graph(colnum, False, False)
 					plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmuList],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmuList], c=cls, cmap=cm.viridis,
-							s=2000, edgecolor='#ffffff', linewidth=8, zorder=10)
-					plt.title('Datapoints Projection #' +  str(colnum), size=150)
+							s=400, edgecolor='#ffffff', linewidth=4, zorder=10)
+					plt.title('Datapoints Projection #' +  str(colnum), size=80)
 				
 			if labels!=[]:
 				for label, x, y in zip(labels, [pos[0] for pos in bmuList],[pos[1] for pos in bmuList]):
-					plt.annotate(label, xy=(x,y), xytext=(-0.25, 0.25), textcoords='offset points', ha='right', va='bottom', size=100) 
+					plt.annotate(label, xy=(x,y), xytext=(-0.5, 0.5), textcoords='offset points', ha='right', va='bottom', size=50, zorder=11) 
 			
 			if printout==True:
 				plt.savefig(printName, bbox_inches='tight', dpi=72)
@@ -378,7 +378,7 @@ class somNet:
 		return [[pos[0],pos[1]] for pos in bmuList] 
 		
 		
-	def cluster(self, array, type='qthresh', cutoff=5, quant=0.2, percent=0.02, \
+	def cluster(self, array, type='qthresh', cutoff=5, quant=0.2, percent=0.02, numcl=8,\
 					savefile=True, filetype='dat', show=False, printout=True):
 	
 		"""Clusters the data in a given array according to the SOM trained map.
@@ -391,6 +391,7 @@ class somNet:
 			cutoff (float, optional): Cutoff for the quality threshold algorithm. This also doubles as
 				maximum distance of two points to be considered in the same cluster with DBSCAN.
 			percent (float, optional): The percentile that defines the reference distance in density peak clustering (dpeak).
+			numcl (int, optional): The number of clusters for K-Means clustering
 			quant (float, optional): Quantile used to calculate the bandwidth of the mean shift algorithm.
 			savefile (bool, optional): Choose to save the resulting clusters in a text file.
 			filetype (string, optional): Format of the file where the clusters will be saved (csv or dat)
@@ -419,15 +420,14 @@ class somNet:
 
 			clusters = dp.densityPeak(bmuList, PBC=self.PBC, netHeight=self.netHeight, netWidth=self.netWidth)
 
-		elif type in ['MeanShift', 'DBSCAN']:
+		elif type in ['MeanShift', 'DBSCAN', 'KMeans']:
 		
 			""" Cluster according to algorithms implemented in sklearn. """
 		
 			if self.PBC==True:
-				"Warning: Only Quality Threshold clustering works with PBC"
+				print "Warning: Only Quality Threshold and Density Peak clustering work with PBC"
 
 			try:
-				#TODO: clean all this mess
 		
 				if type=='MeanShift':
 					bandwidth = cluster.estimate_bandwidth(np.asarray(bmuList), quantile=quant, n_samples=500)
@@ -436,6 +436,9 @@ class somNet:
 				if type=='DBSCAN':
 					cl = cluster.DBSCAN(eps=cutoff, min_samples=5).fit(bmuList)		
 				
+				if type=='KMeans':
+					cl= cluster.KMeans(n_clusters=numcl).fit(bmuList)
+
 				clLabs = cl.labels_					
 					
 				for i in np.unique(clLabs):

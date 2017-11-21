@@ -36,11 +36,9 @@ setup(
 
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
 
-    install_requires=['numpy', 'matplotlib'],
+    install_requires=['numpy', 'matplotlib','scikit-learn'],
 
-    extras_require={
-        'cluster': ['scikit-learn'],
-    },
+    extras_require={},
 
     entry_points={
         'console_scripts': [
