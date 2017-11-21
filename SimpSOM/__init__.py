@@ -646,10 +646,10 @@ def run_colorsExample():
 			print(labels[i] + ", "), 
 	print("and " + labels[-1]+ ".\n")
 	
-	net = somNet(20, 20, raw_data, PBC=True) 
+	net = somNet(500, 500, raw_data, PBC=True) 
 	
 	net.colorEx=True
-	net.train(0.01, 10000)
+	net.train(0.01, 100000)
 
 	print("Saving weights and a few graphs..."),
 	net.save('colorExample_weights')
@@ -657,7 +657,7 @@ def run_colorsExample():
 	
 	net.diff_graph()
 	net.project(raw_data, labels=labels)
-	net.cluster(raw_data, type='qthresh') 
+	#net.cluster(raw_data, type='qthresh') 
 	
 	print("done!")
 
