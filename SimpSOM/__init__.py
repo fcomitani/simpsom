@@ -199,7 +199,7 @@ class somNet:
 				for each iteration and used to update the weights of all the nodes.
 			"""
 			
-			inputVec = self.data[np.random.randint(0, self.data.shape[0]), :].reshape(np.array([self.data.shape[1], 1]))
+			inputVec = self.data[np.random.randint(0, self.data.shape[0]), :].reshape(np.array([self.data.shape[1]]))
 			
 			bmu=self.find_bmu(inputVec)
 			
@@ -628,7 +628,6 @@ class somNode:
 		if gauss>0:
 			for i in range(len(self.weights)):
 				self.weights[i] = self.weights[i] - gauss*lrate*(self.weights[i]-inputVec[i])
-
 		
 def run_colorsExample():	
 
