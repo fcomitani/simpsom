@@ -11,7 +11,7 @@ setup(
 
     name='SimpSOM',
 
-    version='1.3.0',
+    version='1.3.1',
 
     description='A lightweight Python library for Kohonen Self-Organising Maps',
     long_description=long_description,
