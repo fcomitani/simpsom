@@ -45,17 +45,17 @@ class pt:
 
 	def set_dist(self, coll):
 	
-	 	"""Calculate the distances from all other points in a collection. [Deprecated]
+		"""Calculate the distances from all other points in a collection. [Deprecated]
 
-	 	Args:
+		Args:
 			coll (collection): collection containing all the points of the dataset used to calculate the distances. 
 
 		"""
 
 		warnings.warn('Setting individual distances is deprecated, use the collection.set_dists() instead!', DeprecationWarning)
 
-	 	for p2 in coll.points:
-	 			if self!=p2: self.dists[p2]=dist(self,p2)
+		for p2 in coll.points:
+				if self!=p2: self.dists[p2]=dist(self,p2)
 
 
 	def set_rho(self, coll, typeFunc='step'):
@@ -304,13 +304,13 @@ class collection:
 
 		clusters=[]
 
-  		for val in self.clusters.values():
-  			inds=[]
-  			for p in val:
-  				inds.append(self.points.index(p))
-  			clusters.append(inds)
+		for val in self.clusters.values():
+			inds=[]
+			for p in val:
+				inds.append(self.points.index(p))
+			clusters.append(inds)
 
-  		return clusters	
+		return clusters	
 
 
 def dist(p1,p2, metric='euclid', PBC=False, netHeight=0, netWidth=0):
@@ -457,11 +457,11 @@ def densityPeak(sample, show=False, printout=False, percent=0.02, PBC=False, net
 	"""		
 	
 	pts=collection(sample, percent=percent, PBC=PBC, netHeight=netHeight, netWidth=netWidth)
-  	pts.decision_graph(show=show, printout=printout)
-  	pts.cluster_assign()
-  	pts.core_assign()
+	pts.decision_graph(show=show, printout=printout)
+	pts.cluster_assign()
+	pts.core_assign()
 
-  	return pts.get_clusterList()
+	return pts.get_clusterList()
 
 
 def test():
@@ -469,8 +469,8 @@ def test():
 	""" Run the complete clustering algorithm on a test case and print the clustered points graph. """
 
 	print("Testing...")
-  	
-  	np.random.seed(100)
+
+	np.random.seed(100)
 	samples1 = np.random.multivariate_normal([0, 0], [[1, 0.1],[0.1, 1]], 100)
 	samples2 = np.random.multivariate_normal([10, 10], [[2, 0.5],[0.5, 2]], 100)
 	samples3 = np.random.multivariate_normal([0, 10], [[2, 0.5],[0.5, 2]], 100)
@@ -481,27 +481,27 @@ def test():
 #	plt.plot(samples[:, 0], samples[:, 1], '.')
 #	plt.show()
 
-  	pts=collection(samples)
+	pts=collection(samples)
 
-  	pts.decision_graph(printout=False)
-  	pts.cluster_assign()
-  	pts.core_assign()
+	pts.decision_graph(printout=False)
+	pts.cluster_assign()
+	pts.core_assign()
 
-  	print pts.get_clusterList()
+	print(pts.get_clusterList())
 
- 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==0], [p.coor[1] for p in pts.points if p.cl[0]==0], 'o', c='black')
+	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==0], [p.coor[1] for p in pts.points if p.cl[0]==0], 'o', c='black')
 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==1 and p.core==True], [p.coor[1] for p in pts.points if p.cl[0]==1 and p.core==True], 'o', c="#ff0000")
 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==1 and p.core==False], [p.coor[1] for p in pts.points if p.cl[0]==1 and p.core==False], 'o', c="#ffaaaa")
- 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==2 and p.core==True], [p.coor[1] for p in pts.points if p.cl[0]==2 and p.core==True], 'o', c="#00ff00")
+	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==2 and p.core==True], [p.coor[1] for p in pts.points if p.cl[0]==2 and p.core==True], 'o', c="#00ff00")
 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==2 and p.core==False], [p.coor[1] for p in pts.points if p.cl[0]==2 and p.core==False], 'o', c="#aaffaa")
- 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==3 and p.core==True], [p.coor[1] for p in pts.points if p.cl[0]==3 and p.core==True], 'o', c="#ffff00")
+	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==3 and p.core==True], [p.coor[1] for p in pts.points if p.cl[0]==3 and p.core==True], 'o', c="#ffff00")
 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==3 and p.core==False], [p.coor[1] for p in pts.points if p.cl[0]==3 and p.core==False], 'o', c="#ffffaa")
 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==4 and p.core==True], [p.coor[1] for p in pts.points if p.cl[0]==4 and p.core==True], 'o', c="#0000ff")
 	plt.plot([p.coor[0] for p in pts.points if p.cl[0]==4 and p.core==False], [p.coor[1] for p in pts.points if p.cl[0]==4 and p.core==False], 'o', c="#aaaaff")
-  	
+
 	plt.show()
 	
-   	print("Done!")
+	print("Done!")
 
 
 if __name__ == "__main__":

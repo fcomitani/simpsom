@@ -51,9 +51,9 @@ class somNet:
 		self.PBC=bool(PBC)
 
 		if self.PBC==True:
-			print "Periodic Boundary Conditions active."
+			print("Periodic Boundary Conditions active.")
 		else:
-			print "Periodic Boundary Conditions inactive."
+			print("Periodic Boundary Conditions inactive.")
 
 		self.nodeList=[]
 		self.data=data.reshape(np.array([data.shape[0], data.shape[1]]))
@@ -68,14 +68,14 @@ class somNet:
 			pcaVec=[]
 
 			if self.PCI==True:
-				print "The weights will be initialised with PCA."
+				print("The weights will be initialised with PCA.")
 			
 				pca = PCA(n_components = 2)
 				pca.fit(self.data)
 				pcaVec=pca.components_
 			
 			else:
-				print "The weights will be initialised randomly."
+				print("The weights will be initialised randomly.")
 
 				for i in range(self.data.shape[1]):
 					minVal.append(np.min(self.data[:,i]))
@@ -87,7 +87,7 @@ class somNet:
 						minVal=minVal, maxVal=maxVal, pcaVec=pcaVec))
 
 		else: 	
-			print 'The weights will be loaded from file.'
+			print('The weights will be loaded from file.')
 
 			if loadFile.endswith('.npy')==False:
 				loadFile=loadFile+'.npy'
@@ -178,7 +178,7 @@ class somNet:
 			
 		"""
 		
-		print("Training SOM... 0%"),
+		print("Training SOM... 0%", end=' ')
 		self.startSigma = max(self.netHeight, self.netWidth)/2
 		self.startLearnRate = startLearnRate
 		if epochs==-1:
@@ -189,7 +189,7 @@ class somNet:
 		for i in range(self.epochs):
 
 			if i%100==0:
-				print("\rTraining SOM... "+str(int(i*100.0/self.epochs))+"%" ),
+				print(("\rTraining SOM... "+str(int(i*100.0/self.epochs))+"%" ), end=' ')
 
 			self.update_sigma(i)
 			self.update_lrate(i)
@@ -235,7 +235,7 @@ class somNet:
 			printName='nodesColors.png'
 
 		else:
-		 	cols = [node.weights[colnum] for node in self.nodeList]
+			cols = [node.weights[colnum] for node in self.nodeList]
 			ax = hx.plot_hex(fig, centers, cols)
 			ax.set_title('Node Grid w Feature #' +  str(colnum), size=80)
 			divider = make_axes_locatable(ax)
@@ -425,7 +425,7 @@ class somNet:
 			""" Cluster according to algorithms implemented in sklearn. """
 		
 			if self.PBC==True:
-				print "Warning: Only Quality Threshold and Density Peak clustering work with PBC"
+				print("Warning: Only Quality Threshold and Density Peak clustering work with PBC")
 
 			try:
 		
@@ -449,7 +449,7 @@ class somNet:
 							clList.append(j)
 					clusters.append(clList)		
 			except:
-				print('Unexpected error: ', sys.exc_info()[0])
+				print(('Unexpected error: ', sys.exc_info()[0]))
 				raise
 		else:
 			sys.exit("Error: unkown clustering algorithm " + type)
@@ -640,9 +640,9 @@ def run_colorsExample():
 	labels=['red','green','blue','yellow','magenta','cyan','indigo']
 
 	print("Welcome to SimpSOM (Simple Self Organizing Maps) v1.3.1!\nHere is a quick example of what this library can do.\n")
-	print("The algorithm will now try to map the following colors: "),
+	print("The algorithm will now try to map the following colors: ", end=' ')
 	for i in range(len(labels)-1):
-			print(labels[i] + ", "), 
+			print((labels[i] + ", "), end=' ') 
 	print("and " + labels[-1]+ ".\n")
 	
 	net = somNet(20, 20, raw_data, PBC=True) 
@@ -650,7 +650,7 @@ def run_colorsExample():
 	net.colorEx=True
 	net.train(0.01, 10000)
 
-	print("Saving weights and a few graphs..."),
+	print("Saving weights and a few graphs...", end=' ')
 	net.save('colorExample_weights')
 	net.nodes_graph()
 	
