@@ -26,7 +26,7 @@ def qualityThreshold(sample, cutoff=5, PBC=False, netHeight=0, netWidth=0):
 			clusters (list, int): a list of lists containing the points indices belonging to each cluster
 	"""		
 
-	tmpList=range(len(sample))
+	tmpList=list(range(len(sample)))
 	clusters=[]
 
 	while len(tmpList)!=0:
@@ -44,7 +44,7 @@ def qualityThreshold(sample, cutoff=5, PBC=False, netHeight=0, netWidth=0):
 					else: 
 						offset=0.5
 				 
-				 	distBmu=np.min([np.sqrt((sample[j][0]-sample[i][0])*(sample[j][0]-sample[i][0])\
+					distBmu=np.min([np.sqrt((sample[j][0]-sample[i][0])*(sample[j][0]-sample[i][0])\
 						+(sample[j][1]-sample[i][1])*(sample[j][1]-sample[i][1])),
 					#right
 					np.sqrt((sample[j][0]-sample[i][0]+netWidth)*(sample[j][0]-sample[i][0]+netWidth)\
@@ -94,8 +94,8 @@ def test():
 	""" Run the complete clustering algorithm on a test case and print the clustered points graph. """
 
 	print("Testing...")
-  	
-  	np.random.seed(100)
+
+	np.random.seed(100)
 	samples1 = np.random.multivariate_normal([0, 0], [[1, 0.1],[0.1, 1]], 100)
 	samples2 = np.random.multivariate_normal([10, 10], [[2, 0.5],[0.5, 2]], 100)
 	samples3 = np.random.multivariate_normal([0, 10], [[2, 0.5],[0.5, 2]], 100)
@@ -106,14 +106,14 @@ def test():
 #	plt.plot(samples[:, 0], samples[:, 1], '.')
 #	plt.show()
 
-  	clusters = qualityThreshold(samples, cutoff=5)
+	clusters = qualityThreshold(samples, cutoff=5)
 
-  	for c in clusters:
-  		plt.plot([samples[i][0] for i in c], [samples[i][1] for i in c], 'o', c="#%06x" % np.random.randint(0, 0xFFFFFF))
+	for c in clusters:
+		plt.plot([samples[i][0] for i in c], [samples[i][1] for i in c], 'o', c="#%06x" % np.random.randint(0, 0xFFFFFF))
 
 	plt.show()
 	
-   	print("Done!")
+	print("Done!")
 
 
 if __name__ == "__main__":
