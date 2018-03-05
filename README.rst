@@ -60,5 +60,5 @@ What's New
 - Scikit learn is now a mandatory requirement;
 - KMeans clustering is now available under the command 'kmeans';
 - If the number of epochs for the training is not explicitly stated, automatically choose 10*number of datapoints.
-- Now compatible with both Python 2.X and 3.X
+- Now compatible with both Python 2.X and 3.X (thanks to Toto1411)
 
