@@ -1,10 +1,10 @@
 SimpSOM (Simple Self-Organizing Maps) 
 =====================================
 
-Version 1.3.1
+Version 1.3.2
 ------------
 
-SimpSOM is a lightweight implementation of Kohonen Self-Organising Maps (SOM) for Python 2.7, 
+SimpSOM is a lightweight implementation of Kohonen Self-Organising Maps (SOM) for Python 2.7 and 3.3, 
 useful for unsupervised learning, clustering and dimensionality reduction.
 
 The package is now available on PyPI, to retrieve it just type ``pip install SimpSOM`` or download it from here
@@ -60,9 +60,5 @@ What's New
 - Scikit learn is now a mandatory requirement;
 - KMeans clustering is now available under the command 'kmeans';
 - If the number of epochs for the training is not explicitly stated, automatically choose 10*number of datapoints.
+- Now compatible with both Python 2.X and 3.X
 
-
-TO DOs:
--------
-
-- Convert to Python 3

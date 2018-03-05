@@ -5,6 +5,8 @@ F. Comitani @2017
 A lightweight python library for Kohonen Self-Organising Maps (SOM).
 """
 
+from __future__ import print_function
+
 import sys
 import numpy as np
 
