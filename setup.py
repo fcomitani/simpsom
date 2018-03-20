@@ -17,7 +17,7 @@ setup(
     long_description=long_description,
 
     url='https://github.com/fcomitani/SimpSOM',
-	download_url = 'https://github.com/fcomitani/SimpSOM/archive/1.3.0.tar.gz', 
+	download_url = 'https://github.com/fcomitani/SimpSOM/archive/1.3.2.tar.gz', 
     author='Federico Comitani',
     author_email='federico.comitani@gmail.com',
 
