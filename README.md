@@ -1,8 +1,6 @@
----
-title: 'SimpSOM (Simple Self-Organizing Maps)'
----
+# SimpSOM (Simple Self-Organizing Maps)'
 
-Version 1.3.2 \-\-\-\-\-\-\-\-\-\-\--
+## Version 1.3.2 
 
 SimpSOM is a lightweight implementation of Kohonen Self-Organising Maps
 (SOM) for Python 2.7 and 3.3, useful for unsupervised learning,
