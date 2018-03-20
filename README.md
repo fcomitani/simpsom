@@ -1,4 +1,4 @@
-# SimpSOM (Simple Self-Organizing Maps)'
+# SimpSOM (Simple Self-Organizing Maps)
 
 ## Version 1.3.2 
 
@@ -20,15 +20,13 @@ origin space.
 ![](./docs/images/colorExample.png)
 
 
-Dependencies
-============
+## Dependencies
 
 -   Numpy 1.11.0 (older versions may work);
 -   Matplotlib 1.5.1 (older versions may work);
 -   Sklearn 0.15 (older versions may work);
 
-Example of Usage
-================
+## Example of Usage
 
 Here is a quick example on how to use the library with a `raw_data`
 dataset:
@@ -56,8 +54,7 @@ dataset:
     #Cluster the datapoints according to the Quality Threshold algorithm.
     net.cluster(raw_data, type='qthresh')
 
-What\'s New
-===========
+## What\'s New
 
 -   The SOM now works on an hexagonal grid.
 -   It is now possible to activate periodic boundary conditions, but
