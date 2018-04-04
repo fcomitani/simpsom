@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-import hexagons as hx
-import densityPeak as dp
-import qualityThreshold as qt
+import SimpSOM.hexagons as hx
+import SimpSOM.densityPeak as dp
+import SimpSOM.qualityThreshold as qt
 
 from sklearn.decomposition import PCA
 from sklearn import cluster
