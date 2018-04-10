@@ -56,7 +56,7 @@ dataset:
 	
 ## A More Interesting Example: MNIST
 
-Here is another example of SimpSOM capabilites: the library was used to try and reduce a MNIST handwritten digits dataset. A 50x50 nodes map was trained with 500 MINST landmark datapoints for three cycles of 2500, 2500 and 5000 epochs respectively, starting from a 0.1 learning rate and without PCA Initialisation.
+Here is another example of SimpSOM capabilites: the library was used to try and reduce a MNIST handwritten digits dataset. A 50x50 nodes map was trained with 500 MINST landmark datapoints and 100000 epochs in total, starting from a 0.1 learning rate and without PCA Initialisation.
 
 ![](./docs/images/nD_annotated.png)
 
