@@ -78,6 +78,7 @@ Here is another example of SimpSOM capabilites: the library was used to try and 
 
 Projecting a few of those points on the map gives the following result, showing a clear distinction between cluster of digits with a few exception (such as 7 vs 9). Most issues could be solved tweaking the mapping parameters, training the network for longer times or with a more adequate initial dataset. Hovering on the dots will show the original label.
 
+```html
 <html> 
   <head> 
     <script src="jquery.js"></script> 
@@ -92,3 +93,4 @@ Projecting a few of those points on the map gives the following result, showing 
      <div id="includedContent"></div>
   </body> 
 </html>
+```
