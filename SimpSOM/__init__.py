@@ -641,7 +641,7 @@ def run_colorsExample():
 	raw_data =np.asarray([[1, 0, 0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[0.2,0.2,0.5]])
 	labels=['red','green','blue','yellow','magenta','cyan','indigo']
 
-	print("Welcome to SimpSOM (Simple Self Organizing Maps) v1.3.1!\nHere is a quick example of what this library can do.\n")
+	print("Welcome to SimpSOM (Simple Self Organizing Maps) v1.3.2!\nHere is a quick example of what this library can do.\n")
 	print("The algorithm will now try to map the following colors: ", end=' ')
 	for i in range(len(labels)-1):
 			print((labels[i] + ", "), end=' ') 
