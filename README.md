@@ -54,6 +54,20 @@ dataset:
     #Cluster the datapoints according to the Quality Threshold algorithm.
     net.cluster(raw_data, type='qthresh')
 
+	
+## A More Interesting Example: MNIST
+
+Here is another example of SimpSOM capabilites: the library was used to try and reduce a MNIST handwritten digits dataset. A 50x50 nodes map was trained with 500 MINST landmark datapoints for three cycles of 2500, 2500 and 5000 epochs respectively, starting from a 0.1 learning rate and without PCA Initialisation.
+
+![](./docs/images/nD_annotated.png)
+
+Projecting a few of those points on the map gives the following result, showing a clear distinction between cluster of digits with a few exception (such as 7 vs 9). Most issues could be solved tweaking the mapping parameters, training the network for longer times or with a more adequate initial dataset. Hovering on the dots will show the original label.
+	
+<head>
+  <link rel="import" href="./docs/images/scatter.html">
+</head>	
+	
+	
 ## What\'s New
 
 -   The SOM now works on an hexagonal grid.
