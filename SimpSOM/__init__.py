@@ -256,14 +256,17 @@ class somNet:
 			plt.clf()
 
 
-	def diff_graph(self, show=False, printout=True):
+	def diff_graph(self, show=False, printout=True, returns=False):
 	
 		"""Plot a 2D map with nodes and weights difference among neighbouring nodes.
 
 		Args:
 			show (bool, optional): Choose to display the plot.
 			printout (bool, optional): Choose to save the plot to a file.
-			
+			returns (bool, optional): Choose to return the difference value.
+
+		Returns:
+			(list): difference value for each node. 			
 		"""
 		
 		neighbours=[]
@@ -283,31 +286,35 @@ class somNet:
 
 		centers = [[node.pos[0],node.pos[1]] for node in self.nodeList]
 
-		widthP=100
-		dpi=72
-		xInch = self.netWidth*widthP/dpi 
-		yInch = self.netHeight*widthP/dpi 
-		fig=plt.figure(figsize=(xInch, yInch), dpi=dpi)
-
-		ax = hx.plot_hex(fig, centers, diffs)
-		ax.set_title('Nodes Grid w Weights Difference', size=80)
+		if show==True or printout==True:
 		
-		divider = make_axes_locatable(ax)
-		cax = divider.append_axes("right", size="5%", pad=0.0)
-		cbar=plt.colorbar(ax.collections[0], cax=cax)
-		cbar.set_label('Weights Difference', size=80, labelpad=50)
-		cbar.ax.tick_params(labelsize=60)
-		plt.sca(ax)
+			widthP=100
+			dpi=72
+			xInch = self.netWidth*widthP/dpi 
+			yInch = self.netHeight*widthP/dpi 
+			fig=plt.figure(figsize=(xInch, yInch), dpi=dpi)
 
-		printName='nodesDifference.png'
-		
-		if printout==True:
-			plt.savefig(printName, bbox_inches='tight', dpi=dpi)
-		if show==True:
-			plt.show()
-		if show!=False and printout!=False:
-			plt.clf()
+			ax = hx.plot_hex(fig, centers, diffs)
+			ax.set_title('Nodes Grid w Weights Difference', size=80)
+			
+			divider = make_axes_locatable(ax)
+			cax = divider.append_axes("right", size="5%", pad=0.0)
+			cbar=plt.colorbar(ax.collections[0], cax=cax)
+			cbar.set_label('Weights Difference', size=80, labelpad=50)
+			cbar.ax.tick_params(labelsize=60)
+			plt.sca(ax)
 
+			printName='nodesDifference.png'
+			
+			if printout==True:
+				plt.savefig(printName, bbox_inches='tight', dpi=dpi)
+			if show==True:
+				plt.show()
+			if show!=False and printout!=False:
+				plt.clf()
+
+		if returns==True:
+			return diffs 
 
 	def project(self, array, colnum=-1, labels=[], show=False, printout=True):
 
@@ -354,7 +361,7 @@ class somNet:
 				#belonging plotted to the same bmu will be visible in the plot		
 				if colnum==-1:
 					printName='projection_difference.png'
-					self.diff_graph(False, False)
+					self.diff_graph(False, False, False)
 					plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmuList],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmuList], c=cls, cmap=cm.viridis,
 							s=400, linewidth=0, zorder=10)
 					plt.title('Datapoints Projection on Nodes Difference', size=80)
@@ -657,6 +664,7 @@ def run_colorsExample():
 	net.nodes_graph()
 	
 	net.diff_graph()
+	print(diff)
 	net.project(raw_data, labels=labels)
 	net.cluster(raw_data, type='qthresh') 
 	
