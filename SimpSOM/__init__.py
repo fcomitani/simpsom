@@ -664,7 +664,6 @@ def run_colorsExample():
 	net.nodes_graph()
 	
 	net.diff_graph()
-	print(diff)
 	net.project(raw_data, labels=labels)
 	net.cluster(raw_data, type='qthresh') 
 	
