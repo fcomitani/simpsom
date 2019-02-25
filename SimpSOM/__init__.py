@@ -10,7 +10,7 @@ from __future__ import print_function
 
 import sys
 import numpy as np
-import os
+import os, errno
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -654,6 +654,14 @@ def run_colorsExample(path='./'):
         Different example graphs are then printed from the trained network.     
     """ 
 
+    """Try to create the folder"""
+    if path!='./':
+        try:
+            os.makedirs(path)
+        except OSError as exception:
+            if exception.errno != errno.EEXIST:
+                raise
+                
     raw_data =np.asarray([[1, 0, 0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[0.2,0.2,0.5]])
     labels=['red','green','blue','yellow','magenta','cyan','indigo']
 
