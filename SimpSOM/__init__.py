@@ -1,5 +1,5 @@
 """
-SimpSOM (Simple Self-Organizing Maps) v1.4
+SimpSOM (Simple Self-Organizing Maps) v1.3.4
 F. Comitani @2017 
 F. Comitani @2018 
  
@@ -657,7 +657,7 @@ def run_colorsExample(path='./'):
     raw_data =np.asarray([[1, 0, 0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[0.2,0.2,0.5]])
     labels=['red','green','blue','yellow','magenta','cyan','indigo']
 
-    print("Welcome to SimpSOM (Simple Self Organizing Maps) v1.3.3!\nHere is a quick example of what this library can do.\n")
+    print("Welcome to SimpSOM (Simple Self Organizing Maps) v1.3.4!\nHere is a quick example of what this library can do.\n")
     print("The algorithm will now try to map the following colors: ", end=' ')
     for i in range(len(labels)-1):
             print((labels[i] + ", "), end=' ') 
@@ -669,7 +669,7 @@ def run_colorsExample(path='./'):
     net.train(0.01, 10000)
 
     print("Saving weights and a few graphs...", end=' ')
-    net.save('colorExample_weights')
+    net.save('colorExample_weights', path=path)
     net.nodes_graph(path=path)
     
     net.diff_graph(path=path)

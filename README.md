@@ -1,9 +1,9 @@
 # SimpSOM (Simple Self-Organizing Maps)
 
-## Version 1.3.3
+## Version 1.3.4
 
 SimpSOM is a lightweight implementation of Kohonen Self-Organising Maps
-(SOM) for Python 2.7 and 3.3, useful for unsupervised learning,
+(SOM) for Python 2.7 and 3, useful for unsupervised learning,
 clustering and dimensionality reduction.
 
 The package is now available on PyPI, to retrieve it just type
@@ -64,18 +64,15 @@ Projecting a few of those points on the map gives the following result, showing 
 	
 ## What\'s New
 
--   The SOM now works on an hexagonal grid.
 -   It is now possible to activate periodic boundary conditions, but
     only Quality Threshold and Density Peak clustering can be used with
     PBC;
 -   Fixed the random selection of weights, the random vectors now span
     the space of the data;
 -   Implemented PCA initialisations (activate with PCI=1);
--   Scikit learn is now a mandatory requirement;
 -   KMeans clustering is now available under the command \'kmeans\';
 -   If the number of epochs for the training is not explicitly stated,
     automatically choose 10\*number of datapoints.
--   Now compatible with both Python 2.X and 3.X (thanks to Toto1411)
 
 	
 
