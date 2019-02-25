@@ -23,7 +23,7 @@ import SimpSOM.qualityThreshold as qt
 from sklearn.decomposition import PCA
 from sklearn import cluster
 
-from joblib import Parallel, delayed
+#from joblib import Parallel, delayed
 
 class somNet:
     """ Kohonen SOM Network class. """
@@ -193,7 +193,8 @@ class somNet:
         self.epochs=epochs
         self.tau = self.epochs/np.log(self.startSigma)
     
-        Parallel(n_jobs=self.n_jobs)(delayed(my_func)(c, K, N) for c in inputs)
+        #TODO:
+        #Parallel(n_jobs=self.n_jobs)(delayed(my_func)(c, K, N) for c in inputs)
 
         for i in range(self.epochs):
 
