@@ -474,7 +474,7 @@ class somNet:
 
         
         if savefile==True:
-            file=open(type+'_clusters.'+filetype, 'w')
+            file=open(os.path.join(path,type+'_clusters.'+filetype), 'w')
             if filetype=='csv':
                 separator=','
             else: 
