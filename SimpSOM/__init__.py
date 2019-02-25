@@ -42,7 +42,7 @@ class somNet:
                 the initial value of weights
             PBC (boolean): Activate/Deactivate periodic boundary conditions,
                 warning: only quality threshold clustering algorithm works with PBC.
-            n_jobs (int): Number of parallel processes (-1 use all available)   
+            n_jobs (int) [WORK IN PROGRESS]: Number of parallel processes (-1 use all available)   
         """
     
         """ Switch to activate special workflow if running the colours example. """
@@ -55,7 +55,8 @@ class somNet:
         self.PBC=bool(PBC)
 
         """ Activate light parallelization. """
-        self.n_jobs=n_jobs
+        #TODO:
+        #self.n_jobs=n_jobs
 
         if self.PBC==True:
             print("Periodic Boundary Conditions active.")
