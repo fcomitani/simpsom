@@ -17,3 +17,4 @@ SimpSOM/*dat
 SimpSOM/*npy
 SimpSOM/*pyc
 SimpSOM/temp*
+*.BAK.py
