@@ -1,7 +1,6 @@
 """
-SimpSOM (Simple Self-Organizing Maps) v1.4
+SimpSOM (Simple Self-Organizing Maps) v1.3.3
 F. Comitani @2017 
-F. Comitani @2018 
  
 A lightweight python library for Kohonen Self-Organising Maps (SOM).
 """
@@ -10,7 +9,6 @@ from __future__ import print_function
 
 import sys
 import numpy as np
-import os
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -23,12 +21,12 @@ import SimpSOM.qualityThreshold as qt
 from sklearn.decomposition import PCA
 from sklearn import cluster
 
-from joblib import Parallel, delayed
+
 
 class somNet:
 	""" Kohonen SOM Network class. """
 
-	def __init__(self, netHeight, netWidth, data, loadFile=None, PCI=0, PBC=0, n_jobs=-1):
+	def __init__(self, netHeight, netWidth, data, loadFile=None, PCI=0, PBC=0):
 
 		"""Initialise the SOM network.
 
@@ -42,7 +40,7 @@ class somNet:
 				the initial value of weights
 			PBC (boolean): Activate/Deactivate periodic boundary conditions,
 				warning: only quality threshold clustering algorithm works with PBC.
-			n_jobs (int): Number of parallel processes (-1 use all available)	
+				
 		"""
 	
 		""" Switch to activate special workflow if running the colours example. """
@@ -53,9 +51,6 @@ class somNet:
 
 		""" Switch to activate periodic boundary conditions. """
 		self.PBC=bool(PBC)
-
-        """ Activate light parallelization. """
-		self.n_jobs=n_jobs
 
 		if self.PBC==True:
 			print("Periodic Boundary Conditions active.")
@@ -112,7 +107,7 @@ class somNet:
 					self.nodeList.append(somNode(x,y, self.data.shape[1], self.netHeight, self.netWidth, self.PBC, weiArray=weiArray[countWei]))
 					countWei+=1
 
-	def save(self, fileName='somNet_trained', path='./'):
+	def save(self, fileName='somNet_trained'):
 	
 		"""Saves the network dimensions, the pbc and nodes weights to a file.
 
@@ -126,7 +121,7 @@ class somNet:
 		weiArray[0][0],weiArray[0][1],weiArray[0][2]=self.netHeight, self.netWidth, int(self.PBC)
 		for node in self.nodeList:
 			weiArray.append(node.weights)
-		np.save(os.path.join(path,fileName), np.asarray(weiArray))
+		np.save(fileName, np.asarray(weiArray))
 	
 
 	def update_sigma(self, iter):
@@ -193,8 +188,6 @@ class somNet:
 		self.epochs=epochs
 		self.tau = self.epochs/np.log(self.startSigma)
 	
-		Parallel(n_jobs=self.n_jobs)(delayed(my_func)(c, K, N) for c in inputs)
-
 		for i in range(self.epochs):
 
 			if i%100==0:
@@ -218,7 +211,7 @@ class somNet:
 		print("\rTraining SOM... done!")
 
 		
-	def nodes_graph(self, colnum=0, show=False, printout=True, path='./'):
+	def nodes_graph(self, colnum=0, show=False, printout=True):
 	
 		"""Plot a 2D map with hexagonal nodes and weights values
 
@@ -241,7 +234,7 @@ class somNet:
 			cols = [[np.float(node.weights[0]),np.float(node.weights[1]),np.float(node.weights[2])]for node in self.nodeList]	
 			ax = hx.plot_hex(fig, centers, cols)
 			ax.set_title('Node Grid w Color Features', size=80)
-			printName=os.path.join(path,'nodesColors.png')
+			printName='nodesColors.png'
 
 		else:
 			cols = [node.weights[colnum] for node in self.nodeList]
@@ -253,7 +246,7 @@ class somNet:
 			cbar.set_label('Feature #' +  str(colnum)+' value', size=80, labelpad=50)
 			cbar.ax.tick_params(labelsize=60)
 			plt.sca(ax)
-			printName=os.path.join(path,'nodesFeature_'+str(colnum)+'.png')
+			printName='nodesFeature_'+str(colnum)+'.png'
 			
 		if printout==True:
 			plt.savefig(printName, bbox_inches='tight', dpi=dpi)
@@ -263,7 +256,7 @@ class somNet:
 			plt.clf()
 
 
-	def diff_graph(self, show=False, printout=True, returns=False, path='./'):
+	def diff_graph(self, show=False, printout=True, returns=False):
 	
 		"""Plot a 2D map with nodes and weights difference among neighbouring nodes.
 
@@ -311,7 +304,7 @@ class somNet:
 			cbar.ax.tick_params(labelsize=60)
 			plt.sca(ax)
 
-			printName=os.path.join(path,'nodesDifference.png')
+			printName='nodesDifference.png'
 			
 			if printout==True:
 				plt.savefig(printName, bbox_inches='tight', dpi=dpi)
@@ -323,7 +316,7 @@ class somNet:
 		if returns==True:
 			return diffs 
 
-	def project(self, array, colnum=-1, labels=[], show=False, printout=True, path='./'):
+	def project(self, array, colnum=-1, labels=[], show=False, printout=True):
 
 		"""Project the datapoints of a given array to the 2D space of the 
 			SOM by calculating the bmus. If requested plot a 2D map with as 
@@ -358,7 +351,7 @@ class somNet:
 			""" Call nodes_graph/diff_graph to first build the 2D map of the nodes. """
 
 			if self.colorEx==True:
-				printName=os.path.join(path,'colorProjection.png')
+				printName='colorProjection.png'
 				self.nodes_graph(colnum, False, False)
 				plt.scatter([pos[0] for pos in bmuList],[pos[1] for pos in bmuList], color=cls,  
 						s=500, edgecolor='#ffffff', linewidth=5, zorder=10)
@@ -367,13 +360,13 @@ class somNet:
 				#a random perturbation is added to the points positions so that data 
 				#belonging plotted to the same bmu will be visible in the plot		
 				if colnum==-1:
-					printName=os.path.join(path,'projection_difference.png')
+					printName='projection_difference.png'
 					self.diff_graph(False, False, False)
 					plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmuList],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmuList], c=cls, cmap=cm.viridis,
 							s=400, linewidth=0, zorder=10)
 					plt.title('Datapoints Projection on Nodes Difference', size=80)
 				else:	
-					printName=os.path.join(path,'projection_feature'+str(colnum)+'.png')
+					printName='projection_feature'+str(colnum)+'.png'
 					self.nodes_graph(colnum, False, False)
 					plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmuList],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmuList], c=cls, cmap=cm.viridis,
 							s=400, edgecolor='#ffffff', linewidth=4, zorder=10)
@@ -395,7 +388,7 @@ class somNet:
 		
 		
 	def cluster(self, array, type='qthresh', cutoff=5, quant=0.2, percent=0.02, numcl=8,\
-					savefile=True, filetype='dat', show=False, printout=True, path='./'):
+					savefile=True, filetype='dat', show=False, printout=True):
 	
 		"""Clusters the data in a given array according to the SOM trained map.
 			The clusters can also be plotted.
@@ -485,7 +478,7 @@ class somNet:
 		if printout==True or show==True:
 			
 			np.random.seed(0)
-			printName=os.path.join(path,type+'_clusters.png')
+			printName=type+'_clusters.png'
 			
 			fig, ax = plt.subplots()
 			
@@ -645,7 +638,7 @@ class somNode:
 			for i in range(len(self.weights)):
 				self.weights[i] = self.weights[i] - gauss*lrate*(self.weights[i]-inputVec[i])
 		
-def run_colorsExample(path='./'):	
+def run_colorsExample():	
 
 	"""Example of usage of SimpSOM: a number of vectors of length three
 		(corresponding to the RGB values of a color) are used to briefly train a small network.
@@ -668,11 +661,11 @@ def run_colorsExample(path='./'):
 
 	print("Saving weights and a few graphs...", end=' ')
 	net.save('colorExample_weights')
-	net.nodes_graph(path=path)
+	net.nodes_graph()
 	
-	net.diff_graph(path=path)
-	net.project(raw_data, labels=labels, path=path)
-	net.cluster(raw_data, type='qthresh', path=path) 
+	net.diff_graph()
+	net.project(raw_data, labels=labels)
+	net.cluster(raw_data, type='qthresh') 
 	
 	print("done!")
 
