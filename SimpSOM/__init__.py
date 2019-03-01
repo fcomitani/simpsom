@@ -2,6 +2,7 @@
 SimpSOM (Simple Self-Organizing Maps) v1.3.4
 F. Comitani @2017 
 F. Comitani @2018 
+F. Comitani @2019 
  
 A lightweight python library for Kohonen Self-Organising Maps (SOM).
 """
@@ -166,7 +167,7 @@ class somNet:
             
         """
     
-        minVal=np.iinfo(np.int).max
+        minVal=np.finfo(np.float).max
         for node in self.nodeList:
             dist=node.get_distance(vec)
             if dist < minVal:
@@ -643,9 +644,10 @@ class somNode:
     
         dist=self.get_nodeDistance(bmu)
         gauss=np.exp(-dist*dist/(2*sigma*sigma))
-        if gauss>0:
-            for i in range(len(self.weights)):
-                self.weights[i] = self.weights[i] - gauss*lrate*(self.weights[i]-inputVec[i])
+
+        #if gauss>0: #pointless
+        for i in range(len(self.weights)):
+            self.weights[i] = self.weights[i] - gauss*lrate*(self.weights[i]-inputVec[i])
         
 def run_colorsExample(path='./'):   
 
