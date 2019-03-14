@@ -37,7 +37,7 @@ dataset:
     #Build a network 20x20 with a weights format taken from the raw_data and activate Periodic Boundary Conditions. 
     net = sps.somNet(20, 20, raw_data, PBC=True)
 
-    #Train the network for 10000 epochs and with initial learning rate of 0.1. 
+    #Train the network for 10000 epochs and with initial learning rate of 0.01. 
     net.train(0.01, 10000)
 
     #Save the weights to file
