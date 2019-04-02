@@ -7,4 +7,4 @@ install:
         - pip install -r requirements.txt
 
 script: 
-	- cd SimpSOM && python __init__.py
+        - cd SimpSOM && python __init__.py
