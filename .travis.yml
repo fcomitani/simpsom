@@ -6,5 +6,13 @@ python:
 install:
         - pip install -r requirements.txt
 
+services:
+         - xvfb
+  
+before_script: # configure a headless display to test plot generation
+              - "export DISPLAY=:99.0"
+              - "sh -e /etc/init.d/xvfb start"
+              - sleep 3 # give xvfb some time to start
+		
 script: 
-        - cd tests && python test.py
+       - cd tests && python test.py
