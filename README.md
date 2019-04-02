@@ -2,6 +2,7 @@
 
 [![DOI](https://zenodo.org/badge/91130860.svg)](https://zenodo.org/badge/latestdoi/91130860)
 [![PyPI version](https://badge.fury.io/py/SimpSOM.svg)](https://badge.fury.io/py/SimpSOM)
+[![Build Status](https://travis-ci.org/fcomitani/SimpSOM.svg?branch=master)](https://travis-ci.org/fcomitani/SimpSOM)
 [![Documentation Status](https://readthedocs.org/projects/simpsom/badge/?version=latest)](https://simpsom.readthedocs.io/en/latest/?badge=latest)
 
 ## Version 1.3.4
