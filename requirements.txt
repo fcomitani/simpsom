@@ -1,0 +1,3 @@
+Numpy==1.11.0
+Matplotlib==1.5.1
+Sklearn==0.15
