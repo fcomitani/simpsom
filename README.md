@@ -1,4 +1,5 @@
 # SimpSOM (Simple Self-Organizing Maps)
+[![Documentation Status](https://readthedocs.org/projects/simpsom/badge/?version=latest)](https://simpsom.readthedocs.io/en/latest/?badge=latest)
 
 ## Version 1.3.4
 
@@ -62,17 +63,12 @@ Here is another example of SimpSOM capabilites: the library was used to try and 
 
 Projecting a few of those points on the map gives the following result, showing a clear distinction between cluster of digits with a few exceptions. Similar shapes (such as 7 and 9) are mapped closed together, while relatively far from other more distinct digits. The accuracy of this mapping could be further improved by tweaking the map parameters, by training the network for more epochs or with a more adequate choice of initial dataset. 	
 	
+## Documentation
+
+See [here](https://simpsom.readthedocs.io) the full API documentation
+
 ## What\'s New
 
--   It is now possible to activate periodic boundary conditions, but
-    only Quality Threshold and Density Peak clustering can be used with
-    PBC;
--   Fixed the random selection of weights, the random vectors now span
-    the space of the data;
--   Implemented PCA initialisations (activate with PCI=1);
--   KMeans clustering is now available under the command \'kmeans\';
--   If the number of epochs for the training is not explicitly stated,
-    automatically choose 10\*number of datapoints.
-
+- It's now possible to explicitly choose the output folder.
 	
 
