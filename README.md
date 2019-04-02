@@ -17,7 +17,7 @@ model, where a number of colors will be mapped from the 3D RGB space to
 the 2D network map and clustered according to their similarity in the
 origin space.
 
-![](./docs/images/colorExample.png)
+![](./docs/_images/colorExample.png)
 
 
 ## Dependencies
@@ -58,7 +58,7 @@ dataset:
 
 Here is another example of SimpSOM capabilites: the library was used to try and reduce a MNIST handwritten digits dataset. A 50x50 nodes map was trained with 500 MINST landmark datapoints and 100000 epochs in total, starting from a 0.1 learning rate and without PCA Initialisation.
 
-![](./docs/images/nD_annotated.png)
+![](./docs/_images/nD_annotated.png)
 
 Projecting a few of those points on the map gives the following result, showing a clear distinction between cluster of digits with a few exceptions. Similar shapes (such as 7 and 9) are mapped closed together, while relatively far from other more distinct digits. The accuracy of this mapping could be further improved by tweaking the map parameters, by training the network for more epochs or with a more adequate choice of initial dataset. 	
 	
