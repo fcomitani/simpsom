@@ -69,6 +69,11 @@ Projecting a few of those points on the map gives the following result, showing 
 
 See [here](https://simpsom.readthedocs.io) the full API documentation
 
+## Citation
+
+If using this library, please cite it as
+Federico Comitani, 2019. fcomitani/SimpSOM: v1.3.4. doi:10.5281/zenodo.2621560
+
 ## What\'s New
 
 - It's now possible to explicitly choose the output folder.
