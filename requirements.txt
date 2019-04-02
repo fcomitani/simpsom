@@ -1,3 +1,3 @@
 Numpy==1.16
 Matplotlib==1.5.1
-Sklearn==0.20
+scikit-learn==0.20
