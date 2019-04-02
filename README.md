@@ -1,4 +1,6 @@
 # SimpSOM (Simple Self-Organizing Maps)
+
+[![DOI](https://zenodo.org/badge/91130860.svg)](https://zenodo.org/badge/latestdoi/91130860)
 [![Documentation Status](https://readthedocs.org/projects/simpsom/badge/?version=latest)](https://simpsom.readthedocs.io/en/latest/?badge=latest)
 
 ## Version 1.3.4
