@@ -7,7 +7,7 @@
 
 ## Version 1.3.4
 
-SimpSOM is a lightweight implementation of Kohonen Self-Organising Maps
+SimpSOM is a lightweight implementation of Kohonen Self-Organizing Maps
 (SOM) for Python 2.7 and 3, useful for unsupervised learning,
 clustering and dimensionality reduction.
 
