@@ -684,7 +684,7 @@ def run_colorsExample(path='./'):
     
     net.diff_graph(path=path)
     net.project(raw_data, labels=labels, path=path)
-    net.cluster(raw_data, type='qthresh', path=path) 
+    net.cluster(raw_data, type='dpeak', path=path) 
     
     print("done!")
 

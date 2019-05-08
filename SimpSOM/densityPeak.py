@@ -281,7 +281,7 @@ class collection:
             for p in self.points:
                 if p.cl==[c]:
                     self.clusters[c].append(p)
-                    for key,value in p.dists.iteritems():
+                    for key,value in p.dists.items():
                         if key.cl!=c and value<self.refd:
                             border.append(p)
                             continue
