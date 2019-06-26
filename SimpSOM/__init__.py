@@ -15,6 +15,7 @@ import os, errno
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
+import matplotlib.patches as mpatches
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import SimpSOM.hexagons as hx
@@ -221,7 +222,7 @@ class somNet:
         print("\rTraining SOM... done!")
 
         
-    def nodes_graph(self, colnum=0, show=False, printout=True, path='./'):
+    def nodes_graph(self, colnum=0, show=False, printout=True, path='./', colname=None):
     
         """Plot a 2D map with hexagonal nodes and weights values
 
@@ -229,8 +230,11 @@ class somNet:
             colnum (int): The index of the weight that will be shown as colormap.
             show (bool, optional): Choose to display the plot.
             printout (bool, optional): Choose to save the plot to a file.
-            
+            colname (str, optional): Name of the column to be shown on the map.
         """
+
+        if not colname:
+            colname = str(colnum)
 
         centers = [[node.pos[0],node.pos[1]] for node in self.nodeList]
 
@@ -249,11 +253,11 @@ class somNet:
         else:
             cols = [node.weights[colnum] for node in self.nodeList]
             ax = hx.plot_hex(fig, centers, cols)
-            ax.set_title('Node Grid w Feature #' +  str(colnum), size=80)
+            ax.set_title('Node Grid w Feature ' +  colname, size=80)
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.0)
             cbar=plt.colorbar(ax.collections[0], cax=cax)
-            cbar.set_label('Feature #' +  str(colnum)+' value', size=80, labelpad=50)
+            cbar.set_label(colname, size=80, labelpad=50)
             cbar.ax.tick_params(labelsize=60)
             plt.sca(ax)
             printName=os.path.join(path,'nodesFeature_'+str(colnum)+'.png')
@@ -326,7 +330,7 @@ class somNet:
         if returns==True:
             return diffs 
 
-    def project(self, array, colnum=-1, labels=[], show=False, printout=True, path='./'):
+    def project(self, array, colnum=-1, labels=[], show=False, printout=True, path='./', colname = None):
 
         """Project the datapoints of a given array to the 2D space of the 
             SOM by calculating the bmus. If requested plot a 2D map with as 
@@ -339,11 +343,24 @@ class somNet:
                 If not chosen, the difference map will be used instead.
             show (bool, optional): Choose to display the plot.
             printout (bool, optional): Choose to save the plot to a file.
+            colname (str, optional): Name of the column to be shown on the map.
             
         Returns:
             (list): bmu x,y position for each input array datapoint. 
             
         """
+        
+        if not colname:
+            colname = str(colnum)
+
+        if labels != []:
+            colors = ["#ff0000", "#e0ffff", "#a9a9a9", "#ff69b4", "#966fd6"]
+            class_assignment = {}
+            counter = 0
+            for i in range(len(labels)):
+                if labels[i] not in class_assignment:
+                    class_assignment[labels[i]] = colors[counter]
+                    counter = (counter + 1)%len(colors)
 
         bmuList,cls=[],[]
         for i in range(array.shape[0]):
@@ -351,9 +368,11 @@ class somNet:
             if self.colorEx==True:
                 cls.append(array[i,:])
             else: 
-                if colnum==-1:
+                if labels!=[]:   
+                    cls.append(class_assignment[labels[i]])
+                elif colnum==-1:
                     cls.append('#ffffff')
-                else:   
+                else: 
                     cls.append(array[i,colnum])
 
         if show==True or printout==True:
@@ -376,15 +395,21 @@ class somNet:
                             s=400, linewidth=0, zorder=10)
                     plt.title('Datapoints Projection on Nodes Difference', size=80)
                 else:   
-                    printName=os.path.join(path,'projection_feature'+str(colnum)+'.png')
-                    self.nodes_graph(colnum, False, False)
+                    printName=os.path.join(path,'projection_'+ colname +'.png')
+                    self.nodes_graph(colnum, False, False, colname=colname)
                     plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmuList],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmuList], c=cls, cmap=cm.viridis,
                             s=400, edgecolor='#ffffff', linewidth=4, zorder=10)
                     plt.title('Datapoints Projection #' +  str(colnum), size=80)
                 
             if labels!=[]:
-                for label, x, y in zip(labels, [pos[0] for pos in bmuList],[pos[1] for pos in bmuList]):
-                    plt.annotate(label, xy=(x,y), xytext=(-0.5, 0.5), textcoords='offset points', ha='right', va='bottom', size=50, zorder=11) 
+                recs = []
+                for i in class_assignment.keys():
+                    recs.append(mpatches.Rectangle((0,0),1,1,fc=class_assignment[i]))
+                plt.legend(recs,class_assignment.keys(),loc=0)
+
+            # if labels!=[]:
+            #     for label, x, y in zip(labels, [pos[0] for pos in bmuList],[pos[1] for pos in bmuList]):
+            #         plt.annotate(label, xy=(x,y), xytext=(-0.5, 0.5), textcoords='offset points', ha='right', va='bottom', size=50, zorder=11) 
             
             if printout==True:
                 plt.savefig(printName, bbox_inches='tight', dpi=72)
