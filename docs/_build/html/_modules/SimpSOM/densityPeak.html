@@ -1,0 +1,617 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>SimpSOM.densityPeak &#8212; SimpSOM 2019 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for SimpSOM.densityPeak</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Density Peak Clustering</span>
+
+<span class="sd">A Rodriguez, A Laio,</span>
+<span class="sd">Clustering by fast search and find of density peaks</span>
+<span class="sd">SCIENCE, 1492, vol 322 (2014) </span>
+
+<span class="sd">F. Comitani @2017 </span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">attrgetter</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
+
+
+<div class="viewcode-block" id="pt"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.pt">[docs]</a><span class="k">class</span> <span class="nc">pt</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; Class for the points to cluster. &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coordinates</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;Initialise the point.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            coordinates (np.array): Array containing the point coordinates in N dimensions.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">coor</span><span class="o">=</span><span class="p">[]</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">coordinates</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coor</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+
+        <span class="sd">&quot;&quot;&quot; Initialise empty density (rho), higher-density distance (delta), list of distances, </span>
+<span class="sd">            the nearest neighbour of higher density, and the cluster.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">=</span><span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delta</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">maxsize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dists</span><span class="o">=</span><span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nneigh</span><span class="o">=</span><span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cl</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">core</span><span class="o">=</span><span class="kc">True</span>
+
+
+<div class="viewcode-block" id="pt.set_dist"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.pt.set_dist">[docs]</a>    <span class="k">def</span> <span class="nf">set_dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coll</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Calculate the distances from all other points in a collection. [Deprecated]</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            coll (collection): collection containing all the points of the dataset used to calculate the distances. </span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Setting individual distances is deprecated, use the collection.set_dists() instead!&#39;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">p2</span> <span class="ow">in</span> <span class="n">coll</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">!=</span><span class="n">p2</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dists</span><span class="p">[</span><span class="n">p2</span><span class="p">]</span><span class="o">=</span><span class="n">dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">p2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="pt.set_rho"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.pt.set_rho">[docs]</a>    <span class="k">def</span> <span class="nf">set_rho</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coll</span><span class="p">,</span> <span class="n">typeFunc</span><span class="o">=</span><span class="s1">&#39;step&#39;</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;Calculate the density of the single point for a given dataset. [Deprecated]</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            coll (collection): collection containing all the points of the dataset used to calculate the density. </span>
+<span class="sd">            typeFunc (str): step function type (step, gaussian kernel or logistic).</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Setting individual rhos is deprecated, use the collection.set_rhos() instead!&#39;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coll</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;WARNING: calculating the density for a point that was not found in the dataset, make sure to be consistent with your data!&#39;</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">p2</span> <span class="ow">in</span> <span class="n">coll</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">!=</span><span class="n">p2</span><span class="p">:</span> 
+                <span class="k">if</span> <span class="n">typeFunc</span><span class="o">==</span><span class="s1">&#39;step&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">+</span><span class="n">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">refd</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">typeFunc</span><span class="o">==</span><span class="s1">&#39;gaussian&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">+</span><span class="n">gaussian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">refd</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">typeFunc</span><span class="o">==</span><span class="s1">&#39;logistic&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">+</span><span class="n">logistic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">refd</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="sd">&quot;&quot;&quot; Raise exception if metric other then euclidean is used. &quot;&quot;&quot;</span>
+                    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;Only step, gaussian kernel or logistic functions are implemented&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="pt.set_delta"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.pt.set_delta">[docs]</a>    <span class="k">def</span> <span class="nf">set_delta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coll</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;Calculate the distance of the point from higher density points and set the nearest neighbour. [Deprecated]</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            coll (collection): collection containing all the points of the dataset used to calculate the distance.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Setting individual deltas is deprecated, use the collection.set_deltas() instead!&#39;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coll</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;WARNING: calculating the distance for a point that was not found in the dataset, make sure to be consistent with your data!&#39;</span><span class="p">)</span>
+
+        <span class="n">mind</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">maxsize</span>
+        <span class="n">distHigh</span><span class="p">,</span> <span class="n">distLow</span><span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">p2</span> <span class="ow">in</span> <span class="n">coll</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">!=</span><span class="n">p2</span><span class="p">:</span>
+                <span class="n">d</span><span class="o">=</span><span class="n">dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">p2</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">&lt;</span><span class="n">p2</span><span class="o">.</span><span class="n">rho</span><span class="p">:</span>
+                    <span class="n">distHigh</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+                    <span class="sd">&quot;&quot;&quot; Choose nearest neighbour and handle empty list &quot;&quot;&quot;</span>
+                    <span class="k">if</span> <span class="n">d</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">distHigh</span> <span class="ow">or</span> <span class="p">[</span><span class="mi">999</span><span class="p">]):</span> <span class="bp">self</span><span class="o">.</span><span class="n">nneigh</span><span class="o">=</span><span class="n">p2</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">distsLow</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        
+        <span class="sd">&quot;&quot;&quot; If the point has maximal rho, then return max distance &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">distHigh</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">distHigh</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">distLow</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="collection"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.collection">[docs]</a><span class="k">class</span> <span class="nc">collection</span><span class="p">:</span>
+
+    <span class="sd">&quot;&quot;&quot;Class for a collection of point objects. &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coorArray</span><span class="p">,</span> <span class="n">typeFunc</span><span class="o">=</span><span class="s1">&#39;gaussian&#39;</span><span class="p">,</span> <span class="n">percent</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">PBC</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">netHeight</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">netWidth</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        
+        <span class="sd">&quot;&quot;&quot; Generate a collection of point objects from an array containing their coordinates.</span>
+<span class="sd">    </span>
+<span class="sd">        Args:</span>
+<span class="sd">            coorArray (np.array): Array containing the coordinates of the points to cluster.</span>
+<span class="sd">            typeFunc (str): step function for calculating rho (step, gaussian kernel or logistic).</span>
+<span class="sd">            percent (float): average percentage of neighbours.</span>
+<span class="sd">            PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.</span>
+<span class="sd">            netHeight (int, optional): Number of nodes along the first dimension, required for PBC.</span>
+<span class="sd">            netWidth (int, optional): Numer of nodes along the second dimension, required for PBC.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+    
+        <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">=</span><span class="p">[]</span>
+        <span class="k">for</span> <span class="n">coors</span> <span class="ow">in</span> <span class="n">coorArray</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pt</span><span class="p">(</span><span class="n">coors</span><span class="p">))</span>   
+
+        <span class="n">index</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">)</span><span class="o">*</span><span class="n">percent</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="o">=</span><span class="n">PBC</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">=</span><span class="n">netHeight</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">=</span><span class="n">netWidth</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">alldists</span><span class="o">=</span><span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_dists</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">alldists</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">refd</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alldists</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                
+        <span class="sd">&quot;&quot;&quot; Make sure rhos are set before setting deltas &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_rhos</span><span class="p">(</span><span class="n">typeFunc</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_deltas</span><span class="p">()</span>   
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">clusters</span><span class="o">=</span><span class="p">{}</span>
+        
+
+<div class="viewcode-block" id="collection.set_dists"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.collection.set_dists">[docs]</a>    <span class="k">def</span> <span class="nf">set_dists</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Calculate the distance matrix for all points. &quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">p1</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">p2</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">p2</span><span class="p">):</span> 
+                    <span class="n">d</span><span class="o">=</span><span class="n">dist</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span> <span class="s1">&#39;euclid&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">alldists</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> 
+                    <span class="n">p1</span><span class="o">.</span><span class="n">dists</span><span class="p">[</span><span class="n">p2</span><span class="p">]</span><span class="o">=</span><span class="n">d</span> 
+                    <span class="n">p2</span><span class="o">.</span><span class="n">dists</span><span class="p">[</span><span class="n">p1</span><span class="p">]</span><span class="o">=</span><span class="n">d</span></div>
+
+
+<div class="viewcode-block" id="collection.set_rhos"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.collection.set_rhos">[docs]</a>    <span class="k">def</span> <span class="nf">set_rhos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typeFunc</span><span class="o">=</span><span class="s1">&#39;step&#39;</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Calculate the density for each point in the dataset. </span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            typeFunc (str): step function type (step, gaussian or logistic)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">p1</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">p2</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">p2</span><span class="p">):</span> 
+                    <span class="k">if</span> <span class="n">typeFunc</span><span class="o">==</span><span class="s1">&#39;step&#39;</span><span class="p">:</span>
+                        <span class="n">p1</span><span class="o">.</span><span class="n">rho</span><span class="o">=</span><span class="n">p1</span><span class="o">.</span><span class="n">rho</span><span class="o">+</span><span class="n">step</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">refd</span><span class="p">,</span><span class="n">PBC</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">,</span><span class="n">netHeight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span><span class="n">netWidth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span>
+                        <span class="n">p2</span><span class="o">.</span><span class="n">rho</span><span class="o">=</span><span class="n">p2</span><span class="o">.</span><span class="n">rho</span><span class="o">+</span><span class="n">step</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">refd</span><span class="p">,</span><span class="n">PBC</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">,</span><span class="n">netHeight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span><span class="n">netWidth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">typeFunc</span><span class="o">==</span><span class="s1">&#39;gaussian&#39;</span><span class="p">:</span>
+                        <span class="n">p1</span><span class="o">.</span><span class="n">rho</span><span class="o">=</span><span class="n">p1</span><span class="o">.</span><span class="n">rho</span><span class="o">+</span><span class="n">gaussian</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">refd</span><span class="p">,</span><span class="n">PBC</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">,</span><span class="n">netHeight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span><span class="n">netWidth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span>
+                        <span class="n">p2</span><span class="o">.</span><span class="n">rho</span><span class="o">=</span><span class="n">p2</span><span class="o">.</span><span class="n">rho</span><span class="o">+</span><span class="n">gaussian</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">refd</span><span class="p">,</span><span class="n">PBC</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">,</span><span class="n">netHeight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span><span class="n">netWidth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">typeFunc</span><span class="o">==</span><span class="s1">&#39;logistic&#39;</span><span class="p">:</span>
+                        <span class="n">p1</span><span class="o">.</span><span class="n">rho</span><span class="o">=</span><span class="n">p1</span><span class="o">.</span><span class="n">rho</span><span class="o">+</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">refd</span><span class="p">,</span><span class="n">PBC</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">,</span><span class="n">netHeight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span><span class="n">netWidth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span>
+                        <span class="n">p2</span><span class="o">.</span><span class="n">rho</span><span class="o">=</span><span class="n">p2</span><span class="o">.</span><span class="n">rho</span><span class="o">+</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">refd</span><span class="p">,</span><span class="n">PBC</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">,</span><span class="n">netHeight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span><span class="n">netWidth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;Only step, gaussian kernel or logistic functions are implemented&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="collection.set_deltas"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.collection.set_deltas">[docs]</a>    <span class="k">def</span> <span class="nf">set_deltas</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;Calculate the distance from higher density points for each point in the dataset. &quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">p1</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">p2</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">p2</span><span class="p">):</span> 
+                    <span class="n">d</span><span class="o">=</span><span class="n">p1</span><span class="o">.</span><span class="n">dists</span><span class="p">[</span><span class="n">p2</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">p1</span><span class="o">.</span><span class="n">rho</span><span class="o">&lt;</span><span class="n">p2</span><span class="o">.</span><span class="n">rho</span> <span class="ow">and</span> <span class="n">d</span><span class="o">&lt;</span><span class="n">p1</span><span class="o">.</span><span class="n">delta</span><span class="p">:</span> 
+                        <span class="n">p1</span><span class="o">.</span><span class="n">delta</span><span class="o">=</span><span class="n">d</span>
+                        <span class="n">p1</span><span class="o">.</span><span class="n">nneigh</span><span class="o">=</span><span class="n">p2</span>
+                    <span class="k">elif</span> <span class="n">p1</span><span class="o">.</span><span class="n">rho</span><span class="o">&gt;</span><span class="n">p2</span><span class="o">.</span><span class="n">rho</span> <span class="ow">and</span> <span class="n">d</span><span class="o">&lt;</span><span class="n">p2</span><span class="o">.</span><span class="n">delta</span><span class="p">:</span> 
+                        <span class="n">p2</span><span class="o">.</span><span class="n">delta</span><span class="o">=</span><span class="n">d</span>
+                        <span class="n">p2</span><span class="o">.</span><span class="n">nneigh</span><span class="o">=</span><span class="n">p1</span>
+    
+        <span class="sd">&quot;&quot;&quot; If the point has maximal rho, then return max distance &quot;&quot;&quot;</span>
+
+        <span class="n">pmax</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">attrgetter</span><span class="p">(</span><span class="s1">&#39;rho&#39;</span><span class="p">))</span>
+        <span class="n">pmax</span><span class="o">.</span><span class="n">delta</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="n">pmax</span><span class="o">.</span><span class="n">dists</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="collection.decision_graph"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.collection.decision_graph">[docs]</a>    <span class="k">def</span> <span class="nf">decision_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">printout</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;Calculate the decision graph, delta vs rho for the points belonging to the collection </span>
+<span class="sd">            and find the cluster centers.</span>
+
+<span class="sd">            Args:</span>
+<span class="sd">                show (bool, optional): Choose to display the plot.</span>
+<span class="sd">                printout (bool, optional): Choose to save the plot to a file.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+        <span class="n">pRhos</span><span class="p">,</span> <span class="n">pDeltas</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">rho</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">],</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">delta</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">]</span>
+
+        <span class="n">meanDeltas</span><span class="p">,</span> <span class="n">sdevDeltas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">pDeltas</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">pDeltas</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ctrs</span><span class="p">,</span> <span class="n">ctrRhos</span><span class="p">,</span> <span class="n">ctrDeltas</span><span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+        
+        <span class="n">i</span><span class="o">=</span><span class="mi">1</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">delta</span><span class="o">&gt;</span> <span class="n">meanDeltas</span><span class="o">+</span><span class="mf">1.5</span><span class="o">*</span><span class="n">sdevDeltas</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ctrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> 
+                <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">=</span><span class="n">i</span>
+                <span class="n">i</span><span class="o">+=</span><span class="mi">1</span>
+                <span class="n">ctrRhos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">rho</span><span class="p">),</span> <span class="n">ctrDeltas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">delta</span><span class="p">)</span> 
+                <span class="n">pRhos</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">pRhos</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">rho</span><span class="p">)),</span> <span class="n">pDeltas</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">pDeltas</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">delta</span><span class="p">))</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">pRhos</span><span class="p">,</span> <span class="n">pDeltas</span><span class="p">,</span> \
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#3333AA&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">ctrRhos</span><span class="p">,</span> <span class="n">ctrDeltas</span><span class="p">,</span> \
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#AA3333&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">printout</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;decisionGraph.png&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">600</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">show</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="collection.cluster_assign"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.collection.cluster_assign">[docs]</a>    <span class="k">def</span> <span class="nf">cluster_assign</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;Assign a cluster to each point according according to its nearest neighbour with higher density.&quot;&quot;&quot;</span>
+
+        <span class="sd">&quot;&quot;&quot; Temporary workaround until I can make mutable p.cl work, SLOW! &quot;&quot;&quot;</span>
+
+        <span class="k">while</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">cl</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">]:</span>   
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span> 
+                <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="o">==</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">nneigh</span><span class="o">.</span><span class="n">cl</span></div>
+
+
+<div class="viewcode-block" id="collection.core_assign"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.collection.core_assign">[docs]</a>    <span class="k">def</span> <span class="nf">core_assign</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="sd">&quot;&quot;&quot;Assign points as belonging to the core or the halo of a cluster.&quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ctrs</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">clusters</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">=</span><span class="p">[]</span>
+
+            <span class="n">border</span><span class="o">=</span><span class="p">[]</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="o">==</span><span class="p">[</span><span class="n">c</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">clusters</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">dists</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">cl</span><span class="o">!=</span><span class="n">c</span> <span class="ow">and</span> <span class="n">value</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">refd</span><span class="p">:</span>
+                            <span class="n">border</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+                            <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">border</span><span class="o">!=</span><span class="p">[]:</span>
+                <span class="n">pmax</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="n">border</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">attrgetter</span><span class="p">(</span><span class="s1">&#39;rho&#39;</span><span class="p">))</span>             
+                <span class="n">refRho</span><span class="o">=</span><span class="n">pmax</span><span class="o">.</span><span class="n">rho</span>
+
+                <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">clusters</span><span class="p">[</span><span class="n">c</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">rho</span><span class="o">&lt;</span><span class="n">refRho</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">=</span><span class="kc">False</span>   </div>
+
+
+<div class="viewcode-block" id="collection.get_clusterList"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.collection.get_clusterList">[docs]</a>    <span class="k">def</span> <span class="nf">get_clusterList</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot; Returns the indeces of the clustered points as a list.</span>
+<span class="sd">            </span>
+<span class="sd">            Returns:</span>
+<span class="sd">                clusters (list, int): a list of lists containing the points indices belonging to each cluster</span>
+<span class="sd">        &quot;&quot;&quot;</span> 
+
+        <span class="n">clusters</span><span class="o">=</span><span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">clusters</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">inds</span><span class="o">=</span><span class="p">[]</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">val</span><span class="p">:</span>
+                <span class="n">inds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+            <span class="n">clusters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">inds</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">clusters</span> </div></div>
+
+
+<div class="viewcode-block" id="dist"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.dist">[docs]</a><span class="k">def</span> <span class="nf">dist</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s1">&#39;euclid&#39;</span><span class="p">,</span> <span class="n">PBC</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">netHeight</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">netWidth</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;Calculate the distance between two point objects in a N dimensional space according to a given metric.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        p1 (point): First point object for the distance.</span>
+<span class="sd">        p2 (point): Second point object for the distance.</span>
+<span class="sd">        metric (string): Metric to use. For now only euclidean distance is implemented.</span>
+<span class="sd">        PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.</span>
+<span class="sd">        netHeight (int, optional): Number of nodes along the first dimension, required for PBC.</span>
+<span class="sd">        netWidth (int, optional): Numer of nodes along the second dimension, required for PBC.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (float): The distance between the two points.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">metric</span><span class="o">==</span><span class="s1">&#39;euclid&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">)</span><span class="o">!=</span><span class="nb">len</span><span class="p">(</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">):</span> <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Points must have the same dimensionality!&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">PBC</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="sd">&quot;&quot;&quot; Hexagonal Periodic Boundary Conditions &quot;&quot;&quot;</span>
+
+                <span class="k">if</span> <span class="n">netHeight</span><span class="o">%</span><span class="mi">2</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                    <span class="n">offset</span><span class="o">=</span><span class="mi">0</span>
+                <span class="k">else</span><span class="p">:</span> 
+                    <span class="n">offset</span><span class="o">=</span><span class="mf">0.5</span>
+            
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>\
+                        <span class="o">+</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">])),</span>
+                    <span class="c1">#right</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">netWidth</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">netWidth</span><span class="p">)</span>\
+                        <span class="o">+</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">])),</span>
+                    <span class="c1">#bottom </span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span>\
+                        <span class="o">+</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)),</span>
+                    <span class="c1">#left</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">netWidth</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">netWidth</span><span class="p">)</span>\
+                        <span class="o">+</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">])),</span>
+                    <span class="c1">#top </span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span>\
+                        <span class="o">+</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)),</span>
+                    <span class="c1">#bottom right</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">netWidth</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">netWidth</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span>\
+                        <span class="o">+</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)),</span>
+                    <span class="c1">#bottom left</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">netWidth</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">netWidth</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span>\
+                        <span class="o">+</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)),</span>
+                    <span class="c1">#top right</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">netWidth</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">netWidth</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span>\
+                        <span class="o">+</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)),</span>
+                    <span class="c1">#top left</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">netWidth</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">netWidth</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span>\
+                        <span class="o">+</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">))])</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">diffs</span><span class="o">=</span><span class="mi">0</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">)):</span> 
+                    <span class="n">diffs</span><span class="o">=</span><span class="n">diffs</span><span class="o">+</span><span class="p">((</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">diffs</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="sd">&quot;&quot;&quot; Raise exception if metric other then euclidean is used &quot;&quot;&quot;</span>
+        
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;Only euclidean metric is implemented&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="step"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.step">[docs]</a><span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">,</span> <span class="n">PBC</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">netHeight</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">netWidth</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;Step function activated when the distance of two points is less than the cutoff.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        p1 (point): First point object for the distance.</span>
+<span class="sd">        p2 (point): Second point object for the distance.</span>
+<span class="sd">        cutoff (float): The cutoff to define the proximity of the points.</span>
+<span class="sd">        PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.</span>
+<span class="sd">        netHeight (int, optional): Number of nodes along the first dimension, required for PBC.</span>
+<span class="sd">        netWidth (int, optional): Numer of nodes along the second dimension, required for PBC.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (int): 1 if the points are closer than the cutoff, 0 otherwise.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">dist</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span> <span class="s1">&#39;euclid&#39;</span><span class="p">,</span> <span class="n">PBC</span><span class="p">,</span> <span class="n">netHeight</span><span class="p">,</span> <span class="n">netWidth</span><span class="p">)</span><span class="o">&lt;</span><span class="n">cutoff</span><span class="p">:</span> <span class="k">return</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span> <span class="k">return</span> <span class="mi">0</span>  </div>
+
+
+<div class="viewcode-block" id="gaussian"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.gaussian">[docs]</a><span class="k">def</span> <span class="nf">gaussian</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">PBC</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">netHeight</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">netWidth</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;Gaussian function of the distance between two points scaled with sigma.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        p1 (point): First point object for the distance.</span>
+<span class="sd">        p2 (point): Second point object for the distance.</span>
+<span class="sd">        sigma (float): The scaling factor for the distance.</span>
+<span class="sd">        PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.</span>
+<span class="sd">        netHeight (int, optional): Number of nodes along the first dimension, required for PBC.</span>
+<span class="sd">        netWidth (int, optional): Numer of nodes along the second dimension, required for PBC.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (float): value of the gaussian function.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="o">*</span><span class="n">dist</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span> <span class="s1">&#39;euclid&#39;</span><span class="p">,</span> <span class="n">PBC</span><span class="p">,</span> <span class="n">netHeight</span><span class="p">,</span> <span class="n">netWidth</span><span class="p">)</span><span class="o">*</span>\
+            <span class="n">dist</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span> <span class="s1">&#39;euclid&#39;</span><span class="p">,</span> <span class="n">PBC</span><span class="p">,</span> <span class="n">netHeight</span><span class="p">,</span> <span class="n">netWidth</span><span class="p">)</span><span class="o">/</span><span class="n">sigma</span><span class="o">*</span><span class="n">sigma</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="sigmoid"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.sigmoid">[docs]</a><span class="k">def</span> <span class="nf">sigmoid</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">PBC</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">netHeight</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">netWidth</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;Logistic function of the distance between two points scaled with sigma.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        p1 (point): First point object for the distance.</span>
+<span class="sd">        p2 (point): Second point object for the distance.</span>
+<span class="sd">        sigma (float): The scaling factor for the distance.</span>
+<span class="sd">        PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.</span>
+<span class="sd">        netHeight (int, optional): Number of nodes along the first dimension, required for PBC.</span>
+<span class="sd">        netWidth (int, optional): Numer of nodes along the second dimension, required for PBC.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (float): value of the logistic function.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="o">*</span><span class="p">(</span><span class="mf">1.0</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">((</span><span class="n">dist</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span> <span class="s1">&#39;euclid&#39;</span><span class="p">,</span> <span class="n">PBC</span><span class="p">,</span> <span class="n">netHeight</span><span class="p">,</span> <span class="n">netWidth</span><span class="p">))</span><span class="o">/</span><span class="n">sigma</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="densityPeak"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.densityPeak">[docs]</a><span class="k">def</span> <span class="nf">densityPeak</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">printout</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">percent</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">PBC</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">netHeight</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">netWidth</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot; Run the complete clustering algorithm in one go and returns the clustered indeces as a list.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sample (array): The input dataset</span>
+<span class="sd">            show (bool, optional): Choose to display the decision graph.</span>
+<span class="sd">            printout (bool, optional): Choose to save the decision graph to a file.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            clusters (list, int): a list of lists containing the points indices belonging to each cluster</span>
+<span class="sd">    &quot;&quot;&quot;</span>     
+    
+    <span class="n">pts</span><span class="o">=</span><span class="n">collection</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">percent</span><span class="o">=</span><span class="n">percent</span><span class="p">,</span> <span class="n">PBC</span><span class="o">=</span><span class="n">PBC</span><span class="p">,</span> <span class="n">netHeight</span><span class="o">=</span><span class="n">netHeight</span><span class="p">,</span> <span class="n">netWidth</span><span class="o">=</span><span class="n">netWidth</span><span class="p">)</span>
+    <span class="n">pts</span><span class="o">.</span><span class="n">decision_graph</span><span class="p">(</span><span class="n">show</span><span class="o">=</span><span class="n">show</span><span class="p">,</span> <span class="n">printout</span><span class="o">=</span><span class="n">printout</span><span class="p">)</span>
+    <span class="n">pts</span><span class="o">.</span><span class="n">cluster_assign</span><span class="p">()</span>
+    <span class="n">pts</span><span class="o">.</span><span class="n">core_assign</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">pts</span><span class="o">.</span><span class="n">get_clusterList</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="test"><a class="viewcode-back" href="../../modules.html#SimpSOM.densityPeak.test">[docs]</a><span class="k">def</span> <span class="nf">test</span><span class="p">():</span>
+
+    <span class="sd">&quot;&quot;&quot; Run the complete clustering algorithm on a test case and print the clustered points graph. &quot;&quot;&quot;</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Testing...&quot;</span><span class="p">)</span>
+
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+    <span class="n">samples1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">multivariate_normal</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="n">samples2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">multivariate_normal</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span> <span class="p">[[</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mi">2</span><span class="p">]],</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="n">samples3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">multivariate_normal</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span> <span class="p">[[</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mi">2</span><span class="p">]],</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="n">samples4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="p">[</span><span class="mi">50</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">samplesTmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">samples1</span><span class="p">,</span><span class="n">samples2</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">samplesTmp2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">samplesTmp</span><span class="p">,</span><span class="n">samples3</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">samplesTmp2</span><span class="p">,</span><span class="n">samples4</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="c1">#   plt.plot(samples[:, 0], samples[:, 1], &#39;.&#39;)</span>
+<span class="c1">#   plt.show()</span>
+
+    <span class="n">pts</span><span class="o">=</span><span class="n">collection</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
+
+    <span class="n">pts</span><span class="o">.</span><span class="n">decision_graph</span><span class="p">(</span><span class="n">printout</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">pts</span><span class="o">.</span><span class="n">cluster_assign</span><span class="p">()</span>
+    <span class="n">pts</span><span class="o">.</span><span class="n">core_assign</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">pts</span><span class="o">.</span><span class="n">get_clusterList</span><span class="p">())</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">True</span><span class="p">],</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">True</span><span class="p">],</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;#ff0000&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">False</span><span class="p">],</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">False</span><span class="p">],</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;#ffaaaa&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">2</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">True</span><span class="p">],</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">2</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">True</span><span class="p">],</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;#00ff00&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">2</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">False</span><span class="p">],</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">2</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">False</span><span class="p">],</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;#aaffaa&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">3</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">True</span><span class="p">],</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">3</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">True</span><span class="p">],</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;#ffff00&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">3</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">False</span><span class="p">],</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">3</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">False</span><span class="p">],</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;#ffffaa&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">4</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">True</span><span class="p">],</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">4</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">True</span><span class="p">],</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;#0000ff&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">4</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">False</span><span class="p">],</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">4</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">core</span><span class="o">==</span><span class="kc">False</span><span class="p">],</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;#aaaaff&quot;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done!&quot;</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="n">test</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">SimpSOM</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">API</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  <li><a href="../SimpSOM.html">SimpSOM</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Federico Comitani.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

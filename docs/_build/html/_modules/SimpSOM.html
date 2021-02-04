@@ -1,0 +1,827 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>SimpSOM &#8212; SimpSOM 2019 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for SimpSOM</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">SimpSOM (Simple Self-Organizing Maps) v1.3.4</span>
+<span class="sd">F. Comitani @2017 </span>
+<span class="sd">F. Comitani @2018 </span>
+<span class="sd">F. Comitani @2019 </span>
+<span class="sd"> </span>
+<span class="sd">A lightweight python library for Kohonen Self-Organising Maps (SOM).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">errno</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">cm</span>
+<span class="kn">import</span> <span class="nn">matplotlib.patches</span> <span class="k">as</span> <span class="nn">mpatches</span>
+<span class="kn">from</span> <span class="nn">mpl_toolkits.axes_grid1</span> <span class="kn">import</span> <span class="n">make_axes_locatable</span>
+
+<span class="kn">import</span> <span class="nn">SimpSOM.hexagons</span> <span class="k">as</span> <span class="nn">hx</span>
+<span class="kn">import</span> <span class="nn">SimpSOM.densityPeak</span> <span class="k">as</span> <span class="nn">dp</span>
+<span class="kn">import</span> <span class="nn">SimpSOM.qualityThreshold</span> <span class="k">as</span> <span class="nn">qt</span>
+
+<span class="kn">from</span> <span class="nn">sklearn.decomposition</span> <span class="kn">import</span> <span class="n">PCA</span>
+<span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">cluster</span>
+
+<span class="c1">#from joblib import Parallel, delayed</span>
+
+<div class="viewcode-block" id="somNet"><a class="viewcode-back" href="../modules.html#SimpSOM.somNet">[docs]</a><span class="k">class</span> <span class="nc">somNet</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; Kohonen SOM Network class. &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">netHeight</span><span class="p">,</span> <span class="n">netWidth</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">loadFile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">PCI</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">PBC</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;Initialise the SOM network.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            netHeight (int): Number of nodes along the first dimension.</span>
+<span class="sd">            netWidth (int): Numer of nodes along the second dimension.</span>
+<span class="sd">            data (np.array or list): N-dimensional dataset.</span>
+<span class="sd">            loadFile (str, optional): Name of file to load containing information </span>
+<span class="sd">                to initialise the network weights.</span>
+<span class="sd">            PCI (boolean): Activate/Deactivate Principal Component Analysis to set</span>
+<span class="sd">                the initial value of weights</span>
+<span class="sd">            PBC (boolean): Activate/Deactivate periodic boundary conditions,</span>
+<span class="sd">                warning: only quality threshold clustering algorithm works with PBC.</span>
+<span class="sd">            n_jobs (int) [WORK IN PROGRESS]: Number of parallel processes (-1 use all available)   </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    
+        <span class="sd">&quot;&quot;&quot; Switch to activate special workflow if running the colours example. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">colorEx</span><span class="o">=</span><span class="kc">False</span>
+        
+        <span class="sd">&quot;&quot;&quot; Switch to activate periodic PCA weights initialisation. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">PCI</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">PCI</span><span class="p">)</span>
+
+        <span class="sd">&quot;&quot;&quot; Switch to activate periodic boundary conditions. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">PBC</span><span class="p">)</span>
+
+        <span class="sd">&quot;&quot;&quot; Activate light parallelization. &quot;&quot;&quot;</span>
+        <span class="c1">#TODO:</span>
+        <span class="c1">#self.n_jobs=n_jobs</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Periodic Boundary Conditions active.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Periodic Boundary Conditions inactive.&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="o">=</span><span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]]))</span>
+
+        <span class="sd">&quot;&quot;&quot; Load the weights from file, generate them randomly or from PCA. &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">loadFile</span><span class="o">==</span><span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span> <span class="o">=</span> <span class="n">netHeight</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span> <span class="o">=</span> <span class="n">netWidth</span>
+
+            <span class="n">minVal</span><span class="p">,</span><span class="n">maxVal</span><span class="o">=</span><span class="p">[],[]</span>
+            <span class="n">pcaVec</span><span class="o">=</span><span class="p">[]</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">PCI</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The weights will be initialised with PCA.&quot;</span><span class="p">)</span>
+            
+                <span class="n">pca</span> <span class="o">=</span> <span class="n">PCA</span><span class="p">(</span><span class="n">n_components</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span>
+                <span class="n">pca</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+                <span class="n">pcaVec</span><span class="o">=</span><span class="n">pca</span><span class="o">.</span><span class="n">components_</span>
+            
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The weights will be initialised randomly.&quot;</span><span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+                    <span class="n">minVal</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span><span class="n">i</span><span class="p">]))</span>
+                    <span class="n">maxVal</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span><span class="n">i</span><span class="p">]))</span>
+            
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">somNode</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">,</span>\
+                        <span class="n">minVal</span><span class="o">=</span><span class="n">minVal</span><span class="p">,</span> <span class="n">maxVal</span><span class="o">=</span><span class="n">maxVal</span><span class="p">,</span> <span class="n">pcaVec</span><span class="o">=</span><span class="n">pcaVec</span><span class="p">))</span>
+
+        <span class="k">else</span><span class="p">:</span>   
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;The weights will be loaded from file.&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">loadFile</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.npy&#39;</span><span class="p">)</span><span class="o">==</span><span class="kc">False</span><span class="p">:</span>
+                <span class="n">loadFile</span><span class="o">=</span><span class="n">loadFile</span><span class="o">+</span><span class="s1">&#39;.npy&#39;</span>
+            <span class="n">weiArray</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">loadFile</span><span class="p">)</span>
+            <span class="c1">#add something to check that data and array have the same dimensions,</span>
+            <span class="c1">#or that they are mutually exclusive</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">weiArray</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">weiArray</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">weiArray</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">])</span>
+
+            <span class="c1">#start from 1 because 0 contains info on the size of the network</span>
+            <span class="n">countWei</span><span class="o">=</span><span class="mi">1</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">somNode</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">,</span> <span class="n">weiArray</span><span class="o">=</span><span class="n">weiArray</span><span class="p">[</span><span class="n">countWei</span><span class="p">]))</span>
+                    <span class="n">countWei</span><span class="o">+=</span><span class="mi">1</span>
+
+<div class="viewcode-block" id="somNet.save"><a class="viewcode-back" href="../modules.html#SimpSOM.somNet.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fileName</span><span class="o">=</span><span class="s1">&#39;somNet_trained&#39;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Saves the network dimensions, the pbc and nodes weights to a file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            fileName (str, optional): Name of file where the data will be saved.</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        
+        <span class="n">weiArray</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">weights</span><span class="p">))]</span>
+        <span class="n">weiArray</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span><span class="n">weiArray</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span><span class="n">weiArray</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="p">:</span>
+            <span class="n">weiArray</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="n">fileName</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">weiArray</span><span class="p">))</span></div>
+    
+
+<div class="viewcode-block" id="somNet.update_sigma"><a class="viewcode-back" href="../modules.html#SimpSOM.somNet.update_sigma">[docs]</a>    <span class="k">def</span> <span class="nf">update_sigma</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">iter</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Update the gaussian sigma.</span>
+
+<span class="sd">        Args:           </span>
+<span class="sd">            iter (int): Iteration number.</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">startSigma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="nb">iter</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">tau</span><span class="p">);</span></div>
+    
+
+<div class="viewcode-block" id="somNet.update_lrate"><a class="viewcode-back" href="../modules.html#SimpSOM.somNet.update_lrate">[docs]</a>    <span class="k">def</span> <span class="nf">update_lrate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">iter</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Update the learning rate.</span>
+
+<span class="sd">        Args:           </span>
+<span class="sd">            iter (int): Iteration number.</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">lrate</span> <span class="o">=</span>  <span class="bp">self</span><span class="o">.</span><span class="n">startLearnRate</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="nb">iter</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">epochs</span><span class="p">);</span></div>
+    
+
+<div class="viewcode-block" id="somNet.find_bmu"><a class="viewcode-back" href="../modules.html#SimpSOM.somNet.find_bmu">[docs]</a>    <span class="k">def</span> <span class="nf">find_bmu</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vec</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Find the best matching unit (BMU) for a given vector.</span>
+
+<span class="sd">        Args:           </span>
+<span class="sd">            vec (np.array): The vector to match.</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:            </span>
+<span class="sd">            bmu (somNode): The best matching unit node.</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    
+        <span class="n">minVal</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span><span class="o">.</span><span class="n">max</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="p">:</span>
+            <span class="n">dist</span><span class="o">=</span><span class="n">node</span><span class="o">.</span><span class="n">get_distance</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">dist</span> <span class="o">&lt;</span> <span class="n">minVal</span><span class="p">:</span>
+                <span class="n">minVal</span><span class="o">=</span><span class="n">dist</span>
+                <span class="n">bmu</span><span class="o">=</span><span class="n">node</span>
+        <span class="k">return</span> <span class="n">bmu</span>  </div>
+            
+
+<div class="viewcode-block" id="somNet.train"><a class="viewcode-back" href="../modules.html#SimpSOM.somNet.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">startLearnRate</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Train the SOM.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            startLearnRate (float): Initial learning rate.</span>
+<span class="sd">            epochs (int): Number of training iterations. If not selected (or -1)</span>
+<span class="sd">                automatically set epochs as 10 times the number of datapoints</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Training SOM... 0%&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">startSigma</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">startLearnRate</span> <span class="o">=</span> <span class="n">startLearnRate</span>
+        <span class="k">if</span> <span class="n">epochs</span><span class="o">==-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">epochs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="mi">10</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">epochs</span><span class="o">=</span><span class="n">epochs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tau</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">epochs</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">startSigma</span><span class="p">)</span>
+    
+        <span class="c1">#TODO:</span>
+        <span class="c1">#Parallel(n_jobs=self.n_jobs)(delayed(my_func)(c, K, N) for c in inputs)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">epochs</span><span class="p">):</span>
+
+            <span class="k">if</span> <span class="n">i</span><span class="o">%</span><span class="mi">100</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">((</span><span class="s2">&quot;</span><span class="se">\r</span><span class="s2">Training SOM... &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mf">100.0</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">epochs</span><span class="p">))</span><span class="o">+</span><span class="s2">&quot;%&quot;</span> <span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_sigma</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_lrate</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            
+            <span class="sd">&quot;&quot;&quot; Train with the bootstrap-like method: </span>
+<span class="sd">                instead of using all the training points, a random datapoint is chosen with substitution</span>
+<span class="sd">                for each iteration and used to update the weights of all the nodes.</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            
+            <span class="n">inputVec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="p">:]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]]))</span>
+            
+            <span class="n">bmu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">find_bmu</span><span class="p">(</span><span class="n">inputVec</span><span class="p">)</span>
+            
+            <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="p">:</span>
+                <span class="n">node</span><span class="o">.</span><span class="n">update_weights</span><span class="p">(</span><span class="n">inputVec</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lrate</span><span class="p">,</span> <span class="n">bmu</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\r</span><span class="s2">Training SOM... done!&quot;</span><span class="p">)</span></div>
+
+        
+<div class="viewcode-block" id="somNet.nodes_graph"><a class="viewcode-back" href="../modules.html#SimpSOM.somNet.nodes_graph">[docs]</a>    <span class="k">def</span> <span class="nf">nodes_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">colnum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">printout</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Plot a 2D map with hexagonal nodes and weights values</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            colnum (int): The index of the weight that will be shown as colormap.</span>
+<span class="sd">            show (bool, optional): Choose to display the plot.</span>
+<span class="sd">            printout (bool, optional): Choose to save the plot to a file.</span>
+<span class="sd">            colname (str, optional): Name of the column to be shown on the map.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">colname</span><span class="p">:</span>
+            <span class="n">colname</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">colnum</span><span class="p">)</span>
+
+        <span class="n">centers</span> <span class="o">=</span> <span class="p">[[</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="p">]</span>
+
+        <span class="n">widthP</span><span class="o">=</span><span class="mi">100</span>
+        <span class="n">dpi</span><span class="o">=</span><span class="mi">72</span>
+        <span class="n">xInch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">*</span><span class="n">widthP</span><span class="o">/</span><span class="n">dpi</span> 
+        <span class="n">yInch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="n">widthP</span><span class="o">/</span><span class="n">dpi</span> 
+        <span class="n">fig</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">xInch</span><span class="p">,</span> <span class="n">yInch</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">colorEx</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="mi">2</span><span class="p">])]</span><span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="p">]</span>   
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">hx</span><span class="o">.</span><span class="n">plot_hex</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">centers</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Node Grid w Color Features&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
+            <span class="n">printName</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="s1">&#39;nodesColors.png&#39;</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">colnum</span><span class="p">]</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="p">]</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">hx</span><span class="o">.</span><span class="n">plot_hex</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">centers</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Node Grid w Feature &#39;</span> <span class="o">+</span>  <span class="n">colname</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
+            <span class="n">divider</span> <span class="o">=</span> <span class="n">make_axes_locatable</span><span class="p">(</span><span class="n">ax</span><span class="p">)</span>
+            <span class="n">cax</span> <span class="o">=</span> <span class="n">divider</span><span class="o">.</span><span class="n">append_axes</span><span class="p">(</span><span class="s2">&quot;right&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;5%&quot;</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">cbar</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">ax</span><span class="o">.</span><span class="n">collections</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cax</span><span class="o">=</span><span class="n">cax</span><span class="p">)</span>
+            <span class="n">cbar</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="n">colname</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+            <span class="n">cbar</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">labelsize</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax</span><span class="p">)</span>
+            <span class="n">printName</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="s1">&#39;nodesFeature_&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">colnum</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;.png&#39;</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="n">printout</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">printName</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">show</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">show</span><span class="o">!=</span><span class="kc">False</span> <span class="ow">and</span> <span class="n">printout</span><span class="o">!=</span><span class="kc">False</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="somNet.diff_graph"><a class="viewcode-back" href="../modules.html#SimpSOM.somNet.diff_graph">[docs]</a>    <span class="k">def</span> <span class="nf">diff_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">printout</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">returns</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Plot a 2D map with nodes and weights difference among neighbouring nodes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            show (bool, optional): Choose to display the plot.</span>
+<span class="sd">            printout (bool, optional): Choose to save the plot to a file.</span>
+<span class="sd">            returns (bool, optional): Choose to return the difference value.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (list): difference value for each node.             </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">neighbours</span><span class="o">=</span><span class="p">[]</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="p">:</span>
+            <span class="n">nodelist</span><span class="o">=</span><span class="p">[]</span>
+            <span class="k">for</span> <span class="n">nodet</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">node</span> <span class="o">!=</span> <span class="n">nodet</span> <span class="ow">and</span> <span class="n">node</span><span class="o">.</span><span class="n">get_nodeDistance</span><span class="p">(</span><span class="n">nodet</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mf">1.001</span><span class="p">:</span>
+                    <span class="n">nodelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nodet</span><span class="p">)</span>
+            <span class="n">neighbours</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nodelist</span><span class="p">)</span>     
+            
+        <span class="n">diffs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">node</span><span class="p">,</span> <span class="n">neighbours</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="p">,</span> <span class="n">neighbours</span><span class="p">):</span>
+            <span class="n">diff</span><span class="o">=</span><span class="mi">0</span>
+            <span class="k">for</span> <span class="n">nb</span> <span class="ow">in</span> <span class="n">neighbours</span><span class="p">:</span>
+                <span class="n">diff</span><span class="o">=</span><span class="n">diff</span><span class="o">+</span><span class="n">node</span><span class="o">.</span><span class="n">get_distance</span><span class="p">(</span><span class="n">nb</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span>
+            <span class="n">diffs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span>  
+
+        <span class="n">centers</span> <span class="o">=</span> <span class="p">[[</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodeList</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">show</span><span class="o">==</span><span class="kc">True</span> <span class="ow">or</span> <span class="n">printout</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+        
+            <span class="n">widthP</span><span class="o">=</span><span class="mi">100</span>
+            <span class="n">dpi</span><span class="o">=</span><span class="mi">72</span>
+            <span class="n">xInch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">*</span><span class="n">widthP</span><span class="o">/</span><span class="n">dpi</span> 
+            <span class="n">yInch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="n">widthP</span><span class="o">/</span><span class="n">dpi</span> 
+            <span class="n">fig</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">xInch</span><span class="p">,</span> <span class="n">yInch</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">)</span>
+
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">hx</span><span class="o">.</span><span class="n">plot_hex</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">centers</span><span class="p">,</span> <span class="n">diffs</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Nodes Grid w Weights Difference&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
+            
+            <span class="n">divider</span> <span class="o">=</span> <span class="n">make_axes_locatable</span><span class="p">(</span><span class="n">ax</span><span class="p">)</span>
+            <span class="n">cax</span> <span class="o">=</span> <span class="n">divider</span><span class="o">.</span><span class="n">append_axes</span><span class="p">(</span><span class="s2">&quot;right&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;5%&quot;</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">cbar</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">ax</span><span class="o">.</span><span class="n">collections</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cax</span><span class="o">=</span><span class="n">cax</span><span class="p">)</span>
+            <span class="n">cbar</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="s1">&#39;Weights Difference&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+            <span class="n">cbar</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">labelsize</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax</span><span class="p">)</span>
+
+            <span class="n">printName</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="s1">&#39;nodesDifference.png&#39;</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">printout</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">printName</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">show</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">show</span><span class="o">!=</span><span class="kc">False</span> <span class="ow">and</span> <span class="n">printout</span><span class="o">!=</span><span class="kc">False</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">returns</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">diffs</span> </div>
+
+<div class="viewcode-block" id="somNet.project"><a class="viewcode-back" href="../modules.html#SimpSOM.somNet.project">[docs]</a>    <span class="k">def</span> <span class="nf">project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">colnum</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="p">[],</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">printout</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">,</span> <span class="n">colname</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;Project the datapoints of a given array to the 2D space of the </span>
+<span class="sd">            SOM by calculating the bmus. If requested plot a 2D map with as </span>
+<span class="sd">            implemented in nodes_graph and adds circles to the bmu</span>
+<span class="sd">            of each datapoint in a given array.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.array): An array containing datapoints to be mapped.</span>
+<span class="sd">            colnum (int): The index of the weight that will be shown as colormap. </span>
+<span class="sd">                If not chosen, the difference map will be used instead.</span>
+<span class="sd">            show (bool, optional): Choose to display the plot.</span>
+<span class="sd">            printout (bool, optional): Choose to save the plot to a file.</span>
+<span class="sd">            colname (str, optional): Name of the column to be shown on the map.</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            (list): bmu x,y position for each input array datapoint. </span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">colname</span><span class="p">:</span>
+            <span class="n">colname</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">colnum</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">labels</span> <span class="o">!=</span> <span class="p">[]:</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;#a6cee3&#39;</span><span class="p">,</span><span class="s1">&#39;#1f78b4&#39;</span><span class="p">,</span><span class="s1">&#39;#b2df8a&#39;</span><span class="p">,</span><span class="s1">&#39;#33a02c&#39;</span><span class="p">,</span><span class="s1">&#39;#fb9a99&#39;</span><span class="p">,</span><span class="s1">&#39;#e31a1c&#39;</span><span class="p">,</span>
+            		  <span class="s1">&#39;#fdbf6f&#39;</span><span class="p">,</span><span class="s1">&#39;#ff7f00&#39;</span><span class="p">,</span><span class="s1">&#39;#cab2d6&#39;</span><span class="p">,</span><span class="s1">&#39;#6a3d9a&#39;</span><span class="p">,</span><span class="s1">&#39;#ffff99&#39;</span><span class="p">,</span><span class="s1">&#39;#b15928&#39;</span><span class="p">]</span>
+            <span class="n">class_assignment</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">class_assignment</span><span class="p">:</span>
+                    <span class="n">class_assignment</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">colors</span><span class="p">[</span><span class="n">counter</span><span class="p">]</span>
+                    <span class="n">counter</span> <span class="o">=</span> <span class="p">(</span><span class="n">counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">%</span><span class="nb">len</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span>
+
+        <span class="n">bmuList</span><span class="p">,</span><span class="bp">cls</span><span class="o">=</span><span class="p">[],[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">bmuList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">find_bmu</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">i</span><span class="p">,:])</span><span class="o">.</span><span class="n">pos</span><span class="p">)</span>   
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">colorEx</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">i</span><span class="p">,:])</span>
+            <span class="k">else</span><span class="p">:</span> 
+                <span class="k">if</span> <span class="n">labels</span><span class="o">!=</span><span class="p">[]:</span>   
+                    <span class="bp">cls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">class_assignment</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]])</span>
+                <span class="k">elif</span> <span class="n">colnum</span><span class="o">==-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="bp">cls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;#ffffff&#39;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span> 
+                    <span class="bp">cls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">colnum</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">show</span><span class="o">==</span><span class="kc">True</span> <span class="ow">or</span> <span class="n">printout</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+        
+            <span class="sd">&quot;&quot;&quot; Call nodes_graph/diff_graph to first build the 2D map of the nodes. &quot;&quot;&quot;</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">colorEx</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="n">printName</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="s1">&#39;colorProjection.png&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">nodes_graph</span><span class="p">(</span><span class="n">colnum</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">([</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">bmuList</span><span class="p">],[</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">bmuList</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="p">,</span>  
+                        <span class="n">s</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;#ffffff&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Datapoints Projection&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1">#a random perturbation is added to the points positions so that data </span>
+                <span class="c1">#belonging plotted to the same bmu will be visible in the plot      </span>
+                <span class="k">if</span> <span class="n">colnum</span><span class="o">==-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">printName</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="s1">&#39;projection_difference.png&#39;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">diff_graph</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">([</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mf">0.125</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">()</span><span class="o">*</span><span class="mf">0.25</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">bmuList</span><span class="p">],[</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mf">0.125</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">()</span><span class="o">*</span><span class="mf">0.25</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">bmuList</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="bp">cls</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cm</span><span class="o">.</span><span class="n">viridis</span><span class="p">,</span>
+                            <span class="n">s</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Datapoints Projection on Nodes Difference&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>   
+                    <span class="n">printName</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="s1">&#39;projection_&#39;</span><span class="o">+</span> <span class="n">colname</span> <span class="o">+</span><span class="s1">&#39;.png&#39;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">nodes_graph</span><span class="p">(</span><span class="n">colnum</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">colname</span><span class="p">)</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">([</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mf">0.125</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">()</span><span class="o">*</span><span class="mf">0.25</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">bmuList</span><span class="p">],[</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mf">0.125</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">()</span><span class="o">*</span><span class="mf">0.25</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">bmuList</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="bp">cls</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cm</span><span class="o">.</span><span class="n">viridis</span><span class="p">,</span>
+                            <span class="n">s</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;#ffffff&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Datapoints Projection #&#39;</span> <span class="o">+</span>  <span class="nb">str</span><span class="p">(</span><span class="n">colnum</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
+                
+            <span class="k">if</span> <span class="n">labels</span><span class="o">!=</span><span class="p">[]:</span>
+                <span class="n">recs</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">class_assignment</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">recs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mpatches</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">fc</span><span class="o">=</span><span class="n">class_assignment</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">recs</span><span class="p">,</span><span class="n">class_assignment</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span><span class="n">loc</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># if labels!=[]:</span>
+            <span class="c1">#     for label, x, y in zip(labels, [pos[0] for pos in bmuList],[pos[1] for pos in bmuList]):</span>
+            <span class="c1">#         plt.annotate(label, xy=(x,y), xytext=(-0.5, 0.5), textcoords=&#39;offset points&#39;, ha=&#39;right&#39;, va=&#39;bottom&#39;, size=50, zorder=11) </span>
+            
+            <span class="k">if</span> <span class="n">printout</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">printName</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">72</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">show</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+        
+        <span class="sd">&quot;&quot;&quot; Print the x,y coordinates of bmus, useful for the clustering function. &quot;&quot;&quot;</span>
+        
+        <span class="k">return</span> <span class="p">[[</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">bmuList</span><span class="p">]</span> </div>
+        
+        
+<div class="viewcode-block" id="somNet.cluster"><a class="viewcode-back" href="../modules.html#SimpSOM.somNet.cluster">[docs]</a>    <span class="k">def</span> <span class="nf">cluster</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;qthresh&#39;</span><span class="p">,</span> <span class="n">cutoff</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">quant</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">percent</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">numcl</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>\
+                    <span class="n">savefile</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">filetype</span><span class="o">=</span><span class="s1">&#39;dat&#39;</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">printout</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Clusters the data in a given array according to the SOM trained map.</span>
+<span class="sd">            The clusters can also be plotted.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.array): An array containing datapoints to be clustered.</span>
+<span class="sd">            type (str, optional): The type of clustering to be applied, so far only quality threshold (qthresh) </span>
+<span class="sd">                algorithm is directly implemented, other algorithms require sklearn.</span>
+<span class="sd">            cutoff (float, optional): Cutoff for the quality threshold algorithm. This also doubles as</span>
+<span class="sd">                maximum distance of two points to be considered in the same cluster with DBSCAN.</span>
+<span class="sd">            percent (float, optional): The percentile that defines the reference distance in density peak clustering (dpeak).</span>
+<span class="sd">            numcl (int, optional): The number of clusters for K-Means clustering</span>
+<span class="sd">            quant (float, optional): Quantile used to calculate the bandwidth of the mean shift algorithm.</span>
+<span class="sd">            savefile (bool, optional): Choose to save the resulting clusters in a text file.</span>
+<span class="sd">            filetype (string, optional): Format of the file where the clusters will be saved (csv or dat)</span>
+<span class="sd">            show (bool, optional): Choose to display the plot.</span>
+<span class="sd">            printout (bool, optional): Choose to save the plot to a file.</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            (list of int): A nested list containing the clusters with indexes of the input array points.</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="sd">&quot;&quot;&quot; Call project to first find the bmu for each array datapoint, but without producing any graph. &quot;&quot;&quot;</span>
+
+        <span class="n">bmuList</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">printout</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">clusters</span><span class="o">=</span><span class="p">[]</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="o">==</span><span class="s1">&#39;qthresh&#39;</span><span class="p">:</span>
+            
+            <span class="sd">&quot;&quot;&quot; Cluster according to the quality threshold algorithm (slow!). &quot;&quot;&quot;</span>
+    
+            <span class="n">clusters</span> <span class="o">=</span> <span class="n">qt</span><span class="o">.</span><span class="n">qualityThreshold</span><span class="p">(</span><span class="n">bmuList</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="nb">type</span><span class="o">==</span><span class="s1">&#39;dpeak&#39;</span><span class="p">:</span>
+
+            <span class="sd">&quot;&quot;&quot; Cluster according to the density peak algorithm. &quot;&quot;&quot;</span>
+
+            <span class="n">clusters</span> <span class="o">=</span> <span class="n">dp</span><span class="o">.</span><span class="n">densityPeak</span><span class="p">(</span><span class="n">bmuList</span><span class="p">,</span> <span class="n">PBC</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="p">,</span> <span class="n">netHeight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="p">,</span> <span class="n">netWidth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="nb">type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;MeanShift&#39;</span><span class="p">,</span> <span class="s1">&#39;DBSCAN&#39;</span><span class="p">,</span> <span class="s1">&#39;KMeans&#39;</span><span class="p">]:</span>
+        
+            <span class="sd">&quot;&quot;&quot; Cluster according to algorithms implemented in sklearn. &quot;&quot;&quot;</span>
+        
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: Only Quality Threshold and Density Peak clustering work with PBC&quot;</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+        
+                <span class="k">if</span> <span class="nb">type</span><span class="o">==</span><span class="s1">&#39;MeanShift&#39;</span><span class="p">:</span>
+                    <span class="n">bandwidth</span> <span class="o">=</span> <span class="n">cluster</span><span class="o">.</span><span class="n">estimate_bandwidth</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">bmuList</span><span class="p">),</span> <span class="n">quantile</span><span class="o">=</span><span class="n">quant</span><span class="p">,</span> <span class="n">n_samples</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+                    <span class="n">cl</span> <span class="o">=</span> <span class="n">cluster</span><span class="o">.</span><span class="n">MeanShift</span><span class="p">(</span><span class="n">bandwidth</span><span class="o">=</span><span class="n">bandwidth</span><span class="p">,</span> <span class="n">bin_seeding</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">bmuList</span><span class="p">)</span>
+                
+                <span class="k">if</span> <span class="nb">type</span><span class="o">==</span><span class="s1">&#39;DBSCAN&#39;</span><span class="p">:</span>
+                    <span class="n">cl</span> <span class="o">=</span> <span class="n">cluster</span><span class="o">.</span><span class="n">DBSCAN</span><span class="p">(</span><span class="n">eps</span><span class="o">=</span><span class="n">cutoff</span><span class="p">,</span> <span class="n">min_samples</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">bmuList</span><span class="p">)</span>     
+                
+                <span class="k">if</span> <span class="nb">type</span><span class="o">==</span><span class="s1">&#39;KMeans&#39;</span><span class="p">:</span>
+                    <span class="n">cl</span><span class="o">=</span> <span class="n">cluster</span><span class="o">.</span><span class="n">KMeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="n">numcl</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">bmuList</span><span class="p">)</span>
+
+                <span class="n">clLabs</span> <span class="o">=</span> <span class="n">cl</span><span class="o">.</span><span class="n">labels_</span>                 
+                    
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">clLabs</span><span class="p">):</span>
+                    <span class="n">clList</span><span class="o">=</span><span class="p">[]</span>
+                    <span class="n">tmpList</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bmuList</span><span class="p">))</span>
+                    <span class="k">for</span> <span class="n">j</span><span class="p">,</span><span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">tmpList</span><span class="p">,</span><span class="n">clLabs</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">i</span><span class="o">==</span><span class="n">k</span><span class="p">:</span>
+                            <span class="n">clList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+                    <span class="n">clusters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">clList</span><span class="p">)</span>     
+            <span class="k">except</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">((</span><span class="s1">&#39;Unexpected error: &#39;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[</span><span class="mi">0</span><span class="p">]))</span>
+                <span class="k">raise</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;Error: unkown clustering algorithm &quot;</span> <span class="o">+</span> <span class="nb">type</span><span class="p">)</span>
+
+        
+        <span class="k">if</span> <span class="n">savefile</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+            <span class="n">file</span><span class="o">=</span><span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="nb">type</span><span class="o">+</span><span class="s1">&#39;_clusters.&#39;</span><span class="o">+</span><span class="n">filetype</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">filetype</span><span class="o">==</span><span class="s1">&#39;csv&#39;</span><span class="p">:</span>
+                <span class="n">separator</span><span class="o">=</span><span class="s1">&#39;,&#39;</span>
+            <span class="k">else</span><span class="p">:</span> 
+                <span class="n">separator</span><span class="o">=</span><span class="s1">&#39; &#39;</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">clusters</span><span class="p">:</span>
+                <span class="k">for</span> <span class="nb">id</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span> <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span><span class="o">+</span><span class="n">separator</span><span class="p">)</span>
+                <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">printout</span><span class="o">==</span><span class="kc">True</span> <span class="ow">or</span> <span class="n">show</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+            
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">printName</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="nb">type</span><span class="o">+</span><span class="s1">&#39;_clusters.png&#39;</span><span class="p">)</span>
+            
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+            
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">clusters</span><span class="p">)):</span>
+                <span class="n">randCl</span> <span class="o">=</span> <span class="s2">&quot;#</span><span class="si">%06x</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mh">0xFFFFFF</span><span class="p">)</span>
+                <span class="n">xc</span><span class="p">,</span><span class="n">yc</span><span class="o">=</span><span class="p">[],[]</span>
+                <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">clusters</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                    <span class="c1">#again, invert y and x to be consistent with the previous maps</span>
+                    <span class="n">xc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bmuList</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="p">)][</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">yc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">-</span><span class="n">bmuList</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="p">)][</span><span class="mi">1</span><span class="p">])</span>    
+                <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">xc</span><span class="p">,</span> <span class="n">yc</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">randCl</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;cluster&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">invert_yaxis</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mf">1.05</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">loc</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">borderaxespad</span><span class="o">=</span><span class="mf">0.</span><span class="p">)</span>           
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Clusters&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">printout</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">printName</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">600</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">show</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>   
+            
+        <span class="k">return</span> <span class="n">clusters</span></div></div>
+
+        
+<div class="viewcode-block" id="somNode"><a class="viewcode-back" href="../modules.html#SimpSOM.somNode">[docs]</a><span class="k">class</span> <span class="nc">somNode</span><span class="p">:</span>
+
+    <span class="sd">&quot;&quot;&quot; Single Kohonen SOM Node class. &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">numWeights</span><span class="p">,</span> <span class="n">netHeight</span><span class="p">,</span> <span class="n">netWidth</span><span class="p">,</span> <span class="n">PBC</span><span class="p">,</span> <span class="n">minVal</span><span class="o">=</span><span class="p">[],</span> <span class="n">maxVal</span><span class="o">=</span><span class="p">[],</span> <span class="n">pcaVec</span><span class="o">=</span><span class="p">[],</span> <span class="n">weiArray</span><span class="o">=</span><span class="p">[]):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Initialise the SOM node.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (int): Position along the first network dimension.</span>
+<span class="sd">            y (int): Position along the second network dimension</span>
+<span class="sd">            numWeights (int): Length of the weights vector.</span>
+<span class="sd">            netHeight (int): Network height, needed for periodic boundary conditions (PBC)</span>
+<span class="sd">            netWidth (int): Network width, needed for periodic boundary conditions (PBC)</span>
+<span class="sd">            PBC (bool): Activate/deactivate periodic boundary conditions.</span>
+<span class="sd">            minVal(np.array, optional): minimum values for the weights found in the data</span>
+<span class="sd">            maxVal(np.array, optional): maximum values for the weights found in the data</span>
+<span class="sd">            pcaVec(np.array, optional): Array containing the two PCA vectors.</span>
+<span class="sd">            weiArray (np.array, optional): Array containing the weights to give</span>
+<span class="sd">                to the node if a file was loaded.</span>
+
+<span class="sd">                </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    
+        <span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="o">=</span><span class="n">PBC</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">hx</span><span class="o">.</span><span class="n">coorToHex</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">=</span><span class="n">netHeight</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">=</span><span class="n">netWidth</span>
+
+        <span class="k">if</span> <span class="n">weiArray</span><span class="o">==</span><span class="p">[]</span> <span class="ow">and</span> <span class="n">pcaVec</span><span class="o">==</span><span class="p">[]:</span>
+            <span class="c1">#select randomly in the space spanned by the data</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numWeights</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span><span class="o">*</span><span class="p">(</span><span class="n">maxVal</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">minVal</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">+</span><span class="n">minVal</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">weiArray</span><span class="o">==</span><span class="p">[]</span> <span class="ow">and</span> <span class="n">pcaVec</span><span class="o">!=</span><span class="p">[]:</span>
+            <span class="c1">#select uniformly in the space spanned by the PCA vectors</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="mf">2.0</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span> <span class="o">*</span> <span class="n">pcaVec</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="mf">2.0</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span> <span class="o">*</span><span class="n">pcaVec</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numWeights</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">weiArray</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    
+<div class="viewcode-block" id="somNode.get_distance"><a class="viewcode-back" href="../modules.html#SimpSOM.somNode.get_distance">[docs]</a>    <span class="k">def</span> <span class="nf">get_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vec</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Calculate the distance between the weights vector of the node and a given vector.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            vec (np.array): The vector from which the distance is calculated.</span>
+<span class="sd">            </span>
+<span class="sd">        Returns: </span>
+<span class="sd">            (float): The distance between the two weight vectors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    
+        <span class="nb">sum</span><span class="o">=</span><span class="mi">0</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span><span class="o">==</span><span class="nb">len</span><span class="p">(</span><span class="n">vec</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">vec</span><span class="p">)):</span>
+                <span class="nb">sum</span><span class="o">+=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">vec</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">vec</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">sum</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;Error: dimension of nodes != input data dimension!&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="somNode.get_nodeDistance"><a class="viewcode-back" href="../modules.html#SimpSOM.somNode.get_nodeDistance">[docs]</a>    <span class="k">def</span> <span class="nf">get_nodeDistance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Calculate the distance within the network between the node and another node.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            node (somNode): The node from which the distance is calculated.</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            (float): The distance between the two nodes.</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">PBC</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+
+            <span class="sd">&quot;&quot;&quot; Hexagonal Periodic Boundary Conditions &quot;&quot;&quot;</span>
+            
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">%</span><span class="mi">2</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">offset</span><span class="o">=</span><span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span> 
+                <span class="n">offset</span><span class="o">=</span><span class="mf">0.5</span>
+
+            <span class="k">return</span>  <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>\
+                                <span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">])),</span>
+                            <span class="c1">#right</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span>\
+                                <span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">])),</span>
+                            <span class="c1">#bottom </span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span>\
+                                <span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)),</span>
+                            <span class="c1">#left</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="p">)</span>\
+                                <span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">])),</span>
+                            <span class="c1">#top </span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span>\
+                                <span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)),</span>
+                            <span class="c1">#bottom right</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span>\
+                                <span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)),</span>
+                            <span class="c1">#bottom left</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">+</span><span class="n">offset</span><span class="p">)</span>\
+                                <span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)),</span>
+                            <span class="c1">#top right</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span>\
+                                <span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)),</span>
+                            <span class="c1">#top left</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netWidth</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span>\
+                                <span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">netHeight</span><span class="o">*</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">))])</span>
+                        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>\
+                <span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">node</span><span class="o">.</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span></div>
+
+
+
+<div class="viewcode-block" id="somNode.update_weights"><a class="viewcode-back" href="../modules.html#SimpSOM.somNode.update_weights">[docs]</a>    <span class="k">def</span> <span class="nf">update_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputVec</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">lrate</span><span class="p">,</span> <span class="n">bmu</span><span class="p">):</span>
+    
+        <span class="sd">&quot;&quot;&quot;Update the node Weights.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            inputVec (np.array): A weights vector whose distance drives the direction of the update.</span>
+<span class="sd">            sigma (float): The updated gaussian sigma.</span>
+<span class="sd">            lrate (float): The updated learning rate.</span>
+<span class="sd">            bmu (somNode): The best matching unit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    
+        <span class="n">dist</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_nodeDistance</span><span class="p">(</span><span class="n">bmu</span><span class="p">)</span>
+        <span class="n">gauss</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">dist</span><span class="o">*</span><span class="n">dist</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">sigma</span><span class="o">*</span><span class="n">sigma</span><span class="p">))</span>
+
+        <span class="c1">#if gauss&gt;0: #pointless</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">gauss</span><span class="o">*</span><span class="n">lrate</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">inputVec</span><span class="p">[</span><span class="n">i</span><span class="p">])</span></div></div>
+        
+<div class="viewcode-block" id="run_colorsExample"><a class="viewcode-back" href="../modules.html#SimpSOM.run_colorsExample">[docs]</a><span class="k">def</span> <span class="nf">run_colorsExample</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">):</span>   
+
+    <span class="sd">&quot;&quot;&quot;Example of usage of SimpSOM: a number of vectors of length three</span>
+<span class="sd">        (corresponding to the RGB values of a color) are used to briefly train a small network.</span>
+<span class="sd">        Different example graphs are then printed from the trained network.     </span>
+<span class="sd">    &quot;&quot;&quot;</span> 
+
+    <span class="sd">&quot;&quot;&quot;Try to create the folder&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">path</span><span class="o">!=</span><span class="s1">&#39;./&#39;</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exception</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">exception</span><span class="o">.</span><span class="n">errno</span> <span class="o">!=</span> <span class="n">errno</span><span class="o">.</span><span class="n">EEXIST</span><span class="p">:</span>
+                <span class="k">raise</span>
+                
+    <span class="n">raw_data</span> <span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mf">0.2</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="mf">0.5</span><span class="p">]])</span>
+    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;red&#39;</span><span class="p">,</span><span class="s1">&#39;green&#39;</span><span class="p">,</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span><span class="s1">&#39;yellow&#39;</span><span class="p">,</span><span class="s1">&#39;magenta&#39;</span><span class="p">,</span><span class="s1">&#39;cyan&#39;</span><span class="p">,</span><span class="s1">&#39;indigo&#39;</span><span class="p">]</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Welcome to SimpSOM (Simple Self Organizing Maps) v1.3.4!</span><span class="se">\n</span><span class="s2">Here is a quick example of what this library can do.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The algorithm will now try to map the following colors: &quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">((</span><span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span> 
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;and &quot;</span> <span class="o">+</span> <span class="n">labels</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span> <span class="s2">&quot;.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="n">net</span> <span class="o">=</span> <span class="n">somNet</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">,</span> <span class="n">PBC</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> 
+    
+    <span class="n">net</span><span class="o">.</span><span class="n">colorEx</span><span class="o">=</span><span class="kc">True</span>
+    <span class="n">net</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Saving weights and a few graphs...&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+    <span class="n">net</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;colorExample_weights&#39;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">net</span><span class="o">.</span><span class="n">nodes_graph</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
+    
+    <span class="n">net</span><span class="o">.</span><span class="n">diff_graph</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">test</span><span class="o">=</span><span class="n">net</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">raw_data</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">test</span><span class="p">)</span>
+    <span class="n">net</span><span class="o">.</span><span class="n">cluster</span><span class="p">(</span><span class="n">raw_data</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;qthresh&#39;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span> 
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;done!&quot;</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="n">run_colorsExample</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SimpSOM</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">API</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Federico Comitani.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

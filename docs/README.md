@@ -28,16 +28,17 @@ origin space.
 
 ## Example of Usage
 
-Here is a quick example on how to use the library with a `raw_data`
+
+Here is a quick example on how to use the library with a `raw_data` placeholder (a numpy ndarray with samples as rows and features as columns)
 dataset:
 
     #Import the library
     import SimpSOM as sps
 
-    #Build a network 20x20 with a weights format taken from the raw_data and activate Periodic Boundary Conditions. 
+    #Build a network 20x20 with a weights format taken from the input data and activate Periodic Boundary Conditions.
     net = sps.somNet(20, 20, raw_data, PBC=True)
 
-    #Train the network for 10000 epochs and with initial learning rate of 0.01. 
+    #Train the network for 10000 epochs and with initial learning rate of 0.01.
     net.train(0.01, 10000)
 
     #Save the weights to file
@@ -52,7 +53,12 @@ dataset:
     net.project(raw_data, labels=labels)
 
     #Cluster the datapoints according to the Quality Threshold algorithm.
-    net.cluster(raw_data, type='qthresh')	
+    net.cluster(raw_data, type='qthresh')
+
+To load the weights from a previous run you will need to initialize a new net object.
+The dimensions will be overwritten by the saved weights format:
+
+    net = sps.somNet(20, 20, raw_data, loadFile='weights.npy')
 	
 ## A More Interesting Example: MNIST
 

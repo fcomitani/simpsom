@@ -1,4 +1,4 @@
-SimpSOM package
+SimpSOM
 ===============
 
 Submodules

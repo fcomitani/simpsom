@@ -1,8 +1,6 @@
 """
 SimpSOM (Simple Self-Organizing Maps) v1.3.4
-F. Comitani @2017 
-F. Comitani @2018 
-F. Comitani @2019 
+F. Comitani @2017-2021 
  
 A lightweight python library for Kohonen Self-Organising Maps (SOM).
 """
@@ -709,7 +707,8 @@ def run_colorsExample(path='./'):
     net.nodes_graph(path=path)
     
     net.diff_graph(path=path)
-    net.project(raw_data, labels=labels, path=path)
+    test=net.project(raw_data, labels=labels, path=path)
+    print(test)
     net.cluster(raw_data, type='qthresh', path=path) 
     
     print("done!")

@@ -69,7 +69,7 @@ Projecting a few of those points on the map gives the following result, showing 
 	
 ## Documentation
 
-See [here](https://simpsom.readthedocs.io) the full API documentation
+See [here](https://simpsom.readthedocs.io/en/master/) the full API documentation
 
 ## Citation
 
