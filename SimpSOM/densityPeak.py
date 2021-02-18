@@ -252,9 +252,9 @@ class collection:
         plt.scatter(ctrRhos, ctrDeltas, \
             alpha=0.8, s=100, edgecolors='none', color='#AA3333')
 
-        if printout==True:
+        if printout is True:
             plt.savefig('decisionGraph.png', bbox_inches='tight', dpi=600)
-        if show==True:
+        if show is True:
             plt.show()
         plt.clf()
 
@@ -333,7 +333,7 @@ def dist(p1,p2, metric='euclid', PBC=False, netHeight=0, netWidth=0):
     if metric=='euclid':
         if len(p1.coor)!=len(p2.coor): raise ValueError('Points must have the same dimensionality!')
         else:
-            if PBC==True:
+            if PBC is True:
                 """ Hexagonal Periodic Boundary Conditions """
 
                 if netHeight%2==0:
