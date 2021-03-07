@@ -15,7 +15,7 @@ The package is now available on PyPI, to retrieve it just type
 `pip install SimpSOM` or download it from here and install with
 `python setup.py install`.
 
-It allows to build and train SOM on your dataset, save/load the trained
+It allows you to build and train SOM on your dataset, save/load the trained
 network weights, and display or print graphs of the network with
 selected features. The function `run_colorsExample()` will run a toy
 model, where a number of colors will be mapped from the 3D RGB space to
