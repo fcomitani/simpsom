@@ -445,7 +445,7 @@ def sigmoid(p1, p2, sigma, PBC=False, netHeight=0, netWidth=0):
 
 def densityPeak(sample, show=False, printout=False, percent=0.02, PBC=False, netHeight=0, netWidth=0):
 
-    """ Run the complete clustering algorithm in one go and returns the clustered indeces as a list.
+    """ Run the complete clustering algorithm in one go and returns the clustered indices as a list.
 
         Args:
             sample (array): The input dataset
