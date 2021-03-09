@@ -402,7 +402,7 @@ class somNet:
                 
             if labels!=[]:
                 recs = []
-                for i in class_assignment.keys():
+                for i in class_assignment:
                     recs.append(mpatches.Rectangle((0,0),1,1,fc=class_assignment[i]))
                 plt.legend(recs,class_assignment.keys(),loc=0)
 
@@ -499,15 +499,15 @@ class somNet:
 
         
         if savefile==True:
-            file=open(os.path.join(path,type+'_clusters.'+filetype), 'w')
-            if filetype=='csv':
-                separator=','
-            else: 
-                separator=' '
-            for line in clusters:
-                for id in line: file.write(str(id)+separator)
-                file.write('\n')
-            file.close()
+            with open(os.path.join(path,type+'_clusters.'+filetype),
+                      'w') as file:
+                if filetype=='csv':
+                    separator=','
+                else: 
+                    separator=' '
+                for line in clusters:
+                    for id in line: file.write(str(id)+separator)
+                    file.write('\n')
         
         if printout==True or show==True:
             

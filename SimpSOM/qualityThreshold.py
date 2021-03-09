@@ -36,7 +36,7 @@ def qualityThreshold(sample, cutoff=5, PBC=False, netHeight=0, netWidth=0):
 			qtList.append([])
 			for j in tmpList:
 		
-				if PBC==True:
+				if PBC is True:
 					""" Hexagonal Periodic Boundary Conditions """
 				
 					if netHeight%2==0:
