@@ -48,6 +48,11 @@ dataset:
     #Save the weights to file
     net.save('filename_weights')
 
+    #Information on each node is stored in the .nodeList attribute of the network. These include each node position
+    #in the hexagonal grid (.pos) or its weights (.weights), i.e. the position of the node in the features space.
+    position_node0 = net.nodeList[0].pos
+    weights_node0 = net.nodeList[0].weights 
+
     #Print a map of the network nodes and colour them according to the first feature (column number 0) of the dataset
     #and then according to the distance between each node and its neighbours.
     net.nodes_graph(colnum=0)
