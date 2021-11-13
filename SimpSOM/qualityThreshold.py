@@ -12,7 +12,7 @@ import numpy as np
 
 def qualityThreshold(sample, cutoff=5, PBC=False, netHeight=0, netWidth=0):
 
-	""" Run the complete clustering algorithm in one go and returns the clustered indeces as a list.
+	""" Run the complete clustering algorithm in one go and returns the clustered indices as a list.
 
 		Args:
 			sample (array): The input dataset
