@@ -1,23 +1,12 @@
-.. SimpSOM documentation master file, created by
-   sphinx-quickstart on Wed Feb  3 19:04:31 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-Welcome to SimpSOM's documentation!
+Welcome to SimpSOM's API documentation!
 ===================================
 
+Simple Self-Organizing Maps (SimpSOM) is a lightweight and easy-to-read implementation of Kohonen Self-Organizing Maps (SOM) for Python 3 for dimensionality reduction.
+
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-  
-   intro.rst
-   modules.rst
+   :maxdepth: 1
+   :hidden:
+   :caption: API
 
+   api.rst
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
