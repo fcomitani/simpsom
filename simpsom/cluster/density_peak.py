@@ -81,7 +81,7 @@ class Point:
                 elif type_func == 'logistic':
                     self.rho = self.rho+logistic(self,p2,self.refd)
                 else:
-                    """ Raise exception if metric other then euclidean is used. """
+                    """ Raise exception if the selected function is not available is used. """
                     raise NotImplementedError('Only step, gaussian kernel or logistic functions are implemented')
 
 

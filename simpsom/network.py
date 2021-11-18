@@ -21,12 +21,16 @@ from simpsom.cluster import density_peak as dp
 from simpsom.cluster import quality_threshold as qt
 
 from sklearn.decomposition import TruncatedSVD as tsvd
+from sklearn.metrics import pairwise_distances as pdist
+from sklearn.metrics.pairwise import distance_metrics
+
 from sklearn import cluster
 
 class SOMNet:
     """ Kohonen SOM Network class. """
 
-    def __init__(self, net_height, net_width, data, load_file=None, PCI=0, PBC=0, n_jobs=-1):
+    def __init__(self, net_height, net_width, data, load_file=None, metric='euclidean', metric_kwds={},
+                 init='PCA', PBC=0, n_jobs=-1):
 
         """Initialise the SOM network.
 
@@ -36,8 +40,13 @@ class SOMNet:
             data (np.array or list): N-dimensional dataset.
             load_file (str, optional): Name of file to load containing information 
                 to initialize the network weights.
-            PCI (boolean): Activate/Deactivate Principal Component Analysis to set
-                the initial value of weights
+            metric (string): distance metric for the identification of best matching
+                units. Accepts metrics available in scikit-learn (default 'euclidean').
+            metric_kwds (dict): dictionary with optional keywords to pass to the chosen
+                metric (default {}).
+            init (str or list of np.array): Nodes initialization method, to be chosen between 'random'
+                or 'PCA' (default 'PCA'). Alternatively a couple of vectors can be provided
+                whose values will be spanned uniformly.
             PBC (boolean): Activate/Deactivate periodic boundary conditions,
                 warning: only quality threshold clustering algorithm works with PBC.
             n_jobs (int) [WORK IN PROGRESS]: Number of parallel processes (-1 use all available)   
@@ -45,9 +54,6 @@ class SOMNet:
     
         """ Switch to activate special workflow if running the colours example. """
         self.color_ex = False
-        
-        """ Switch to activate PCA weights initialization. """
-        self.PCI = bool(PCI)
 
         """ Switch to activate periodic boundary conditions. """
         self.PBC = bool(PBC)
@@ -60,34 +66,37 @@ class SOMNet:
         self.node_list = []
         self.data      = data.reshape(np.array([data.shape[0], data.shape[1]]))
 
+        self.metric      = metric
+        self.metric_kwds = metric_kwds
+        
         """ Load the weights from file, generate them randomly or from PCA. """
 
-        if load_file == None:
+        init_vec     = None
+        init_bounds  = None
+        wei_array    = None
+
+        if load_file is None:
             self.net_height = net_height
             self.net_width  = net_width
 
-            min_val,max_val = [],[]
-            pca_vec =[ ]
-
-            if self.PCI == True:
+            if init == 'PCA':
                 print("The weights will be initialized with PCA.")
             
                 pca     = tsvd(n_components = 2)
                 pca.fit(self.data)
-                pca_vec = pca.components_
+                init_vec = pca.components_
             
-            else:
+            elif init == 'random':
                 print("The weights will be initialized randomly.")
 
                 for i in range(self.data.shape[1]):
-                    min_val.append(np.min(self.data[:,i]))
-                    max_val.append(np.max(self.data[:,i]))
+                    init_bounds = [np.min(self.data[:,i]),
+                                np.max(self.data[:,i])]
             
-            for x in range(self.net_width):
-                for y in range(self.net_height):
-                    self.node_list.append(SOMNode(x,y, self.data.shape[1], \
-                        self.net_height, self.net_width, self.PBC, \
-                        min_val=min_val, max_val=max_val, pca_vec=pca_vec))
+            else: 
+                print("Custom weights provided.")
+                
+                init_vec = init
 
         else:   
             print('The weights will be loaded from file.')
@@ -101,14 +110,22 @@ class SOMNet:
             self.net_width  = int(wei_array[0][1])
             self.PBC        = bool(wei_array[0][2])
 
-            """ Element 0 contains information on the network shape."""
+        """ When loaded from file, element 0 contains information on the network shape."""
+        count_wei = 1
 
-            count_wei = 1
-            for x in range(self.net_width):
-                for y in range(self.net_height):
-                    self.node_list.append(SOMNode(x,y, self.data.shape[1], 
-                    self.net_height, self.net_width, self.PBC, wei_array=wei_array[count_wei]))
-                    count_wei+=1
+        """ Set the weights. """
+        for x in range(self.net_width):
+            for y in range(self.net_height):
+
+                # If file was loaded.
+                this_wei = wei_array[count_wei] if wei_array is not None\
+                                                else None
+                count_wei+=1
+
+                self.node_list.append(SOMNode(x,y, self.data.shape[1], \
+                    self.net_height, self.net_width, self.PBC, \
+                    wei_bounds=init_bounds, init_vec=init_vec, wei_array=this_wei))
+                
 
     def save(self, fileName='SOMNet_trained', out_path='./'):
     
@@ -151,28 +168,24 @@ class SOMNet:
         self.learning_rate =  self.start_learning_rate * np.exp(-iter/self.epochs)
     
 
-    def find_bmu(self, vec):
+    def find_bmu(self, vecs):
     
-        """Find the best matching unit (BMU) for a given vector.
+        """Find the best matching unit (BMU) for a given list of vectors.
 
         Args:           
-            vec (np.array): The vector to match.
+            vec (2d np.array or list of lists): vectors whose distance from the network
+                nodes will be calculated.
             
         Returns:            
             bmu (SOMNode): The best matching unit node.
             
         """
-    
-        min_val = np.finfo(np.float).max
-        for node in self.node_list:
-            dist = node.get_distance(vec)
-            if dist < min_val:
-                min_val = dist
-                bmu     = node
-                
-        return bmu  
-            
+        
+        dists = distance_metrics()[self.metric](vecs,[n.weights for n in self.node_list], 
+                                                **self.metric_kwds)
 
+        return [self.node_list[index] for index in np.argmin(dists,axis=1)]
+   
     def train(self, start_learning_rate=0.01, epochs=-1):
     
         """Train the SOM.
@@ -210,7 +223,7 @@ class SOMNet:
             
             input_vec = self.data[np.random.randint(0, self.data.shape[0]), :].reshape(np.array([self.data.shape[1]]))
             
-            bmu=self.find_bmu(input_vec)
+            bmu = self.find_bmu([input_vec])[0]
             
             for node in self.node_list:
                 node.update_weights(input_vec, self.sigma, self.learning_rate, bmu)
@@ -245,7 +258,7 @@ class SOMNet:
             cols = [[np.float(node.weights[0]),np.float(node.weights[1]),np.float(node.weights[2])]for node in self.node_list]   
             ax   = hx.plot_hex(fig, centers, cols)
             ax.set_title('Node Grid w Color Features', size=80)
-            print_name=os.path.join(out_path,'nodesColors.png')
+            print_name=os.path.join(out_path,'nodes_colors.png')
 
         else:
             cols    = [node.weights[colnum] for node in self.node_list]
@@ -258,7 +271,7 @@ class SOMNet:
             cbar.ax.tick_params(labelsize=60)
 
             plt.sca(ax)
-            print_name = os.path.join(out_path,'nodesFeature_'+str(colnum)+'.png')
+            print_name = os.path.join(out_path,'nodes_feature_'+str(colnum)+'.png')
             
         if print_out == True:
             plt.savefig(print_name, bbox_inches='tight', dpi=dpi)
@@ -270,7 +283,7 @@ class SOMNet:
 
     def diff_graph(self, show=False, print_out=True, returns=False, out_path='./'):
     
-        """Plot a 2D map with nodes and weights difference among neighbouring nodes.
+        """Plot a 2D map with nodes and weights difference among neighboring nodes.
 
         Args:
             show (bool, optional): Choose to display the plot.
@@ -282,22 +295,23 @@ class SOMNet:
             (list): difference value for each node.             
         """
         
-        neighbours = []
-        for node in self.node_list:
-            node_list = []
-            for nodet in self.node_list:
-                if node != nodet and node.get_node_distance(nodet) <= 1.001:
-                    node_list.append(nodet)
-            neighbours.append(node_list)     
-            
-        diffs = []
-        for node, neighbours in zip(self.node_list, neighbours):
-            diff = 0
-            for nb in neighbours:
-                diff = diff+node.get_distance(nb.weights)
-            diffs.append(diff)  
+        """ Find adjacent nodes in the grid. """
+
+        neighbors =[[node2.weights for node2 in self.node_list \
+                    if node != node2 and node.get_node_distance(node2) <= 1.001]
+                    for node in self.node_list]
+
+        """ Calculate the summed weight difference. """
+
+        diffs = [distance_metrics()['euclidean']([n.weights],neighbors[i]).sum()\
+                for i,n in enumerate(self.node_list)]
+        print(diffs)
+
+        """ Define plotting hexagon centers. """
 
         centers = [[node.pos[0],node.pos[1]] for node in self.node_list]
+
+        """ Set up and plot. """
 
         if show == True or print_out==True:
         
@@ -317,7 +331,7 @@ class SOMNet:
             cbar.ax.tick_params(labelsize=60)
 
             plt.sca(ax)
-            print_name = os.path.join(out_path,'nodesDifference.png')
+            print_name = os.path.join(out_path,'nodes_difference.png')
             
             if print_out == True:
                 plt.savefig(print_name, bbox_inches='tight', dpi=dpi)
@@ -363,25 +377,25 @@ class SOMNet:
                     class_assignment[labels[i]] = colors[counter]
                     counter = (counter + 1)%len(colors)
 
-        bmu_list,cls = [],[]
-        for i in range(array.shape[0]):
-            bmu_list.append(self.find_bmu(array[i,:]).pos)   
-            if self.color_ex == True:
-                cls.append(array[i,:])
+        bmu_list, cls = [], []
+        bmu_list = [mu.pos for mu in self.find_bmu(array)]
+        
+        if self.color_ex == True:
+            cls = array
+        else: 
+            if labels != []:   
+                cls = [class_assignment[labels[i]] for i in range(array.shape[0])]
+            elif colnum == -1:
+                cls = ['#ffffff']*array.shape[0]
             else: 
-                if labels != []:   
-                    cls.append(class_assignment[labels[i]])
-                elif colnum == -1:
-                    cls.append('#ffffff')
-                else: 
-                    cls.append(array[i,colnum])
+                cls = array[:,colnum]
 
         if show == True or print_out == True:
         
             """ Call nodes_graph/diff_graph to first build the 2D map of the nodes. """
 
             if self.color_ex == True:
-                print_name = os.path.join(out_path,'colorProjection.png')
+                print_name = os.path.join(out_path,'color_projection.png')
                 self.nodes_graph(colnum, False, False)
                 plt.scatter([pos[0] for pos in bmu_list],[pos[1] for pos in bmu_list], color=cls,  
                         s=500, edgecolor='#ffffff', linewidth=5, zorder=10)
@@ -546,7 +560,7 @@ class SOMNode:
 
     """ Single Kohonen SOM Node class. """
     
-    def __init__(self, x, y, num_weights, net_height, net_width, PBC, min_val=[], max_val=[], pca_vec=[], wei_array=[]):
+    def __init__(self, x, y, num_weights, net_height, net_width, PBC, wei_bounds=None, init_vec=None, wei_array=None):
     
         """Initialise the SOM node.
 
@@ -557,11 +571,13 @@ class SOMNode:
             net_height (int): Network height, needed for periodic boundary conditions (PBC)
             net_width (int): Network width, needed for periodic boundary conditions (PBC)
             PBC (bool): Activate/deactivate periodic boundary conditions.
-            min_val(np.array, optional): minimum values for the weights found in the data
-            max_val(np.array, optional): maximum values for the weights found in the data
-            pca_vec(np.array, optional): Array containing the two PCA vectors.
+            wei_bounds(np.array, optional): boundary values for the random initialization
+                of the weights. Must be in the format [min_val, max_val]. 
+                They are overwritten by 'init_vec'.
+            init_vec (np.array, optional): Array containing the two custom vectors (e.g. PCA)
+                for the weights initalization.
             wei_array (np.array, optional): Array containing the weights to give
-                to the node if a file was loaded.
+                to the node if loaded from a file.
 
                 
         """
@@ -573,22 +589,34 @@ class SOMNode:
         self.net_height = net_height
         self.net_width  = net_width
 
-        if wei_array == [] and pca_vec == []:
-            #select randomly in the space spanned by the data
+        if wei_array is not None:
+            """ Load nodes's weights from file. """
+            
+            self.weights = wei_array
+
+        elif init_vec is not None:
+            """ Select uniformly in the space spanned by the custom vectors. """
+
+            self.weights = (x-self.net_width/2)*2.0/self.net_width*init_vec[0] + \
+                           (y-self.net_height/2)*2.0/self.net_height*init_vec[1]
+        
+        elif wei_bounds is not None:
+            """ Select randomly in the space spanned by the data. """
+            
             for i in range(num_weights):
-                self.weights.append(np.random.random()*(max_val[i]-min_val[i])+min_val[i])
-        elif wei_array == [] and pca_vec != []:
-            #select uniformly in the space spanned by the PCA vectors
-            self.weights = (x-self.net_width/2)*2.0/self.net_width * pca_vec[0] + \
-                          (y-self.net_height/2)*2.0/self.net_height *pca_vec[1]
-        else:
-            for i in range(num_weights):
-                self.weights.append(wei_array[i])
+                self.weights.append(np.random.random()*(wei_bounds[1][i]-wei_bounds[0][i])+wei_bounds[0][i])
+       
+        else: 
+            """ Else return error. """
+
+            sys.exit(('Error in the network weights initialization, make sure to provide random initalization boundaries,\
+                        custom vectors, or load the weights from file.'))
 
     
     def get_distance(self, vec):
     
         """Calculate the distance between the weights vector of the node and a given vector.
+           DEPRECATED: this function will be removed in future versions, use SOMNet.get_bmu instead.
 
         Args:
             vec (np.array): The vector from which the distance is calculated.

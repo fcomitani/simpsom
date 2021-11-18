@@ -4,6 +4,6 @@ from simpsom.cluster.density_peak import dp_test
 
 if __name__ == "__main__":
     
-    qt_test()
-    dp_test()
+    #qt_test()
+    #dp_test()
     run_colors_example()
