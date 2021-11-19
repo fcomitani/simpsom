@@ -20,7 +20,7 @@ import simpsom.hexagons as hx
 from simpsom.cluster import density_peak as dp
 from simpsom.cluster import quality_threshold as qt
 
-from sklearn.decomposition import TruncatedSVD as tsvd
+from sklearn.decomposition import PCA
 from sklearn.metrics import pairwise_distances as pdist
 from sklearn.metrics.pairwise import distance_metrics
 
@@ -30,7 +30,7 @@ class SOMNet:
     """ Kohonen SOM Network class. """
 
     def __init__(self, net_height, net_width, data, load_file=None, metric='euclidean', metric_kwds={},
-                 init='PCA', PBC=0, n_jobs=-1):
+                 train_algo='batch', init='PCA', PBC=0):
 
         """Initialise the SOM network.
 
@@ -44,12 +44,14 @@ class SOMNet:
                 units. Accepts metrics available in scikit-learn (default 'euclidean').
             metric_kwds (dict): dictionary with optional keywords to pass to the chosen
                 metric (default {}).
+            train_algo (str): training algorithm, choose between 'online' or 'batch' 
+                (default 'online'). Beware that the online algorithm will run one datapoint
+                per epoch, while the batch algorithm runs all points at one for each epoch.
             init (str or list of np.array): Nodes initialization method, to be chosen between 'random'
                 or 'PCA' (default 'PCA'). Alternatively a couple of vectors can be provided
                 whose values will be spanned uniformly.
             PBC (boolean): Activate/Deactivate periodic boundary conditions,
-                warning: only quality threshold clustering algorithm works with PBC.
-            n_jobs (int) [WORK IN PROGRESS]: Number of parallel processes (-1 use all available)   
+                warning: only quality threshold clustering algorithm works with PBC (default 0). 
         """
     
         """ Switch to activate special workflow if running the colours example. """
@@ -69,6 +71,8 @@ class SOMNet:
         self.metric      = metric
         self.metric_kwds = metric_kwds
         
+        self.train_algo = train_algo
+
         """ Load the weights from file, generate them randomly or from PCA. """
 
         init_vec     = None
@@ -82,7 +86,7 @@ class SOMNet:
             if init == 'PCA':
                 print("The weights will be initialized with PCA.")
             
-                pca     = tsvd(n_components = 2)
+                pca     = PCA(n_components = 2)
                 pca.fit(self.data)
                 init_vec = pca.components_
             
@@ -90,12 +94,12 @@ class SOMNet:
                 print("The weights will be initialized randomly.")
 
                 for i in range(self.data.shape[1]):
-                    init_bounds = [np.min(self.data[:,i]),
-                                np.max(self.data[:,i])]
+                    init_bounds = [np.min(self.data,axis=1),
+                                np.max(self.data,axis=1)]
             
             else: 
                 print("Custom weights provided.")
-                
+
                 init_vec = init
 
         else:   
@@ -120,12 +124,23 @@ class SOMNet:
                 # If file was loaded.
                 this_wei = wei_array[count_wei] if wei_array is not None\
                                                 else None
-                count_wei+=1
+                count_wei += 1
 
-                self.node_list.append(SOMNode(x,y, self.data.shape[1], \
+                self.node_list.append(SOMNode(x, y, self.data.shape[1], \
                     self.net_height, self.net_width, self.PBC, \
                     wei_bounds=init_bounds, init_vec=init_vec, wei_array=this_wei))
                 
+
+        """ Calculate the euclidean distance matrix to speed up batch training. """
+
+        self.dist_matrix = np.zeros((self.net_width*self.net_height, 
+                                     self.net_width*self.net_height)) 
+
+        for i in range(self.net_width*self.net_height):
+            for j in range(i + 1, self.net_width*self.net_height):
+                self.dist_matrix[i,j] = np.linalg.norm(self.node_list[i].pos-self.node_list[j].pos)
+        
+        self.dist_matrix += self.dist_matrix.T
 
     def save(self, fileName='SOMNet_trained', out_path='./'):
     
@@ -144,103 +159,133 @@ class SOMNet:
         np.save(os.path.join(out_path,fileName), np.asarray(wei_array))
     
 
-    def update_sigma(self, iter):
+    def update_sigma(self, n_iter):
     
         """Update the gaussian sigma.
 
         Args:           
-            iter (int): Iteration number.
+            n_iter (int): Iteration number.
             
         """
     
-        self.sigma = self.start_sigma * np.exp(-iter/self.tau)
+        self.sigma = self.start_sigma * np.exp(-n_iter/self.tau)
     
 
-    def update_learning_rate(self, iter):
+    def update_learning_rate(self, n_iter):
     
         """Update the learning rate.
 
         Args:           
-            iter (int): Iteration number.
+            n_iter (int): Iteration number.
             
         """
         
-        self.learning_rate =  self.start_learning_rate * np.exp(-iter/self.epochs)
+        self.learning_rate =  self.start_learning_rate * np.exp(n_iter/self.epochs)
     
 
-    def find_bmu(self, vecs):
+    def find_bmu_ix(self, vecs):
     
-        """Find the best matching unit (BMU) for a given list of vectors.
+        """Find the index of the best matching unit (BMU) for a given list of vectors.
 
         Args:           
             vec (2d np.array or list of lists): vectors whose distance from the network
                 nodes will be calculated.
             
         Returns:            
-            bmu (SOMNode): The best matching unit node.
+            bmu (SOMNode): The best matching unit node index.
             
         """
         
         dists = distance_metrics()[self.metric](vecs,[n.weights for n in self.node_list], 
                                                 **self.metric_kwds)
 
-        return [self.node_list[index] for index in np.argmin(dists,axis=1)]
+        return np.argmin(dists,axis=1)
    
     def train(self, start_learning_rate=0.01, epochs=-1):
     
         """Train the SOM.
 
         Args:
-            start_learning_rate (float): Initial learning rate.
+            start_learning_rate (float): Initial learning rate, used only in online
+                learning.
             epochs (int): Number of training iterations. If not selected (or -1)
-                automatically set epochs as 10 times the number of datapoints
-            
+                automatically set epochs as 10 times the number of datapoints.
+                
         """
         
         print("Training SOM... 0%", end=' ')
         self.start_sigma = max(self.net_height, self.net_width)/2
         self.start_learning_rate = start_learning_rate
+
         if epochs == -1:
             epochs  = self.data.shape[0]*10
+            
         self.epochs = epochs
         self.tau    = self.epochs/np.log(self.start_sigma)
-    
-        #TODO:
-        #Parallel(n_jobs=self.n_jobs)(delayed(my_func)(c, K, N) for c in inputs)
 
         for i in range(self.epochs):
 
-            if i%100==0:
+            if i%10==0:
                 print(("\rTraining SOM... "+str(int(i*100.0/self.epochs))+"%" ), end=' ')
 
             self.update_sigma(i)
-            self.update_learning_rate(i)
-            
-            """ Train with the bootstrap-like method: 
-                instead of using all the training points, a random datapoint is chosen with substitution
-                for each iteration and used to update the weights of all the nodes.
-            """
-            
-            input_vec = self.data[np.random.randint(0, self.data.shape[0]), :].reshape(np.array([self.data.shape[1]]))
-            
-            bmu = self.find_bmu([input_vec])[0]
-            
-            for node in self.node_list:
-                node.update_weights(input_vec, self.sigma, self.learning_rate, bmu)
 
+            if self.train_algo == 'online':
+                """ Online training.
+                    Bootstrap: one datapoint is extracted randomly with replacement at each epoch 
+                    and used to update the weights.
+                """
+
+                self.update_learning_rate(i)
+
+                input_vec = self.data[np.random.randint(0, self.data.shape[0]), :].reshape(np.array([self.data.shape[1]]))
+                
+                bmu = self.node_list[self.find_bmu_ix([input_vec])[0]]
+
+                for node in self.node_list:
+                    node.update_weights(input_vec, self.sigma, self.learning_rate, bmu)
+
+            elif self.train_algo == 'batch':
+                """ Batch training.
+                    All datapoints are used at once for each epoch, 
+                    the weights are updated with the sum of contributions from all these points.
+                    No learning rate needed.
+
+                    Kinouchi, M. et al. "Quick Learning for Batch-Learning Self-Organizing Map" (2002).
+                """
+
+                all_weights = np.array([n.weights for n in self.node_list])
+        
+                bmu_ix = self.find_bmu_ix(self.data)
+                
+                gauss = np.exp(-self.dist_matrix*self.dist_matrix/(2*self.sigma*self.sigma))
+                gauss = gauss[bmu_ix]
+
+                gauss3d = np.repeat(gauss[:, :, np.newaxis], self.data.shape[1], axis=2)
+                samples3d = np.repeat(self.data[:, np.newaxis, :], gauss.shape[1], axis=1)
+
+                numerator   = np.multiply(gauss3d,samples3d).sum(axis=0)
+                denominator = np.repeat(gauss.sum(axis=0)[:, np.newaxis], numerator.shape[1], axis=1)
+
+                new = np.nan_to_num(np.divide(numerator,denominator))
+
+                for i, node in enumerate(self.node_list):
+                    node.weights += (new[i]-node.weights)  #*self.learning_rate
+
+            else:
+                sys.exit('Error: training algorithm not recognized. Choose between \'online\' and \'batch\'.')
+                
         print("\rTraining SOM... done!")
 
-        
     def nodes_graph(self, colnum=0, show=False, print_out=True, out_path='./', colname=None):
     
         """Plot a 2D map with hexagonal nodes and weights values
-
         Args:
             colnum (int): The index of the weight that will be shown as colormap.
             show (bool, optional): Choose to display the plot.
             print_out (bool, optional): Choose to save the plot to a file.
-            out_path (str, optional): Path to the folder where data will be saved.
             colname (str, optional): Name of the column to be shown on the map.
+            out_path (str, optional): Path to the folder where data will be saved.
         """
 
         if not colname:
@@ -250,36 +295,34 @@ class SOMNet:
 
         width_p=100
         dpi=72
-        x_inch = self.net_width*width_p/dpi 
-        y_inch = self.net_height*width_p/dpi 
-        fig=plt.figure(figsize=(x_inch, y_inch), dpi=dpi)
+        xInch = self.net_width*width_p/dpi 
+        yInch = self.net_height*width_p/dpi 
+        fig=plt.figure(figsize=(xInch, yInch), dpi=dpi)
 
         if self.color_ex==True:
             cols = [[np.float(node.weights[0]),np.float(node.weights[1]),np.float(node.weights[2])]for node in self.node_list]   
-            ax   = hx.plot_hex(fig, centers, cols)
+            ax = hx.plot_hex(fig, centers, cols)
             ax.set_title('Node Grid w Color Features', size=80)
             print_name=os.path.join(out_path,'nodes_colors.png')
 
         else:
-            cols    = [node.weights[colnum] for node in self.node_list]
-            ax      = hx.plot_hex(fig, centers, cols)
+            cols = [node.weights[colnum] for node in self.node_list]
+            ax = hx.plot_hex(fig, centers, cols)
             ax.set_title('Node Grid w Feature ' +  colname, size=80)
             divider = make_axes_locatable(ax)
-            cax     = divider.append_axes("right", size="5%", pad=0.0)
-            cbar    = plt.colorbar(ax.collections[0], cax=cax)
+            cax = divider.append_axes("right", size="5%", pad=0.0)
+            cbar=plt.colorbar(ax.collections[0], cax=cax)
             cbar.set_label(colname, size=80, labelpad=50)
             cbar.ax.tick_params(labelsize=60)
-
             plt.sca(ax)
-            print_name = os.path.join(out_path,'nodes_feature_'+str(colnum)+'.png')
+            print_name=os.path.join(out_path,'nodes_feature_'+str(colnum)+'.png')
             
-        if print_out == True:
+        if print_out==True:
             plt.savefig(print_name, bbox_inches='tight', dpi=dpi)
-        if show == True:
+        if show==True:
             plt.show()
-        if show != False and print_out != False:
+        if show!=False and printout!=False:
             plt.clf()
-
 
     def diff_graph(self, show=False, print_out=True, returns=False, out_path='./'):
     
@@ -305,7 +348,6 @@ class SOMNet:
 
         diffs = [distance_metrics()['euclidean']([n.weights],neighbors[i]).sum()\
                 for i,n in enumerate(self.node_list)]
-        print(diffs)
 
         """ Define plotting hexagon centers. """
 
@@ -378,7 +420,7 @@ class SOMNet:
                     counter = (counter + 1)%len(colors)
 
         bmu_list, cls = [], []
-        bmu_list = [mu.pos for mu in self.find_bmu(array)]
+        bmu_list = [self.node_list[mu].pos for mu in self.find_bmu_ix(array)]
         
         if self.color_ex == True:
             cls = array
@@ -416,16 +458,12 @@ class SOMNet:
                             s=400, edgecolor='#ffffff', linewidth=4, zorder=10)
                     plt.title('Datapoints Projection #' +  str(colnum), size=80)
                 
-            if labels !=[ ]:
+            if labels != [ ] and not self.color_ex:
                 recs = []
                 for i in class_assignment:
                     recs.append(mpatches.Rectangle((0,0),1,1,fc=class_assignment[i]))
                 plt.legend(recs,class_assignment.keys(),loc=0)
 
-            # if labels!=[]:
-            #     for label, x, y in zip(labels, [pos[0] for pos in bmu_list],[pos[1] for pos in bmu_list]):
-            #         plt.annotate(label, xy=(x,y), xytext=(-0.5, 0.5), textcoords='offset points', ha='right', va='bottom', size=50, zorder=11) 
-            
             if print_out == True:
                 plt.savefig(print_name, bbox_inches='tight', dpi=72)
             if show == True:
@@ -583,7 +621,7 @@ class SOMNode:
         """
     
         self.PBC     = PBC
-        self.pos     = hx.coor_to_hex(x,y)
+        self.pos     = np.array(hx.coor_to_hex(x,y))
         self.weights = []
 
         self.net_height = net_height
@@ -599,7 +637,7 @@ class SOMNode:
 
             self.weights = (x-self.net_width/2)*2.0/self.net_width*init_vec[0] + \
                            (y-self.net_height/2)*2.0/self.net_height*init_vec[1]
-        
+
         elif wei_bounds is not None:
             """ Select randomly in the space spanned by the data. """
             
@@ -645,6 +683,8 @@ class SOMNode:
             
         """
 
+        #to clean up
+
         if self.PBC == True:
 
             """ Hexagonal Periodic Boundary Conditions """
@@ -686,7 +726,7 @@ class SOMNode:
 
     def update_weights(self, input_vec, sigma, learning_rate, bmu):
     
-        """Update the node Weights.
+        """Update the node weights.
 
         Args:
             input_vec (np.array): A weights vector whose distance drives the direction of the update.
@@ -700,6 +740,7 @@ class SOMNode:
 
         for i in range(len(self.weights)):
             self.weights[i] = self.weights[i] - gauss*learning_rate*(self.weights[i]-input_vec[i])
+
         
         
 if __name__ == "__main__":

@@ -29,7 +29,8 @@ origin space.
 
 ## What\'s New
 
-- Class and function names have been changed to adhere to PEP8
+- Class and function names have been changed to adhere to PEP8.
+- Batch training has been added and is now the default algorithm.
 
 ## Version compatibility
 
@@ -55,8 +56,14 @@ dataset:
     #Build a network 20x20 with a weights format taken from the raw_data and activate Periodic Boundary Conditions. 
     net = sps.SOMNet(20, 20, raw_data, PBC=True)
 
-    #Train the network for 10000 epochs and with initial learning rate of 0.01. 
-    net.train(0.01, 10000)
+    #By default the network will be trained with the batch training algorithm and 10xsamples number of epochs.
+    #No learning rate is needed.
+    net.train()
+
+    #Alternatively, all of these options can be set mantually. 
+    #For example to train the network with online training (much slower!)
+    #for 1000 epochs and with initial learning rate of 0.01, use:
+    #net.train(train_algo='online', learning_rat=0.01, epochs=1000)
 
     #Save the weights to file
     net.save('filename_weights')
@@ -75,6 +82,9 @@ dataset:
     net.project(raw_data, labels=labels)
 
     #Cluster the datapoints according to the Quality Threshold algorithm.
+    #It's important to note that only Quality Threshold ('qthrehs') and Density Peak 'dpeak'
+    #are compatible with periodic boundary conditions. Deactivate PBC if you intend to use
+    #'MeanShift', 'DBSCAN', 'KMeans', or your own clustering tool.
     net.cluster(raw_data, clus_type='qthresh')	
 	
 ## A More Interesting Example: MNIST

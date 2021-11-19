@@ -4,6 +4,7 @@ from simpsom.cluster.density_peak import dp_test
 
 if __name__ == "__main__":
     
-    #qt_test()
-    #dp_test()
+    qt_test()
+    dp_test()
     run_colors_example()
+    run_colors_example(train_algo='online', learning_rate=0.1, epochs=1000)
