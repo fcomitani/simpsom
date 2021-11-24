@@ -30,7 +30,7 @@ class SOMNet:
     """ Kohonen SOM Network class. """
 
     def __init__(self, net_height, net_width, data, load_file=None, metric='euclidean', metric_kwds={},
-                 train_algo='batch', init='PCA', PBC=0):
+                 init='PCA', PBC=0):
 
         """Initialise the SOM network.
 
@@ -44,14 +44,11 @@ class SOMNet:
                 units. Accepts metrics available in scikit-learn (default 'euclidean').
             metric_kwds (dict): dictionary with optional keywords to pass to the chosen
                 metric (default {}).
-            train_algo (str): training algorithm, choose between 'online' or 'batch' 
-                (default 'online'). Beware that the online algorithm will run one datapoint
-                per epoch, while the batch algorithm runs all points at one for each epoch.
             init (str or list of np.array): Nodes initialization method, to be chosen between 'random'
                 or 'PCA' (default 'PCA'). Alternatively a couple of vectors can be provided
                 whose values will be spanned uniformly.
             PBC (boolean): Activate/Deactivate periodic boundary conditions,
-                warning: only quality threshold clustering algorithm works with PBC (default 0). 
+                warning: only quality threshold clustering algorithm works with PBC (default 0).
         """
     
         """ Switch to activate special workflow if running the colours example. """
@@ -71,8 +68,6 @@ class SOMNet:
         self.metric      = metric
         self.metric_kwds = metric_kwds
         
-        self.train_algo = train_algo
-
         """ Load the weights from file, generate them randomly or from PCA. """
 
         init_vec     = None
@@ -129,18 +124,6 @@ class SOMNet:
                 self.node_list.append(SOMNode(x, y, self.data.shape[1], \
                     self.net_height, self.net_width, self.PBC, \
                     wei_bounds=init_bounds, init_vec=init_vec, wei_array=this_wei))
-                
-
-        """ Calculate the euclidean distance matrix to speed up batch training. """
-
-        self.dist_matrix = np.zeros((self.net_width*self.net_height, 
-                                     self.net_width*self.net_height)) 
-
-        for i in range(self.net_width*self.net_height):
-            for j in range(i + 1, self.net_width*self.net_height):
-                self.dist_matrix[i,j] = np.linalg.norm(self.node_list[i].pos-self.node_list[j].pos)
-        
-        self.dist_matrix += self.dist_matrix.T
 
     def save(self, fileName='SOMNet_trained', out_path='./'):
     
@@ -150,7 +133,6 @@ class SOMNet:
             fileName (str, optional): Name of file where the data will be saved.
             out_path (str, optional): Path to the folder where data will be saved.
         """
-        
         
         wei_array = [np.zeros(len(self.node_list[0].weights))]
         wei_array[0][0], wei_array[0][1], wei_array[0][2] = self.net_height, self.net_width, int(self.PBC)
@@ -201,19 +183,32 @@ class SOMNet:
 
         return np.argmin(dists,axis=1)
    
-    def train(self, start_learning_rate=0.01, epochs=-1):
+    def train(self, train_algo='batch', epochs=-1, start_learning_rate=0.01,  
+                early_stop=None, early_stop_patience=3, early_stop_tolerance=1e-4):
     
         """Train the SOM.
 
         Args:
+            train_algo (str): training algorithm, choose between 'online' or 'batch' 
+                (default 'online'). Beware that the online algorithm will run one datapoint
+                per epoch, while the batch algorithm runs all points at one for each epoch.
+            epochs (int): Number of training iterations. If not selected (or -1)
+                automatically set epochs as 10 times the number of datapoints. 
             start_learning_rate (float): Initial learning rate, used only in online
                 learning.
-            epochs (int): Number of training iterations. If not selected (or -1)
-                automatically set epochs as 10 times the number of datapoints.
-                
+            early_stop (str): Early stopping method, for now only 'mapdiff' (checks if the
+                weights of nodes don't change) and 'bmudiff' (checks if the assigned bmu to each sample
+                don't change) are available. If None, don't use early stopping (default None)
+            early_stop_patience (int): Number of iterations without improvement before stopping the 
+                training, only available for batch training (default 3).
+            early_stop_tolerance (float): Improvement tolerance, if the map does not improve beyond
+                this threshold, the early stopping counter will be activated (it needs to be set
+                appropriately depending on the used distance metric). Ignored if early stopping
+                is off (default 1e-4).
+
         """
-        
-        print("Training SOM... 0%", end=' ')
+
+        print("The map will be trained with the "+train_algo+" algorithm.")
         self.start_sigma = max(self.net_height, self.net_width)/2
         self.start_learning_rate = start_learning_rate
 
@@ -223,19 +218,18 @@ class SOMNet:
         self.epochs = epochs
         self.tau    = self.epochs/np.log(self.start_sigma)
 
-        for i in range(self.epochs):
+        if train_algo == 'online':
+            """ Online training.
+                Bootstrap: one datapoint is extracted randomly with replacement at each epoch 
+                and used to update the weights.
+            """
 
-            if i%10==0:
-                print(("\rTraining SOM... "+str(int(i*100.0/self.epochs))+"%" ), end=' ')
+            for i in range(self.epochs):
 
-            self.update_sigma(i)
+                if i%10==0:
+                    print("\rTraining SOM... {:d}%".format(int(i*100.0/self.epochs)), end=' ')
 
-            if self.train_algo == 'online':
-                """ Online training.
-                    Bootstrap: one datapoint is extracted randomly with replacement at each epoch 
-                    and used to update the weights.
-                """
-
+                self.update_sigma(i)
                 self.update_learning_rate(i)
 
                 input_vec = self.data[np.random.randint(0, self.data.shape[0]), :].reshape(np.array([self.data.shape[1]]))
@@ -245,21 +239,60 @@ class SOMNet:
                 for node in self.node_list:
                     node.update_weights(input_vec, self.sigma, self.learning_rate, bmu)
 
-            elif self.train_algo == 'batch':
-                """ Batch training.
-                    All datapoints are used at once for each epoch, 
-                    the weights are updated with the sum of contributions from all these points.
-                    No learning rate needed.
+        elif train_algo == 'batch':
+            """ Batch training.
+                All datapoints are used at once for each epoch, 
+                the weights are updated with the sum of contributions from all these points.
+                No learning rate needed.
 
-                    Kinouchi, M. et al. "Quick Learning for Batch-Learning Self-Organizing Map" (2002).
-                """
+                Kinouchi, M. et al. "Quick Learning for Batch-Learning Self-Organizing Map" (2002).
+            """
+    
 
-                all_weights = np.array([n.weights for n in self.node_list])
-        
-                bmu_ix = self.find_bmu_ix(self.data)
-                
-                gauss = np.exp(-self.dist_matrix*self.dist_matrix/(2*self.sigma*self.sigma))
-                gauss = gauss[bmu_ix]
+            """ Calculate the square euclidean distance matrix to speed up batch training. """
+
+            #storing the distances and weight matrices defeats the purpose of having
+            #nodes as instances of a class, but it helps with the optimization
+            #and parallelization at the cost of memory.
+            #The object-oriented structure is kept to simplify code reading. 
+
+            dist_matrix_sq = np.zeros((self.net_width*self.net_height, 
+                                        self.net_width*self.net_height)) 
+
+            for i in range(self.net_width*self.net_height):
+                for j in range(i + 1, self.net_width*self.net_height):
+                    dist_matrix_sq[i,j] = np.linalg.norm(self.node_list[i].pos-self.node_list[j].pos)
+            
+            dist_matrix_sq += dist_matrix_sq.T
+            dist_matrix_sq *= dist_matrix_sq
+            
+            all_weights = np.array([n.weights for n in self.node_list])
+
+            early_stop_counter = 0
+            convergence        = []
+
+            for i in range(self.epochs):
+
+                """ Early stop check. """
+
+                if early_stop_counter == early_stop_patience:
+
+                    print("\rTolerance reached at epoch {:d}, stopping training.".format(i-1))
+                    break
+
+                self.update_sigma(i)
+
+                if i%10==0:
+                    print("\rTraining SOM... {:d}%".format(int(i*100.0/self.epochs)), end=' ')
+                        
+                """ Find BMUs for all points and build matrix of gaussian effects. """
+
+                dists = distance_metrics()[self.metric](self.data, all_weights, 
+                                                **self.metric_kwds)
+                bmus = np.argmin(dists, axis=1)
+
+                gauss = np.exp(-dist_matrix_sq/(2*self.sigma*self.sigma))
+                gauss = gauss[bmus]
 
                 gauss3d = np.repeat(gauss[:, :, np.newaxis], self.data.shape[1], axis=2)
                 samples3d = np.repeat(self.data[:, np.newaxis, :], gauss.shape[1], axis=1)
@@ -267,13 +300,53 @@ class SOMNet:
                 numerator   = np.multiply(gauss3d,samples3d).sum(axis=0)
                 denominator = np.repeat(gauss.sum(axis=0)[:, np.newaxis], numerator.shape[1], axis=1)
 
-                new = np.nan_to_num(np.divide(numerator,denominator))
+                new_weights = np.divide(numerator,denominator)
+                new_weights[np.isnan(new_weights)] = all_weights[np.isnan(new_weights)] 
 
-                for i, node in enumerate(self.node_list):
-                    node.weights += (new[i]-node.weights)  #*self.learning_rate
+                """ Early stopping, active if patience is not None """
 
-            else:
-                sys.exit('Error: training algorithm not recognized. Choose between \'online\' and \'batch\'.')
+                if early_stop is not None:
+
+                    #These are pretty ruough convergence tests
+                    #To do: add more
+
+                    if early_stop == 'mapdiff':             
+                        """ Checks if the map weights are not moving. """
+
+                        convergence.append(distance_metrics()[self.metric](new_weights,all_weights, 
+                                                        **self.metric_kwds).mean())
+                    
+                    elif early_stop == 'bmudiff':
+                        """ Checks if the bmus mean distance from the samples has stopped improving. """
+
+                        bmu_dists = np.min(dists,axis=1)
+
+                        if i > 0:
+                            convergence.append((old_bmu_dists - bmu_dists).mean())
+                        else:
+                            convergence.append(np.nan)
+
+                        old_bmu_dists = bmu_dists
+
+                    else:
+                        sys.exit('Error: convergence method not recognized. Choose between \'mapdiff\' and \'bmudiff\'.')
+
+                    if convergence[-1] < early_stop_tolerance:
+                        early_stop_counter +=1
+                    else:
+                        early_stop_counter  = 0
+                    # add convergence plot
+
+                all_weights = new_weights
+
+            """ Store final weights in the nodes objects. """
+            #Revert back to object oriented
+            
+            for i, node in enumerate(self.node_list):
+                node.weights = all_weights[i] # * self.learning_rate
+
+        else:
+            sys.exit('Error: training algorithm not recognized. Choose between \'online\' and \'batch\'.')
                 
         print("\rTraining SOM... done!")
 
