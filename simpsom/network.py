@@ -68,6 +68,8 @@ class SOMNet:
         self.metric      = metric
         self.metric_kwds = metric_kwds
         
+        self.convergence   = []
+
         """ Load the weights from file, generate them randomly or from PCA. """
 
         init_vec     = None
@@ -198,7 +200,7 @@ class SOMNet:
                 learning.
             early_stop (str): Early stopping method, for now only 'mapdiff' (checks if the
                 weights of nodes don't change) and 'bmudiff' (checks if the assigned bmu to each sample
-                don't change) are available. If None, don't use early stopping (default None)
+                don't change) are available. If None, don't use early stopping (default None).
             early_stop_patience (int): Number of iterations without improvement before stopping the 
                 training, only available for batch training (default 3).
             early_stop_tolerance (float): Improvement tolerance, if the map does not improve beyond
@@ -224,13 +226,13 @@ class SOMNet:
                 and used to update the weights.
             """
 
-            for i in range(self.epochs):
+            for n_iter in range(self.epochs):
 
-                if i%10==0:
-                    print("\rTraining SOM... {:d}%".format(int(i*100.0/self.epochs)), end=' ')
+                if n_iter%10==0:
+                    print("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)), end=' ')
 
-                self.update_sigma(i)
-                self.update_learning_rate(i)
+                self.update_sigma(n_iter)
+                self.update_learning_rate(n_iter)
 
                 input_vec = self.data[np.random.randint(0, self.data.shape[0]), :].reshape(np.array([self.data.shape[1]]))
                 
@@ -269,21 +271,21 @@ class SOMNet:
             all_weights = np.array([n.weights for n in self.node_list])
 
             early_stop_counter = 0
-            convergence        = []
 
-            for i in range(self.epochs):
+            for n_iter in range(self.epochs):
 
                 """ Early stop check. """
 
                 if early_stop_counter == early_stop_patience:
 
-                    print("\rTolerance reached at epoch {:d}, stopping training.".format(i-1))
+                    print("\rTolerance reached at epoch {:d}, stopping training.".format(n_iter-1))
+
                     break
 
-                self.update_sigma(i)
+                self.update_sigma(n_iter)
 
-                if i%10==0:
-                    print("\rTraining SOM... {:d}%".format(int(i*100.0/self.epochs)), end=' ')
+                if n_iter%10==0:
+                    print("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)), end=' ')
                         
                 """ Find BMUs for all points and build matrix of gaussian effects. """
 
@@ -310,49 +312,92 @@ class SOMNet:
                     #These are pretty ruough convergence tests
                     #To do: add more
 
-                    if early_stop == 'mapdiff':             
+                    if early_stop == 'mapdiff':      
+
                         """ Checks if the map weights are not moving. """
 
-                        convergence.append(distance_metrics()[self.metric](new_weights,all_weights, 
+                        self.convergence.append(distance_metrics()[self.metric](new_weights,all_weights, 
                                                         **self.metric_kwds).mean())
                     
                     elif early_stop == 'bmudiff':
+
                         """ Checks if the bmus mean distance from the samples has stopped improving. """
 
-                        bmu_dists = np.min(dists,axis=1)
-
-                        if i > 0:
-                            convergence.append((old_bmu_dists - bmu_dists).mean())
-                        else:
-                            convergence.append(np.nan)
-
-                        old_bmu_dists = bmu_dists
+                        self.convergence.append(np.min(dists,axis=1).mean())
 
                     else:
                         sys.exit('Error: convergence method not recognized. Choose between \'mapdiff\' and \'bmudiff\'.')
 
-                    if convergence[-1] < early_stop_tolerance:
-                        early_stop_counter +=1
+                    if n_iter > 0 and self.convergence[-2]-self.convergence[-1] < early_stop_tolerance:
+                        early_stop_counter += 1
                     else:
                         early_stop_counter  = 0
-                    # add convergence plot
 
                 all_weights = new_weights
 
             """ Store final weights in the nodes objects. """
             #Revert back to object oriented
             
-            for i, node in enumerate(self.node_list):
-                node.weights = all_weights[i] # * self.learning_rate
+            for n_iter, node in enumerate(self.node_list):
+                node.weights = all_weights[n_iter] # * self.learning_rate
+
+            if early_stop is not None:
+
+                """ Plot convergence if it was tracked. """
+                
+                self.plot_convergence(logax=False)
 
         else:
             sys.exit('Error: training algorithm not recognized. Choose between \'online\' and \'batch\'.')
-                
+                        
         print("\rTraining SOM... done!")
+
+    def plot_convergence(self, logax=False, show=False, print_out=False, out_path='./'):
+
+        """ Plot the the map training progress according to the 
+            chosen convergence criterion.
+            
+        Args: 
+            logax (bool, optional): if True, plot convergence on logarithmic y axis.
+            show (bool, optional): Choose to display the plot.
+            print_out (bool, optional): Choose to save the plot to a file.
+            out_path (str, optional): Path to the folder where data will be saved.
+        """
+
+
+        fig=plt.figure(figsize=(30,10))
+        fig, ax = plt.subplots()
+        
+        ax.set_facecolor('white')
+        plt.grid(color='#aaaaaa')
+        
+        plt.plot(self.convergence, color='#444444')
+        plt.xticks(fontsize=15)
+        plt.yticks(fontsize=15)
+
+        if logax:
+            ax.set_yscale('log')
+        
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+
+        plt.xlabel('Iteration', fontsize=15)
+        plt.ylabel('Convergence score', fontsize=15)
+
+        print_name = os.path.join(out_path,'convergence.png')
+        
+        if print_out == True:
+            plt.savefig(print_name, bbox_inches='tight', dpi=300)
+        if show == True:
+            plt.show()
+        if show != False and print_out != False:
+            plt.clf()
+
 
     def nodes_graph(self, colnum=0, show=False, print_out=True, out_path='./', colname=None):
     
         """Plot a 2D map with hexagonal nodes and weights values
+
         Args:
             colnum (int): The index of the weight that will be shown as colormap.
             show (bool, optional): Choose to display the plot.
@@ -365,28 +410,31 @@ class SOMNet:
             colname = str(colnum)
 
         centers = [[node.pos[0],node.pos[1]] for node in self.node_list]
-
-        width_p=100
-        dpi=72
-        xInch = self.net_width*width_p/dpi 
-        yInch = self.net_height*width_p/dpi 
-        fig=plt.figure(figsize=(xInch, yInch), dpi=dpi)
+        
+        side    = np.sqrt(self.net_width*self.net_height)
+        width_p = 100
+        dpi     = 72
+        xInch   = self.net_width*width_p/dpi 
+        yInch   = self.net_height*width_p/dpi 
+        fig     = plt.figure(figsize=(xInch, yInch), dpi=dpi)
 
         if self.color_ex==True:
             cols = [[np.float(node.weights[0]),np.float(node.weights[1]),np.float(node.weights[2])]for node in self.node_list]   
             ax = hx.plot_hex(fig, centers, cols)
-            ax.set_title('Node Grid w Color Features', size=80)
+            ax.set_title('Node Grid w Color Features', size=4*side)
             print_name=os.path.join(out_path,'nodes_colors.png')
 
         else:
             cols = [node.weights[colnum] for node in self.node_list]
             ax = hx.plot_hex(fig, centers, cols)
-            ax.set_title('Node Grid w Feature ' +  colname, size=80)
+            ax.set_title('Node Grid w Feature ' +  colname, size=4*side)
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.0)
             cbar=plt.colorbar(ax.collections[0], cax=cax)
-            cbar.set_label(colname, size=80, labelpad=50)
-            cbar.ax.tick_params(labelsize=60)
+            cbar.set_label(colname, size=4*side, labelpad=2.5*side)
+            cbar.ax.tick_params(labelsize=2*side)
+            cbar.outline.set_visible(False)
+
             plt.sca(ax)
             print_name=os.path.join(out_path,'nodes_feature_'+str(colnum)+'.png')
             
@@ -430,6 +478,7 @@ class SOMNet:
 
         if show == True or print_out==True:
         
+            side    = np.sqrt(self.net_width*self.net_height)
             width_p = 100
             dpi     = 72
             x_inch  = self.net_width*width_p/dpi 
@@ -437,13 +486,14 @@ class SOMNet:
             fig     = plt.figure(figsize=(x_inch, y_inch), dpi=dpi)
 
             ax = hx.plot_hex(fig, centers, diffs)
-            ax.set_title('Nodes Grid w Weights Difference', size=80)
+            ax.set_title('Nodes Grid w Weights Difference', size=4*side)
             
             divider = make_axes_locatable(ax)
             cax     = divider.append_axes("right", size="5%", pad=0.0)
             cbar    = plt.colorbar(ax.collections[0], cax=cax)
-            cbar.set_label('Weights Difference', size=80, labelpad=50)
-            cbar.ax.tick_params(labelsize=60)
+            cbar.set_label('Weights Difference', size=4*side, labelpad=2.5*side)
+            cbar.ax.tick_params(labelsize=2*side)
+            cbar.outline.set_visible(False)
 
             plt.sca(ax)
             print_name = os.path.join(out_path,'nodes_difference.png')
@@ -508,13 +558,15 @@ class SOMNet:
         if show == True or print_out == True:
         
             """ Call nodes_graph/diff_graph to first build the 2D map of the nodes. """
+            
+            side = np.sqrt(self.net_width*self.net_height)
 
             if self.color_ex == True:
                 print_name = os.path.join(out_path,'color_projection.png')
                 self.nodes_graph(colnum, False, False)
                 plt.scatter([pos[0] for pos in bmu_list],[pos[1] for pos in bmu_list], color=cls,  
                         s=500, edgecolor='#ffffff', linewidth=5, zorder=10)
-                plt.title('Datapoints Projection', size=80)
+                plt.title('Datapoints Projection', size=4*side)
             else:
                 #a random perturbation is added to the points positions so that data 
                 #belonging plotted to the same bmu will be visible in the plot      
@@ -522,20 +574,21 @@ class SOMNet:
                     print_name = os.path.join(out_path,'projection_difference.png')
                     self.diff_graph(False, False, False)
                     plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmu_list],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
-                            s=400, linewidth=0, zorder=10)
-                    plt.title('Datapoints Projection on Nodes Difference', size=80)
+                            s=200, linewidth=0, zorder=10)
+                    plt.title('Datapoints Projection on Nodes Difference', size=4*side)
                 else:   
                     print_name = os.path.join(out_path,'projection_'+ colname +'.png')
                     self.nodes_graph(colnum, False, False, colname=colname)
                     plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmu_list],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
-                            s=400, edgecolor='#ffffff', linewidth=4, zorder=10)
-                    plt.title('Datapoints Projection #' +  str(colnum), size=80)
+                            s=200, edgecolor='#ffffff', linewidth=4, zorder=10)
+                    plt.title('Datapoints Projection #' +  str(colnum), size=4*side)
                 
             if labels != [ ] and not self.color_ex:
                 recs = []
                 for i in class_assignment:
                     recs.append(mpatches.Rectangle((0,0),1,1,fc=class_assignment[i]))
-                plt.legend(recs,class_assignment.keys(),loc=0)
+
+                plt.legend(recs, class_assignment.keys(), loc=(1.25,0), frameon=False, fontsize=2*side)
 
             if print_out == True:
                 plt.savefig(print_name, bbox_inches='tight', dpi=72)

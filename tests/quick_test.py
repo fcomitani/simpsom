@@ -6,5 +6,5 @@ if __name__ == "__main__":
     
     qt_test()
     dp_test()
-    run_colors_example()
-    run_colors_example(train_algo='online', learning_rate=0.1, epochs=1000)
+    run_colors_example(train_algo='online', epochs=100, early_stop='bmudiff')
+    run_colors_example(train_algo='batch', epochs=50, early_stop='bmudiff')
