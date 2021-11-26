@@ -5,13 +5,17 @@ A Rodriguez, A Laio,
 Clustering by fast search and find of density peaks
 SCIENCE, 1492, vol 322 (2014) 
 
-F. Comitani @2017 
+F. Comitani @2017-2021
 """
 
 import sys
-import numpy as np
-from operator import attrgetter
 import warnings
+
+from operator import attrgetter
+
+from math import sqrt, exp
+import numpy as np
+
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
@@ -108,14 +112,14 @@ class Point:
                 if self.rho < p2.rho:
                     dist_high.append(d)
                     """ Choose nearest neighbour and handle empty list """
-                    if d < np.min(dist_high or [999]): self.nneigh=p2
+                    if d < min(dist_high or [999]): self.nneigh=p2
                 else:
                     distsLow.append(d)
         
         """ If the point has maximal rho, then return max distance """
 
-        self.delta = np.min(dist_high) if len(dist_high) > 0 \
-                                       else np.max(dist_low) 
+        self.delta = min(dist_high) if len(dist_high) > 0 \
+                                       else max(dist_low) 
 
 
 class Collection:
@@ -127,7 +131,7 @@ class Collection:
         """ Generate a collection of point objects from an array containing their coordinates.
     
         Args:
-            coor_array (np.array): Array containing the coordinates of the points to cluster.
+            coor_array (array): Array containing the coordinates of the points to cluster.
             type_func (str): step function for calculating rho (step, gaussian kernel or logistic).
             percent (float): average percentage of neighbours.
             PBC (bool, optional): Activate/deactivate Periodic Boundary Conditions.
@@ -140,7 +144,7 @@ class Collection:
         for coors in coor_array:
             self.points.append(Point(coors))   
 
-        index=int(np.round(len(self.points)*percent))
+        index=int(round(len(self.points)*percent))
 
         self.PBC=PBC
         self.net_height = net_height
@@ -341,38 +345,38 @@ def dist(p1,p2, metric='euclid', PBC=False, net_height=0, net_width=0):
                 else: 
                     offset = 0.5
             
-                return np.min([np.sqrt((p1.coor[0]-p2.coor[0])*(p1.coor[0]-p2.coor[0])\
+                return min([sqrt((p1.coor[0]-p2.coor[0])*(p1.coor[0]-p2.coor[0])\
                         +(p1.coor[1]-p2.coor[1])*(p1.coor[1]-p2.coor[1])),
                     #right
-                    np.sqrt((p1.coor[0]-p2.coor[0]+net_width)*(p1.coor[0]-p2.coor[0]+net_width)\
+                    sqrt((p1.coor[0]-p2.coor[0]+net_width)*(p1.coor[0]-p2.coor[0]+net_width)\
                         +(p1.coor[1]-p2.coor[1])*(p1.coor[1]-p2.coor[1])),
                     #bottom 
-                    np.sqrt((p1.coor[0]-p2.coor[0]+offset)*(p1.coor[0]-p2.coor[0]+offset)\
-                        +(p1.coor[1]-p2.coor[1]+net_height*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]+net_height*2/np.sqrt(3)*3/4)),
+                    sqrt((p1.coor[0]-p2.coor[0]+offset)*(p1.coor[0]-p2.coor[0]+offset)\
+                        +(p1.coor[1]-p2.coor[1]+net_height*2/sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]+net_height*2/sqrt(3)*3/4)),
                     #left
-                    np.sqrt((p1.coor[0]-p2.coor[0]-net_width)*(p1.coor[0]-p2.coor[0]-net_width)\
+                    sqrt((p1.coor[0]-p2.coor[0]-net_width)*(p1.coor[0]-p2.coor[0]-net_width)\
                         +(p1.coor[1]-p2.coor[1])*(p1.coor[1]-p2.coor[1])),
                     #top 
-                    np.sqrt((p1.coor[0]-p2.coor[0]-offset)*(p1.coor[0]-p2.coor[0]-offset)\
-                        +(p1.coor[1]-p2.coor[1]-net_height*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]-net_height*2/np.sqrt(3)*3/4)),
+                    sqrt((p1.coor[0]-p2.coor[0]-offset)*(p1.coor[0]-p2.coor[0]-offset)\
+                        +(p1.coor[1]-p2.coor[1]-net_height*2/sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]-net_height*2/sqrt(3)*3/4)),
                     #bottom right
-                    np.sqrt((p1.coor[0]-p2.coor[0]+net_width+offset)*(p1.coor[0]-p2.coor[0]+net_width+offset)\
-                        +(p1.coor[1]-p2.coor[1]+net_height*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]+net_height*2/np.sqrt(3)*3/4)),
+                    sqrt((p1.coor[0]-p2.coor[0]+net_width+offset)*(p1.coor[0]-p2.coor[0]+net_width+offset)\
+                        +(p1.coor[1]-p2.coor[1]+net_height*2/sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]+net_height*2/sqrt(3)*3/4)),
                     #bottom left
-                    np.sqrt((p1.coor[0]-p2.coor[0]-net_width+offset)*(p1.coor[0]-p2.coor[0]-net_width+offset)\
-                        +(p1.coor[1]-p2.coor[1]+net_height*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]+net_height*2/np.sqrt(3)*3/4)),
+                    sqrt((p1.coor[0]-p2.coor[0]-net_width+offset)*(p1.coor[0]-p2.coor[0]-net_width+offset)\
+                        +(p1.coor[1]-p2.coor[1]+net_height*2/sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]+net_height*2/sqrt(3)*3/4)),
                     #top right
-                    np.sqrt((p1.coor[0]-p2.coor[0]+net_width-offset)*(p1.coor[0]-p2.coor[0]+net_width-offset)\
-                        +(p1.coor[1]-p2.coor[1]-net_height*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]-net_height*2/np.sqrt(3)*3/4)),
+                    sqrt((p1.coor[0]-p2.coor[0]+net_width-offset)*(p1.coor[0]-p2.coor[0]+net_width-offset)\
+                        +(p1.coor[1]-p2.coor[1]-net_height*2/sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]-net_height*2/sqrt(3)*3/4)),
                     #top left
-                    np.sqrt((p1.coor[0]-p2.coor[0]-net_width-offset)*(p1.coor[0]-p2.coor[0]-net_width-offset)\
-                        +(p1.coor[1]-p2.coor[1]-net_height*2/np.sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]-net_height*2/np.sqrt(3)*3/4))])
+                    sqrt((p1.coor[0]-p2.coor[0]-net_width-offset)*(p1.coor[0]-p2.coor[0]-net_width-offset)\
+                        +(p1.coor[1]-p2.coor[1]-net_height*2/sqrt(3)*3/4)*(p1.coor[1]-p2.coor[1]-net_height*2/sqrt(3)*3/4))])
 
             else:
                 diffs = 0
                 for i in range(len(p1.coor)): 
                     diffs = diffs+((p1.coor[i]-p2.coor[i])*(p1.coor[i]-p2.coor[i]))
-                return np.sqrt(diffs)
+                return sqrt(diffs)
 
     else:
         
@@ -421,7 +425,7 @@ def gaussian(p1, p2, sigma, PBC=False, net_height=0, net_width=0):
 
     """
 
-    return np.exp(-1.0*dist(p1,p2, 'euclid', PBC, net_height, net_width)*\
+    return exp(-1.0*dist(p1,p2, 'euclid', PBC, net_height, net_width)*\
             dist(p1,p2, 'euclid', PBC, net_height, net_width)/sigma*sigma)
 
 
@@ -442,7 +446,7 @@ def sigmoid(p1, p2, sigma, PBC=False, net_height=0, net_width=0):
 
     """
 
-    return np.exp(-1.0*(1.0+np.exp((dist(p1,p2, 'euclid', PBC, net_height, net_width))/sigma)))
+    return exp(-1.0*(1.0+exp((dist(p1,p2, 'euclid', PBC, net_height, net_width))/sigma)))
 
 
 def density_peak(sample, show=False, printout=False, percent=0.02, PBC=False, net_height=0, net_width=0):
@@ -469,6 +473,7 @@ def density_peak(sample, show=False, printout=False, percent=0.02, PBC=False, ne
 def dp_test(out_path='./'):
 
     import os
+    import numpy as np
 
     """ Run the complete clustering algorithm on a test case and print the clustered points graph. 
     

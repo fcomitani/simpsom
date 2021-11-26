@@ -5,10 +5,10 @@ L. J. Heyer, S. Kruglyak and S. Yooseph,
 Exploring Expression Data: Identification and Analysis of Coex-pressed Genes 
 Genome Research, Vol. 9, No. 11, 1999, pp. 1106-1115. 
 
-F. Comitani @2017 
+F. Comitani @2017-2021 
 """
 
-import numpy as np
+from math import sqrt
 
 def quality_threshold(sample, cutoff=5, PBC=False, net_height=0, net_width=0):
 
@@ -42,35 +42,35 @@ def quality_threshold(sample, cutoff=5, PBC=False, net_height=0, net_width=0):
                     offset = 0 if net_height % 2 == 0 else 0.5
 
                  
-                    dist_bmu = np.min([np.sqrt((sample[j][0]-sample[i][0])*(sample[j][0]-sample[i][0])\
+                    dist_bmu = min([sqrt((sample[j][0]-sample[i][0])*(sample[j][0]-sample[i][0])\
                         +(sample[j][1]-sample[i][1])*(sample[j][1]-sample[i][1])),
                     #right
-                    np.sqrt((sample[j][0]-sample[i][0]+net_width)*(sample[j][0]-sample[i][0]+net_width)\
+                    sqrt((sample[j][0]-sample[i][0]+net_width)*(sample[j][0]-sample[i][0]+net_width)\
                         +(sample[j][1]-sample[i][1])*(sample[j][1]-sample[i][1])),
                     #bottom 
-                    np.sqrt((sample[j][0]-sample[i][0]+offset)*(sample[j][0]-sample[i][0]+offset)\
-                        +(sample[j][1]-sample[i][1]+net_height*2/np.sqrt(3)*3/4)*(sample[j][1]-sample[i][1]+net_height*2/np.sqrt(3)*3/4)),
+                    sqrt((sample[j][0]-sample[i][0]+offset)*(sample[j][0]-sample[i][0]+offset)\
+                        +(sample[j][1]-sample[i][1]+net_height*2/sqrt(3)*3/4)*(sample[j][1]-sample[i][1]+net_height*2/sqrt(3)*3/4)),
                     #left
-                    np.sqrt((sample[j][0]-sample[i][0]-net_width)*(sample[j][0]-sample[i][0]-net_width)\
+                    sqrt((sample[j][0]-sample[i][0]-net_width)*(sample[j][0]-sample[i][0]-net_width)\
                         +(sample[j][1]-sample[i][1])*(sample[j][1]-sample[i][1])),
                     #top 
-                    np.sqrt((sample[j][0]-sample[i][0]-offset)*(sample[j][0]-sample[i][0]-offset)\
-                        +(sample[j][1]-sample[i][1]-net_height*2/np.sqrt(3)*3/4)*(sample[j][1]-sample[i][1]-net_height*2/np.sqrt(3)*3/4)),
+                    sqrt((sample[j][0]-sample[i][0]-offset)*(sample[j][0]-sample[i][0]-offset)\
+                        +(sample[j][1]-sample[i][1]-net_height*2/sqrt(3)*3/4)*(sample[j][1]-sample[i][1]-net_height*2/sqrt(3)*3/4)),
                     #bottom right
-                    np.sqrt((sample[j][0]-sample[i][0]+net_width+offset)*(sample[j][0]-sample[i][0]+net_width+offset)\
-                        +(sample[j][1]-sample[i][1]+net_height*2/np.sqrt(3)*3/4)*(sample[j][1]-sample[i][1]+net_height*2/np.sqrt(3)*3/4)),
+                    sqrt((sample[j][0]-sample[i][0]+net_width+offset)*(sample[j][0]-sample[i][0]+net_width+offset)\
+                        +(sample[j][1]-sample[i][1]+net_height*2/sqrt(3)*3/4)*(sample[j][1]-sample[i][1]+net_height*2/sqrt(3)*3/4)),
                     #bottom left
-                    np.sqrt((sample[j][0]-sample[i][0]-net_width+offset)*(sample[j][0]-sample[i][0]-net_width+offset)\
-                        +(sample[j][1]-sample[i][1]+net_height*2/np.sqrt(3)*3/4)*(sample[j][1]-sample[i][1]+net_height*2/np.sqrt(3)*3/4)),
+                    sqrt((sample[j][0]-sample[i][0]-net_width+offset)*(sample[j][0]-sample[i][0]-net_width+offset)\
+                        +(sample[j][1]-sample[i][1]+net_height*2/sqrt(3)*3/4)*(sample[j][1]-sample[i][1]+net_height*2/sqrt(3)*3/4)),
                     #top right
-                    np.sqrt((sample[j][0]-sample[i][0]+net_width-offset)*(sample[j][0]-sample[i][0]+net_width-offset)\
-                        +(sample[j][1]-sample[i][1]-net_height*2/np.sqrt(3)*3/4)*(sample[j][1]-sample[i][1]-net_height*2/np.sqrt(3)*3/4)),
+                    sqrt((sample[j][0]-sample[i][0]+net_width-offset)*(sample[j][0]-sample[i][0]+net_width-offset)\
+                        +(sample[j][1]-sample[i][1]-net_height*2/sqrt(3)*3/4)*(sample[j][1]-sample[i][1]-net_height*2/sqrt(3)*3/4)),
                     #top left
-                    np.sqrt((sample[j][0]-sample[i][0]-net_width-offset)*(sample[j][0]-sample[i][0]-net_width-offset)\
-                        +(sample[j][1]-sample[i][1]-net_height*2/np.sqrt(3)*3/4)*(sample[j][1]-sample[i][1]-net_height*2/np.sqrt(3)*3/4))])
+                    sqrt((sample[j][0]-sample[i][0]-net_width-offset)*(sample[j][0]-sample[i][0]-net_width-offset)\
+                        +(sample[j][1]-sample[i][1]-net_height*2/sqrt(3)*3/4)*(sample[j][1]-sample[i][1]-net_height*2/sqrt(3)*3/4))])
                 
                 else:
-                    dist_bmu = np.sqrt((sample[j][0]-sample[i][0])*(sample[j][0]-sample[i][0])\
+                    dist_bmu = sqrt((sample[j][0]-sample[i][0])*(sample[j][0]-sample[i][0])\
                     +(sample[j][1]-sample[i][1])*(sample[j][1]-sample[i][1]))
 
                 if dist_bmu <= cutoff:
@@ -86,6 +86,8 @@ def quality_threshold(sample, cutoff=5, PBC=False, net_height=0, net_width=0):
 def qt_test(out_path='./'):
 
     import os
+    import numpy as np
+
     import matplotlib.pyplot as plt
     import matplotlib as mpl
 

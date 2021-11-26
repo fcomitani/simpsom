@@ -1,5 +1,5 @@
 """
-SimpSOM (Simple Self-Organizing Maps) v1.3.5
+SimpSOM (Simple Self-Organizing Maps) v2.0.0
 F. Comitani @2017-2021 
  
 A lightweight python library for Kohonen Self-Organizing Maps (SOM).
@@ -8,7 +8,6 @@ A lightweight python library for Kohonen Self-Organizing Maps (SOM).
 from __future__ import print_function
 
 import sys
-import numpy as np
 import os, errno
 
 import matplotlib.pyplot as plt
@@ -16,54 +15,56 @@ from matplotlib import cm
 import matplotlib.patches as mpatches
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+import simpsom.interface as interface
 import simpsom.hexagons as hx
 from simpsom.cluster import density_peak as dp
 from simpsom.cluster import quality_threshold as qt
-
-from sklearn.decomposition import PCA
-from sklearn.metrics import pairwise_distances as pdist
-from sklearn.metrics.pairwise import distance_metrics
-
-from sklearn import cluster
 
 class SOMNet:
     """ Kohonen SOM Network class. """
 
     def __init__(self, net_height, net_width, data, load_file=None, metric='euclidean', metric_kwds={},
-                 init='PCA', PBC=0):
+                 init='PCA', PBC=False, GPU=False):
 
         """Initialise the SOM network.
 
         Args:
             net_height (int): Number of nodes along the first dimension.
             net_width (int): Numer of nodes along the second dimension.
-            data (np.array or list): N-dimensional dataset.
+            data (self.interface.num.array or list): N-dimensional dataset.
             load_file (str, optional): Name of file to load containing information 
                 to initialize the network weights.
             metric (string): distance metric for the identification of best matching
                 units. Accepts metrics available in scikit-learn (default 'euclidean').
             metric_kwds (dict): dictionary with optional keywords to pass to the chosen
                 metric (default {}).
-            init (str or list of np.array): Nodes initialization method, to be chosen between 'random'
+            init (str or list of self.interface.num.array): Nodes initialization method, to be chosen between 'random'
                 or 'PCA' (default 'PCA'). Alternatively a couple of vectors can be provided
                 whose values will be spanned uniformly.
-            PBC (boolean): Activate/Deactivate periodic boundary conditions,
+            PBC (boolean): Activate/deactivate periodic boundary conditions,
                 warning: only quality threshold clustering algorithm works with PBC (default 0).
+            GPU (boolean): Activate/deactivate GPU run with RAPIDS (requires CUDA).
+                
         """
-    
+
+        """ Set CPU/GPU libraries. """
+
+        self.interface = interface.InterfaceGPU() if bool(GPU)\
+                            else interface.InterfaceCPU() 
+
         """ Switch to activate special workflow if running the colours example. """
         self.color_ex = False
 
         """ Switch to activate periodic boundary conditions. """
         self.PBC = bool(PBC)
 
-        if self.PBC == True:
+        if self.PBC:
             print("Periodic Boundary Conditions active.")
         else:
             print("Periodic Boundary Conditions inactive.")
 
         self.node_list = []
-        self.data      = data.reshape(np.array([data.shape[0], data.shape[1]]))
+        self.data      = data.reshape(self.interface.num.array([data.shape[0], data.shape[1]]))
 
         self.metric      = metric
         self.metric_kwds = metric_kwds
@@ -83,7 +84,7 @@ class SOMNet:
             if init == 'PCA':
                 print("The weights will be initialized with PCA.")
             
-                pca     = PCA(n_components = 2)
+                pca     = self.interface.PCA(n_components = 2)
                 pca.fit(self.data)
                 init_vec = pca.components_
             
@@ -91,8 +92,8 @@ class SOMNet:
                 print("The weights will be initialized randomly.")
 
                 for i in range(self.data.shape[1]):
-                    init_bounds = [np.min(self.data,axis=1),
-                                np.max(self.data,axis=1)]
+                    init_bounds = [self.interface.num.min(self.data,axis=1),
+                                self.interface.num.max(self.data,axis=1)]
             
             else: 
                 print("Custom weights provided.")
@@ -104,7 +105,7 @@ class SOMNet:
 
             if load_file.endswith('.npy')==False:
                 load_file = load_file+'.npy'
-            wei_array = np.load(load_file)
+            wei_array = self.interface.num.load(load_file)
             #add something to check that data and array have the same dimensions,
             #or that they are mutually exclusive
             self.net_height = int(wei_array[0][0])
@@ -124,7 +125,7 @@ class SOMNet:
                 count_wei += 1
 
                 self.node_list.append(SOMNode(x, y, self.data.shape[1], \
-                    self.net_height, self.net_width, self.PBC, \
+                    self.net_height, self.net_width, self.PBC, self.interface,\
                     wei_bounds=init_bounds, init_vec=init_vec, wei_array=this_wei))
 
     def save(self, fileName='SOMNet_trained', out_path='./'):
@@ -136,11 +137,11 @@ class SOMNet:
             out_path (str, optional): Path to the folder where data will be saved.
         """
         
-        wei_array = [np.zeros(len(self.node_list[0].weights))]
+        wei_array = [self.interface.num.zeros(len(self.node_list[0].weights))]
         wei_array[0][0], wei_array[0][1], wei_array[0][2] = self.net_height, self.net_width, int(self.PBC)
         for node in self.node_list:
             wei_array.append(node.weights)
-        np.save(os.path.join(out_path,fileName), np.asarray(wei_array))
+        self.interface.num.save(os.path.join(out_path,fileName), self.interface.num.asarray(wei_array))
     
 
     def update_sigma(self, n_iter):
@@ -152,7 +153,7 @@ class SOMNet:
             
         """
     
-        self.sigma = self.start_sigma * np.exp(-n_iter/self.tau)
+        self.sigma = self.start_sigma * self.interface.num.exp(-n_iter/self.tau)
     
 
     def update_learning_rate(self, n_iter):
@@ -164,7 +165,7 @@ class SOMNet:
             
         """
         
-        self.learning_rate =  self.start_learning_rate * np.exp(n_iter/self.epochs)
+        self.learning_rate =  self.start_learning_rate * self.interface.num.exp(n_iter/self.epochs)
     
 
     def find_bmu_ix(self, vecs):
@@ -172,7 +173,7 @@ class SOMNet:
         """Find the index of the best matching unit (BMU) for a given list of vectors.
 
         Args:           
-            vec (2d np.array or list of lists): vectors whose distance from the network
+            vec (2d self.interface.num.array or list of lists): vectors whose distance from the network
                 nodes will be calculated.
             
         Returns:            
@@ -180,10 +181,10 @@ class SOMNet:
             
         """
         
-        dists = distance_metrics()[self.metric](vecs,[n.weights for n in self.node_list], 
-                                                **self.metric_kwds)
+        dists = self.interface.pairdist(vecs,[n.weights for n in self.node_list], 
+                        metric=self.metric, **self.metric_kwds)
 
-        return np.argmin(dists,axis=1)
+        return self.interface.num.argmin(dists,axis=1)
    
     def train(self, train_algo='batch', epochs=-1, start_learning_rate=0.01,  
                 early_stop=None, early_stop_patience=3, early_stop_tolerance=1e-4):
@@ -218,7 +219,7 @@ class SOMNet:
             epochs  = self.data.shape[0]*10
             
         self.epochs = epochs
-        self.tau    = self.epochs/np.log(self.start_sigma)
+        self.tau    = self.epochs/self.interface.num.log(self.start_sigma)
 
         if train_algo == 'online':
             """ Online training.
@@ -234,7 +235,7 @@ class SOMNet:
                 self.update_sigma(n_iter)
                 self.update_learning_rate(n_iter)
 
-                input_vec = self.data[np.random.randint(0, self.data.shape[0]), :].reshape(np.array([self.data.shape[1]]))
+                input_vec = self.data[self.interface.num.random.randint(0, self.data.shape[0]), :].reshape(self.interface.num.array([self.data.shape[1]]))
                 
                 bmu = self.node_list[self.find_bmu_ix([input_vec])[0]]
 
@@ -258,17 +259,17 @@ class SOMNet:
             #and parallelization at the cost of memory.
             #The object-oriented structure is kept to simplify code reading. 
 
-            dist_matrix_sq = np.zeros((self.net_width*self.net_height, 
+            dist_matrix_sq = self.interface.num.zeros((self.net_width*self.net_height, 
                                         self.net_width*self.net_height)) 
 
             for i in range(self.net_width*self.net_height):
                 for j in range(i + 1, self.net_width*self.net_height):
-                    dist_matrix_sq[i,j] = np.linalg.norm(self.node_list[i].pos-self.node_list[j].pos)
+                    dist_matrix_sq[i,j] = self.interface.num.linalg.norm(self.node_list[i].pos-self.node_list[j].pos)
             
             dist_matrix_sq += dist_matrix_sq.T
             dist_matrix_sq *= dist_matrix_sq
             
-            all_weights = np.array([n.weights for n in self.node_list])
+            all_weights = self.interface.num.array([n.weights for n in self.node_list])
 
             early_stop_counter = 0
 
@@ -289,21 +290,22 @@ class SOMNet:
                         
                 """ Find BMUs for all points and build matrix of gaussian effects. """
 
-                dists = distance_metrics()[self.metric](self.data, all_weights, 
-                                                **self.metric_kwds)
-                bmus = np.argmin(dists, axis=1)
+                        
+                dists = self.interface.pairdist(self.data, all_weights,  
+                                metric=self.metric, **self.metric_kwds)
+                bmus = self.interface.num.argmin(dists, axis=1)
 
-                gauss = np.exp(-dist_matrix_sq/(2*self.sigma*self.sigma))
+                gauss = self.interface.num.exp(-dist_matrix_sq/(2*self.sigma*self.sigma))
                 gauss = gauss[bmus]
 
-                gauss3d = np.repeat(gauss[:, :, np.newaxis], self.data.shape[1], axis=2)
-                samples3d = np.repeat(self.data[:, np.newaxis, :], gauss.shape[1], axis=1)
+                gauss3d = self.interface.num.repeat(gauss[:, :, self.interface.num.newaxis], self.data.shape[1], axis=2)
+                samples3d = self.interface.num.repeat(self.data[:, self.interface.num.newaxis, :], gauss.shape[1], axis=1)
 
-                numerator   = np.multiply(gauss3d,samples3d).sum(axis=0)
-                denominator = np.repeat(gauss.sum(axis=0)[:, np.newaxis], numerator.shape[1], axis=1)
+                numerator   = self.interface.num.multiply(gauss3d,samples3d).sum(axis=0)
+                denominator = self.interface.num.repeat(gauss.sum(axis=0)[:, self.interface.num.newaxis], numerator.shape[1], axis=1)
 
-                new_weights = np.divide(numerator,denominator)
-                new_weights[np.isnan(new_weights)] = all_weights[np.isnan(new_weights)] 
+                new_weights = self.interface.num.divide(numerator,denominator)
+                new_weights[self.interface.num.isnan(new_weights)] = all_weights[self.interface.num.isnan(new_weights)] 
 
                 """ Early stopping, active if patience is not None """
 
@@ -316,14 +318,14 @@ class SOMNet:
 
                         """ Checks if the map weights are not moving. """
 
-                        self.convergence.append(distance_metrics()[self.metric](new_weights,all_weights, 
-                                                        **self.metric_kwds).mean())
+                        self.convergence.append(self.interface.pairdist(new_weights,all_weights,  
+                                metric=self.metric, **self.metric_kwds).mean())
                     
                     elif early_stop == 'bmudiff':
 
                         """ Checks if the bmus mean distance from the samples has stopped improving. """
 
-                        self.convergence.append(np.min(dists,axis=1).mean())
+                        self.convergence.append(self.interface.num.min(dists,axis=1).mean())
 
                     else:
                         sys.exit('Error: convergence method not recognized. Choose between \'mapdiff\' and \'bmudiff\'.')
@@ -411,7 +413,7 @@ class SOMNet:
 
         centers = [[node.pos[0],node.pos[1]] for node in self.node_list]
         
-        side    = np.sqrt(self.net_width*self.net_height)
+        side    = self.interface.num.sqrt(self.net_width*self.net_height)
         width_p = 100
         dpi     = 72
         xInch   = self.net_width*width_p/dpi 
@@ -419,7 +421,7 @@ class SOMNet:
         fig     = plt.figure(figsize=(xInch, yInch), dpi=dpi)
 
         if self.color_ex==True:
-            cols = [[np.float(node.weights[0]),np.float(node.weights[1]),np.float(node.weights[2])]for node in self.node_list]   
+            cols = [node.weights[:3] for node in self.node_list]
             ax = hx.plot_hex(fig, centers, cols)
             ax.set_title('Node Grid w Color Features', size=4*side)
             print_name=os.path.join(out_path,'nodes_colors.png')
@@ -467,8 +469,10 @@ class SOMNet:
 
         """ Calculate the summed weight difference. """
 
-        diffs = [distance_metrics()['euclidean']([n.weights],neighbors[i]).sum()\
-                for i,n in enumerate(self.node_list)]
+        diffs = self.interface.num.array(
+                    [self.interface.pairdist([n.weights],neighbors[i], 
+                    metric='euclidean', **self.metric_kwds).sum()\
+                    for i,n in enumerate(self.node_list)])
 
         """ Define plotting hexagon centers. """
 
@@ -478,7 +482,7 @@ class SOMNet:
 
         if show == True or print_out==True:
         
-            side    = np.sqrt(self.net_width*self.net_height)
+            side    = self.interface.num.sqrt(self.net_width*self.net_height)
             width_p = 100
             dpi     = 72
             x_inch  = self.net_width*width_p/dpi 
@@ -516,7 +520,7 @@ class SOMNet:
             of each datapoint in a given array.
 
         Args:
-            array (np.array): An array containing datapoints to be mapped.
+            array (self.interface.num.array): An array containing datapoints to be mapped.
             colnum (int): The index of the weight that will be shown as colormap. 
                 If not chosen, the difference map will be used instead.
             show (bool, optional): Choose to display the plot.
@@ -559,7 +563,7 @@ class SOMNet:
         
             """ Call nodes_graph/diff_graph to first build the 2D map of the nodes. """
             
-            side = np.sqrt(self.net_width*self.net_height)
+            side = self.interface.num.sqrt(self.net_width*self.net_height)
 
             if self.color_ex == True:
                 print_name = os.path.join(out_path,'color_projection.png')
@@ -573,13 +577,13 @@ class SOMNet:
                 if colnum == -1:
                     print_name = os.path.join(out_path,'projection_difference.png')
                     self.diff_graph(False, False, False)
-                    plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmu_list],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
+                    plt.scatter([pos[0]-0.125+self.interface.num.random.rand()*0.25 for pos in bmu_list],[pos[1]-0.125+self.interface.num.random.rand()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
                             s=200, linewidth=0, zorder=10)
                     plt.title('Datapoints Projection on Nodes Difference', size=4*side)
                 else:   
                     print_name = os.path.join(out_path,'projection_'+ colname +'.png')
                     self.nodes_graph(colnum, False, False, colname=colname)
-                    plt.scatter([pos[0]-0.125+np.random.rand()*0.25 for pos in bmu_list],[pos[1]-0.125+np.random.rand()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
+                    plt.scatter([pos[0]-0.125+self.interface.num.random.rand()*0.25 for pos in bmu_list],[pos[1]-0.125+self.interface.num.random.rand()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
                             s=200, edgecolor='#ffffff', linewidth=4, zorder=10)
                     plt.title('Datapoints Projection #' +  str(colnum), size=4*side)
                 
@@ -608,7 +612,7 @@ class SOMNet:
             The clusters can also be plotted.
 
         Args:
-            array (np.array): An array containing datapoints to be clustered.
+            array (self.interface.num.array): An array containing datapoints to be clustered.
             clus_type (str, optional): The type of clustering to be applied, so far only quality threshold (qthresh) 
                 algorithm is directly implemented, other algorithms require sklearn.
             cutoff (float, optional): Cutoff for the quality threshold algorithm. This also doubles as
@@ -654,18 +658,18 @@ class SOMNet:
             try:
         
                 if clus_type == 'MeanShift':
-                    bandwidth = cluster.estimate_bandwidth(np.asarray(bmu_list), quantile=quant, n_samples=500)
-                    cl = cluster.MeanShift(bandwidth=bandwidth, bin_seeding=True).fit(bmu_list)
+                    bandwidth = self.interface.cluster_algo.estimate_bandwidth(self.interface.num.asarray(bmu_list), quantile=quant, n_samples=500)
+                    cl =  self.interface.cluster_algo.MeanShift(bandwidth=bandwidth, bin_seeding=True).fit(bmu_list)
                 
                 if clus_type == 'DBSCAN':
-                    cl = cluster.DBSCAN(eps=cutoff, min_samples=5).fit(bmu_list)     
+                    cl = self.interface.cluster_algo.DBSCAN(eps=cutoff, min_samples=5).fit(bmu_list)     
                 
                 if clus_type == 'KMeans':
-                    cl = cluster.KMeans(n_clusters=num_cl).fit(bmu_list)
+                    cl = self.interface.cluster_algo.KMeans(n_clusters=num_cl).fit(bmu_list)
 
                 cl_labs = cl.labels_                 
                     
-                for i in np.unique(cl_labs):
+                for i in self.interface.num.unique(cl_labs):
                     cl_list = []
                     tmp_list = range(len(bmu_list))
                     for j,k in zip(tmp_list,cl_labs):
@@ -692,13 +696,13 @@ class SOMNet:
         
         if print_out==True or show==True:
             
-            np.random.seed(0)
+            self.interface.num.random.seed(0)
             print_name = os.path.join(out_path,clus_type+'_clusters.png')
             
             fig, ax = plt.subplots()
             
             for i in range(len(clusters)):
-                randCl = "#%06x" % np.random.randint(0, 0xFFFFFF)
+                randCl = "#%06x" % self.interface.num.random.randint(0, 0xFFFFFF)
                 xc,yc  = [],[]
                 for c in clusters[i]:
                     #again, invert y and x to be consistent with the previous maps
@@ -724,7 +728,8 @@ class SOMNode:
 
     """ Single Kohonen SOM Node class. """
     
-    def __init__(self, x, y, num_weights, net_height, net_width, PBC, wei_bounds=None, init_vec=None, wei_array=None):
+    def __init__(self, x, y, num_weights, net_height, net_width, PBC, interface,
+                wei_bounds=None, init_vec=None, wei_array=None,):
     
         """Initialise the SOM node.
 
@@ -735,20 +740,23 @@ class SOMNode:
             net_height (int): Network height, needed for periodic boundary conditions (PBC)
             net_width (int): Network width, needed for periodic boundary conditions (PBC)
             PBC (bool): Activate/deactivate periodic boundary conditions.
-            wei_bounds(np.array, optional): boundary values for the random initialization
+            interface (Interface obj): CPU/GPU interface.
+            wei_bounds(self.interface.num.array, optional): boundary values for the random initialization
                 of the weights. Must be in the format [min_val, max_val]. 
                 They are overwritten by 'init_vec'.
-            init_vec (np.array, optional): Array containing the two custom vectors (e.g. PCA)
+            init_vec (self.interface.num.array, optional): Array containing the two custom vectors (e.g. PCA)
                 for the weights initalization.
-            wei_array (np.array, optional): Array containing the weights to give
+            wei_array (self.interface.num.array, optional): Array containing the weights to give
                 to the node if loaded from a file.
 
                 
         """
     
-        self.PBC     = PBC
-        self.pos     = np.array(hx.coor_to_hex(x,y))
-        self.weights = []
+        self.interface = interface
+        
+        self.PBC       = PBC
+        self.pos       = self.interface.num.array(hx.coor_to_hex(x,y))
+        self.weights   = []
 
         self.net_height = net_height
         self.net_width  = net_width
@@ -768,7 +776,7 @@ class SOMNode:
             """ Select randomly in the space spanned by the data. """
             
             for i in range(num_weights):
-                self.weights.append(np.random.random()*(wei_bounds[1][i]-wei_bounds[0][i])+wei_bounds[0][i])
+                self.weights.append(self.interface.num.random.random()*(wei_bounds[1][i]-wei_bounds[0][i])+wei_bounds[0][i])
        
         else: 
             """ Else return error. """
@@ -783,7 +791,7 @@ class SOMNode:
            DEPRECATED: this function will be removed in future versions, use SOMNet.get_bmu instead.
 
         Args:
-            vec (np.array): The vector from which the distance is calculated.
+            vec (self.interface.num.array): The vector from which the distance is calculated.
             
         Returns: 
             (float): The distance between the two weight vectors.
@@ -793,7 +801,7 @@ class SOMNode:
         if len(self.weights) == len(vec):
             for i in range(len(vec)):
                 sum += (self.weights[i]-vec[i])*(self.weights[i]-vec[i])
-            return np.sqrt(sum)
+            return self.interface.num.sqrt(sum)
         else:
             sys.exit("Error: dimension of nodes != input data dimension!")
 
@@ -817,35 +825,35 @@ class SOMNode:
 
             offset = 0 if self.net_height % 2 == 0 else 0.5
 
-            return  np.min([np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
+            return  self.interface.num.min([self.interface.num.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
                                 +(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
                             #right
-                            np.sqrt((self.pos[0]-node.pos[0]+self.net_width)*(self.pos[0]-node.pos[0]+self.net_width)\
+                            self.interface.num.sqrt((self.pos[0]-node.pos[0]+self.net_width)*(self.pos[0]-node.pos[0]+self.net_width)\
                                 +(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
                             #bottom 
-                            np.sqrt((self.pos[0]-node.pos[0]+offset)*(self.pos[0]-node.pos[0]+offset)\
-                                +(self.pos[1]-node.pos[1]+self.net_height*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.net_height*2/np.sqrt(3)*3/4)),
+                            self.interface.num.sqrt((self.pos[0]-node.pos[0]+offset)*(self.pos[0]-node.pos[0]+offset)\
+                                +(self.pos[1]-node.pos[1]+self.net_height*2/self.interface.num.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.net_height*2/self.interface.num.sqrt(3)*3/4)),
                             #left
-                            np.sqrt((self.pos[0]-node.pos[0]-self.net_width)*(self.pos[0]-node.pos[0]-self.net_width)\
+                            self.interface.num.sqrt((self.pos[0]-node.pos[0]-self.net_width)*(self.pos[0]-node.pos[0]-self.net_width)\
                                 +(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
                             #top 
-                            np.sqrt((self.pos[0]-node.pos[0]-offset)*(self.pos[0]-node.pos[0]-offset)\
-                                +(self.pos[1]-node.pos[1]-self.net_height*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.net_height*2/np.sqrt(3)*3/4)),
+                            self.interface.num.sqrt((self.pos[0]-node.pos[0]-offset)*(self.pos[0]-node.pos[0]-offset)\
+                                +(self.pos[1]-node.pos[1]-self.net_height*2/self.interface.num.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.net_height*2/self.interface.num.sqrt(3)*3/4)),
                             #bottom right
-                            np.sqrt((self.pos[0]-node.pos[0]+self.net_width+offset)*(self.pos[0]-node.pos[0]+self.net_width+offset)\
-                                +(self.pos[1]-node.pos[1]+self.net_height*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.net_height*2/np.sqrt(3)*3/4)),
+                            self.interface.num.sqrt((self.pos[0]-node.pos[0]+self.net_width+offset)*(self.pos[0]-node.pos[0]+self.net_width+offset)\
+                                +(self.pos[1]-node.pos[1]+self.net_height*2/self.interface.num.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.net_height*2/self.interface.num.sqrt(3)*3/4)),
                             #bottom left
-                            np.sqrt((self.pos[0]-node.pos[0]-self.net_width+offset)*(self.pos[0]-node.pos[0]-self.net_width+offset)\
-                                +(self.pos[1]-node.pos[1]+self.net_height*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.net_height*2/np.sqrt(3)*3/4)),
+                            self.interface.num.sqrt((self.pos[0]-node.pos[0]-self.net_width+offset)*(self.pos[0]-node.pos[0]-self.net_width+offset)\
+                                +(self.pos[1]-node.pos[1]+self.net_height*2/self.interface.num.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.net_height*2/self.interface.num.sqrt(3)*3/4)),
                             #top right
-                            np.sqrt((self.pos[0]-node.pos[0]+self.net_width-offset)*(self.pos[0]-node.pos[0]+self.net_width-offset)\
-                                +(self.pos[1]-node.pos[1]-self.net_height*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.net_height*2/np.sqrt(3)*3/4)),
+                            self.interface.num.sqrt((self.pos[0]-node.pos[0]+self.net_width-offset)*(self.pos[0]-node.pos[0]+self.net_width-offset)\
+                                +(self.pos[1]-node.pos[1]-self.net_height*2/self.interface.num.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.net_height*2/self.interface.num.sqrt(3)*3/4)),
                             #top left
-                            np.sqrt((self.pos[0]-node.pos[0]-self.net_width-offset)*(self.pos[0]-node.pos[0]-self.net_width-offset)\
-                                +(self.pos[1]-node.pos[1]-self.net_height*2/np.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.net_height*2/np.sqrt(3)*3/4))])
+                            self.interface.num.sqrt((self.pos[0]-node.pos[0]-self.net_width-offset)*(self.pos[0]-node.pos[0]-self.net_width-offset)\
+                                +(self.pos[1]-node.pos[1]-self.net_height*2/self.interface.num.sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.net_height*2/self.interface.num.sqrt(3)*3/4))])
                         
         else:
-            return np.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
+            return self.interface.num.sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
                 +(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1]))
 
 
@@ -855,14 +863,14 @@ class SOMNode:
         """Update the node weights.
 
         Args:
-            input_vec (np.array): A weights vector whose distance drives the direction of the update.
+            input_vec (self.interface.num.array): A weights vector whose distance drives the direction of the update.
             sigma (float): The updated gaussian sigma.
             learning_rate (float): The updated learning rate.
             bmu (SOMNode): The best matching unit.
         """
     
         dist  = self.get_node_distance(bmu)
-        gauss = np.exp(-dist*dist/(2*sigma*sigma))
+        gauss = self.interface.num.exp(-dist*dist/(2*sigma*sigma))
 
         for i in range(len(self.weights)):
             self.weights[i] = self.weights[i] - gauss*learning_rate*(self.weights[i]-input_vec[i])

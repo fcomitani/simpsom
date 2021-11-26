@@ -42,9 +42,7 @@ setup(
 		'matplotlib>=3.3.3'],
 
     extras_require={ 'gpu': ['cupy==8.60',
-				'cuml==0.18',
-				'cudf==0.18',
-				'cugraph==0.18']},
+				'cuml==0.18']},
     zip_safe=False,
 
 )

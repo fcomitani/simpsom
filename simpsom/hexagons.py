@@ -1,15 +1,15 @@
 """
 Hexagonal tiling library
 
-F. Comitani @2017 
+F. Comitani @2017-2021 
 """
 
-import numpy as np
+from math import sqrt, radians
+
 import matplotlib.pyplot as plt
 from matplotlib import transforms
 from matplotlib.patches import RegularPolygon
 from matplotlib.collections import PatchCollection
-
 
 def coor_to_hex(x,y):
 
@@ -25,7 +25,7 @@ def coor_to_hex(x,y):
     """
 
 
-    newy = y*2/np.sqrt(3)*3/4
+    newy = y*2/sqrt(3)*3/4
     newx = x
     
     if y%2: newx += 0.5
@@ -56,11 +56,11 @@ def plot_hex(fig, centers, weights):
     ypoints = [x[1]  for x in centers]
     patches = []
 
-    if any(isinstance(el, list) for el in weights) and len(weights[0])==3:
+    if hasattr(weights[0], "__len__"):
     
         for x,y,w in zip(xpoints,ypoints,weights):
-            hexagon = RegularPolygon((x,y), numVertices=6, radius=.95/np.sqrt(3), 
-                                orientation=np.radians(0), 
+            hexagon = RegularPolygon((x,y), numVertices=6, radius=.95/sqrt(3), 
+                                orientation=radians(0), 
                                 facecolor=w)
             ax.add_patch(hexagon)
 
@@ -68,13 +68,13 @@ def plot_hex(fig, centers, weights):
             
         cmap = plt.get_cmap('viridis')
         for x,y,w in zip(xpoints,ypoints,weights):
-            hexagon = RegularPolygon((x,y), numVertices=6, radius=.95/np.sqrt(3), 
-                                orientation=np.radians(0), 
+            hexagon = RegularPolygon((x,y), numVertices=6, radius=.95/sqrt(3), 
+                                orientation=radians(0), 
                                 facecolor=cmap(w))
             patches.append(hexagon) 
 
         p = PatchCollection(patches)
-        p.set_array(np.array(weights))
+        p.set_array(weights)
         ax.add_collection(p)
         
     ax.axis('off')

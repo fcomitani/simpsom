@@ -8,7 +8,7 @@
 The version contained in this branch is currently under development.
 Please use the main branch if you are looking for a stable version (1.3.4).
 
-## Version 1.3.5
+## Version 2.0.0
 
 SimpSOM is a lightweight implementation of Kohonen Self-Organizing Maps
 (SOM) for Python 3, useful for unsupervised learning,
@@ -29,8 +29,9 @@ origin space.
 
 ## What\'s New
 
-- Class and function names have been changed to adhere to PEP8.
+- Class and function names have been updated to adhere to PEP8.
 - Batch training has been added and is now the default algorithm.
+- A light parallelization is nor possible with RAPIDS.
 
 ## Version compatibility
 
@@ -41,9 +42,14 @@ If you are migrating from an older version (<=1.3.4), please make sure to check 
 
 ## Dependencies
 
--   Numpy 1.19.5 (older versions may work);
--   Matplotlib 3.3.3 (older versions may work);
--   Sklearn 0.22.2.post1 (older versions may work);
+```
+-   Numpy		== 1.19.5 
+-   Matplotlib	== 3.3.3 
+-   Sklearn		== 0.22.2.post1 
+```
+
+Older/newer versons may work, but make sure to test the library
+
 
 ## Example of Usage
 
@@ -86,6 +92,24 @@ dataset:
     #are compatible with periodic boundary conditions. Deactivate PBC if you intend to use
     #'MeanShift', 'DBSCAN', 'KMeans', or your own clustering tool.
     net.cluster(raw_data, clus_type='qthresh')	
+    
+ ## Running on GPU
+ 
+ If you have a CUDA compatible system, you can run this library on GPU just by activating the
+ namesake flag when instatiating the SOMNet class.
+ 
+ 	net = sps.SOMNet(20, 20, raw_data, PBC=False, GPU=True)
+	
+To be able to run this option you will need the following RAPIDS libraries:
+
+```
+- cupy == 8.60
+- cuml == 0.18
+```
+
+Please note that newer versions may work, but this libraries are still in development and API breaking
+changes are to be expected, make sure to check the RAPIDS repositories for more information.
+These libraries do not need to be installed to run the CPU version of SimpSOM.
 	
 ## A More Interesting Example: MNIST
 

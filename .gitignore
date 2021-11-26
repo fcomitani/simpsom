@@ -7,8 +7,8 @@ __pycache__/
 *.so
 *~
 *.sh
-_*
 
+docs/_build/
 docs/build/
 docs/source/
 docs/make.bat
