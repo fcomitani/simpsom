@@ -18,6 +18,18 @@ class Interface:
         self.distance_metrics = None
         self.cluster = None
 
+    def get_value(self, var):
+        """ Returns value of given variable,
+            Useful for transferring from GPU
+            to CPU.
+            
+        Args:
+            var (any): input variable.
+        Returns:
+            (any): value of the input variable.
+        """
+
+        return var
 
 class InterfaceCPU(Interface):
 
@@ -54,7 +66,7 @@ class InterfaceGPU(Interface):
 
         import cupy
 
-        from cuml.decomposition import PCA as tSVD
+        from cuml.decomposition import PCA
         from cuml.metrics import pairwise_distances as pairdist
         from cuml import cluster
 
@@ -66,6 +78,22 @@ class InterfaceGPU(Interface):
         self.pairdist         = pairdist
         self.cluster_algo     = cluster
 
+
+    def get_value(self, var, pandas=False):
+        """ Returns value of given variable,
+            transferring it from GPU to CPU.
+
+        Args:
+            var (any): input variable.
+            pandas (bool): if True, transform cudf to pandas.
+        Returns:
+            (any): value of the input variable.
+        """
+
+        if isinstance(var, self.num.ndarray):
+            return self.num.asnumpy(var)
+
+        return var.get()
 
 if __name__ == "__main__":
 

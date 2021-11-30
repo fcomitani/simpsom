@@ -5,9 +5,9 @@ F. Comitani @2017-2021
 """
 
 from math import sqrt, radians
+import numpy as np
 
 import matplotlib.pyplot as plt
-from matplotlib import transforms
 from matplotlib.patches import RegularPolygon
 from matplotlib.collections import PatchCollection
 
@@ -33,7 +33,7 @@ def coor_to_hex(x,y):
     return [newx,newy]    
     
 
-def plot_hex(fig, centers, weights):
+def plot_hex(fig, centers, weights, color_ex=False):
     
     """Plot an hexagonal grid based on the nodes positions and color the tiles
        according to their weights.
@@ -44,6 +44,7 @@ def plot_hex(fig, centers, weights):
                 to be plotted in the Hexagonal tiling space.
             weights (list, float): array contaning informations on the weigths of each cell, 
                 to be plotted as colors.
+            color_ex (bool): if true, plot the example dataset with colors.
             
         Returns:
             ax (matplotlib axis object): the axis on which the hexagonal grid has been plotted.
@@ -56,27 +57,24 @@ def plot_hex(fig, centers, weights):
     ypoints = [x[1]  for x in centers]
     patches = []
 
-    if hasattr(weights[0], "__len__"):
-    
-        for x,y,w in zip(xpoints,ypoints,weights):
-            hexagon = RegularPolygon((x,y), numVertices=6, radius=.95/sqrt(3), 
-                                orientation=radians(0), 
-                                facecolor=w)
-            ax.add_patch(hexagon)
+    cmap = plt.get_cmap('viridis')
 
-    else:
-            
-        cmap = plt.get_cmap('viridis')
-        for x,y,w in zip(xpoints,ypoints,weights):
-            hexagon = RegularPolygon((x,y), numVertices=6, radius=.95/sqrt(3), 
-                                orientation=radians(0), 
-                                facecolor=cmap(w))
-            patches.append(hexagon) 
-
-        p = PatchCollection(patches)
-        p.set_array(weights)
-        ax.add_collection(p)
+    for x,y,w in zip(xpoints,ypoints,weights):
         
+        facecolor = w if color_ex else cmap(w)
+
+        hexagon = RegularPolygon((x,y), numVertices=6, radius=.95/sqrt(3), 
+                            orientation=radians(0), 
+                            facecolor=facecolor)
+        patches.append(hexagon) 
+
+    p = PatchCollection(patches,  match_original=True)
+
+    setarray = None if color_ex else np.array(weights)
+    p.set_array(setarray)
+
+    ax.add_collection(p)
+      
     ax.axis('off')
     ax.autoscale_view()
     

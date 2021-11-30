@@ -14,7 +14,7 @@ import numpy as np
 from simpsom.network import SOMNet
 from simpsom._version import __version__
 
-def run_colors_example(train_algo='batch', epochs=-1, early_stop=None, out_path='./'):   
+def run_colors_example(train_algo='batch', epochs=-1, early_stop=None, out_path='./', GPU=False):   
 
     """Example of usage of SimpSOM: a number of vectors of length three
         (corresponding to the RGB values of a color) are used to briefly train a small network.
@@ -49,7 +49,7 @@ def run_colors_example(train_algo='batch', epochs=-1, early_stop=None, out_path=
             print((labels[i] + ", "), end=" ") 
     print("and " + labels[-1]+ ".\n")
     
-    net = SOMNet(20, 20, raw_data, PBC=True, init='random') 
+    net = SOMNet(20, 20, raw_data, PBC=True, init='random', GPU=GPU) 
     
     net.color_ex = True
     net.train(train_algo=train_algo, start_learning_rate=0.01, epochs=epochs,
