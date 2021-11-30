@@ -59,8 +59,10 @@ dataset:
     import simpsom as sps
 
 Build a network 20x20 with a weights format taken from the raw_data and activate Periodic Boundary Conditions. 
-    
-    net = sps.SOMNet(20, 20, raw_data, PBC=True)
+The weights will be initialized at `'random'` rather than with `'PCA'` and you can fix the random number
+generator seed for reproducibility with `'random_seed'`.
+
+    net = sps.SOMNet(20, 20, raw_data, PBC=True, init='random', random_seed=8)
 
 By default the network will be trained with the batch training algorithm and 10xsamples number of epochs.
 No learning rate is needed.
@@ -82,6 +84,9 @@ Early stopping is also available, for the moment only a couple of rough converge
 The convergence trend can be plotted with
     
     net.plot_convergence()
+    
+If you are encountering memory issues when running batch training, you can select the size of the mini batches
+with `batch_size`. This won't affect the final result, since the full dataset will still used for the weights' update.
 
 Save the weights to file in the `out_path` directory. This flag can be provided to any other plotting function to save the plots as png files.
 

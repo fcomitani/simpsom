@@ -10,7 +10,7 @@ from __future__ import print_function
 import sys
 import os, errno
 
-from random import random, randint
+import random 
 from math import sqrt, exp, log
 
 import matplotlib.pyplot as plt
@@ -27,7 +27,7 @@ class SOMNet:
     """ Kohonen SOM Network class. """
 
     def __init__(self, net_height, net_width, data, load_file=None, metric='euclidean', metric_kwds={},
-                 init='PCA', PBC=False, GPU=False):
+                 init='PCA', PBC=False, GPU=False, random_seed=None):
 
         """Initialise the SOM network.
 
@@ -47,8 +47,12 @@ class SOMNet:
             PBC (boolean): Activate/deactivate periodic boundary conditions,
                 warning: only quality threshold clustering algorithm works with PBC (default 0).
             GPU (boolean): Activate/deactivate GPU run with RAPIDS (requires CUDA).
+            random_seed (int): Seed for the random numbers generator (default None).
                 
         """
+
+        if random_seed is not None:
+            random.seed(random_seed)
 
         """ Set CPU/GPU libraries. """
 
@@ -96,8 +100,8 @@ class SOMNet:
                 print("The weights will be initialized randomly.")
 
                 for i in range(self.data.shape[1]):
-                    init_bounds = [self.interface.num.min(self.data,axis=1),
-                                   self.interface.num.max(self.data,axis=1)]
+                    init_bounds = [self.interface.num.min(self.data,axis=0),
+                                   self.interface.num.max(self.data,axis=0)]
             
             else: 
                 print("Custom weights provided.")
@@ -193,7 +197,8 @@ class SOMNet:
         return self.interface.num.argmin(dists,axis=1)
    
     def train(self, train_algo='batch', epochs=-1, start_learning_rate=0.01,  
-                early_stop=None, early_stop_patience=3, early_stop_tolerance=1e-4):
+                early_stop=None, early_stop_patience=3, early_stop_tolerance=1e-4,
+                batch_size=-1):
     
         """Train the SOM.
 
@@ -214,6 +219,10 @@ class SOMNet:
                 this threshold, the early stopping counter will be activated (it needs to be set
                 appropriately depending on the used distance metric). Ignored if early stopping
                 is off (default 1e-4).
+            batch_size (int): Split the dataset in batches of this size when calculating the 
+                new weights, works only when train_algo is 'batch' and helps keeping down the 
+                memory requirements when working with large datasets, if -1 run the whole dataset
+                at once. 
 
         """
 
@@ -226,6 +235,9 @@ class SOMNet:
             
         self.epochs = epochs
         self.tau    = self.epochs/log(self.start_sigma)
+
+        if batch_size == -1 or batch_size > self.data.shape[0]:
+            batch_size = self.data.shape[0]
 
         if train_algo == 'online':
             """ Online training.
@@ -241,7 +253,7 @@ class SOMNet:
                 self.update_sigma(n_iter)
                 self.update_learning_rate(n_iter)
 
-                input_vec = self.data[randint(0, self.data.shape[0]-1), :].reshape(1,self.data.shape[1])
+                input_vec = self.data[random.randint(0, self.data.shape[0]-1), :].reshape(1,self.data.shape[1])
                 
                 bmu = self.node_list[int(self.find_bmu_ix(input_vec)[0])]
 
@@ -292,24 +304,38 @@ class SOMNet:
                     break
 
                 self.update_sigma(n_iter)
+                
+                """ Matrix of gaussian effects. """
+
+                gauss = self.interface.num.exp(-dist_matrix_sq/(2*self.sigma*self.sigma))
 
                 if n_iter%10==0:
                     print("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)), end=' ')
                         
-                """ Find BMUs for all points and build matrix of gaussian effects. """
-                        
-                dists = self.interface.pairdist(self.data, all_weights,  
-                                metric=self.metric, **self.metric_kwds)
-                bmus = self.interface.num.argmin(dists, axis=1)
+                """ Run through mini batches to ease the memory burden. """
 
-                gauss = self.interface.num.exp(-dist_matrix_sq/(2*self.sigma*self.sigma))
-                gauss = gauss[bmus]
+                numerator   = self.interface.num.zeros((self.net_width*self.net_height, 
+                                        self.data.shape[1])) 
+                denominator =  self.interface.num.zeros((self.net_width*self.net_height, 
+                                        self.data.shape[1]))
 
-                gauss3d = self.interface.num.repeat(gauss[:, :, self.interface.num.newaxis], self.data.shape[1], axis=2)
-                samples3d = self.interface.num.repeat(self.data[:, self.interface.num.newaxis, :], gauss.shape[1], axis=1)
+                for b in range(int((self.data.shape[0]+batch_size-1)/batch_size)):
+                    
+                    batchdata = self.data[b*batch_size : min((b+1)*batch_size,self.data.shape[0])]
 
-                numerator   = self.interface.num.multiply(gauss3d,samples3d).sum(axis=0)
-                denominator = self.interface.num.repeat(gauss.sum(axis=0)[:, self.interface.num.newaxis], numerator.shape[1], axis=1)
+                    """ Find BMUs for all points and subselect gaussian matrix. """
+
+                    dists = self.interface.pairdist(batchdata, all_weights,  
+                                    metric=self.metric, **self.metric_kwds)
+                    bmus = self.interface.num.argmin(dists, axis=1)
+
+                    batchgauss = gauss[bmus]
+                    denominator += self.interface.num.repeat(batchgauss.sum(axis=0)[:, self.interface.num.newaxis], self.data.shape[1], axis=1)
+
+                    batchgauss = self.interface.num.repeat(batchgauss[:, :, self.interface.num.newaxis], self.data.shape[1], axis=2)
+                    batchdata = self.interface.num.repeat(batchdata[:, self.interface.num.newaxis, :], gauss.shape[1], axis=1)
+
+                    numerator  += self.interface.num.multiply(batchgauss,batchdata).sum(axis=0)
 
                 new_weights = self.interface.num.divide(numerator,denominator)
                 new_weights[self.interface.num.isnan(new_weights)] = all_weights[self.interface.num.isnan(new_weights)] 
@@ -600,15 +626,15 @@ class SOMNet:
                 if colnum == -1:
                     print_name = os.path.join(out_path,'projection_difference.png')
                     self.diff_graph(False, False, False)
-                    plt.scatter([pos[0]-0.125+self.interface.num.random.rand()*0.25 for pos in bmu_list],
-                                [pos[1]-0.125+self.interface.num.random.rand()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
+                    plt.scatter([pos[0]-0.125+random.random()*0.25 for pos in bmu_list],
+                                [pos[1]-0.125+random.random()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
                                  s=200, linewidth=0, zorder=10)
                     plt.title('Datapoints Projection on Nodes Difference', size=4*side)
                 else:   
                     print_name = os.path.join(out_path,'projection_'+ colname +'.png')
                     self.nodes_graph(colnum, False, False, colname=colname)
-                    plt.scatter([pos[0]-0.125+self.interface.num.random.rand()*0.25 for pos in bmu_list],
-                                [pos[1]-0.125+self.interface.num.random.rand()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
+                    plt.scatter([pos[0]-0.125+random.random()*0.25 for pos in bmu_list],
+                                [pos[1]-0.125+random.random()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
                                  s=200, edgecolor='#ffffff', linewidth=4, zorder=10)
                     plt.title('Datapoints Projection #' +  str(colnum), size=4*side)
                 
@@ -721,13 +747,12 @@ class SOMNet:
         
         if print_out==True or show==True:
             
-            self.interface.num.random.seed(0)
             print_name = os.path.join(out_path,clus_type+'_clusters.png')
             
             fig, ax = plt.subplots()
             
             for i in range(len(clusters)):
-                randCl = "#%06x" % randint(0, 0xFFFFFF)
+                randCl = "#%06x" % random.randint(0, 0xFFFFFF)
                 xc,yc  = [],[]
                 for c in clusters[i]:
                     #again, invert y and x to be consistent with the previous maps
@@ -801,7 +826,7 @@ class SOMNode:
             """ Select randomly in the space spanned by the data. """
             
             for i in range(num_weights):
-                self.weights.append(random()*(wei_bounds[1][i]-wei_bounds[0][i])+wei_bounds[0][i])
+                self.weights.append(random.random()*(wei_bounds[1][i]-wei_bounds[0][i])+wei_bounds[0][i])
        
         else: 
             """ Else return error. """
