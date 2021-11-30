@@ -67,8 +67,9 @@ class SOMNet:
             print("Periodic Boundary Conditions inactive.")
 
         self.node_list = []
-        self.data = self.interface.num.array(data)
-
+        self.data = self.interface.num.array(data)\
+                         .astype(self.interface.num.float32)
+        
         self.metric      = metric
         self.metric_kwds = metric_kwds
         
@@ -469,10 +470,21 @@ class SOMNet:
         """
         
         """ Find adjacent nodes in the grid. """
+        
+        #print(type(self.node_list[0].weights))
+        #print(type(self.node_list[0].get_node_distance(self.node_list[1])))
+        #print(self.node_list[0].get_node_distance(self.node_list[1])<= 1.001)
+        #pippo=[[node2.weights for node2 in self.node_list \
+        #                            if node != node2 and node.get_node_distance(node2) <= 1.001]
+        #                             for node in self.node_list]
+        #print(pippo, len(pippo), len(pippo[0]))
+        #print(self.interface.num.array)
+        #print(self.interface.num.array(pippo))
+        
 
-        neighbors = self.interface.num.array([[node2.weights for node2 in self.node_list \
-                    if node != node2 and node.get_node_distance(node2) <= 1.001]
-                    for node in self.node_list])
+        neighbors = [self.interface.num.array([node2.weights for node2 in self.node_list \
+                    if node != node2 and node.get_node_distance(node2) <= 1.001])
+                    for node in self.node_list]
 
         """ Calculate the summed weight difference. """
 
@@ -554,7 +566,8 @@ class SOMNet:
                     counter = (counter + 1)%len(colors)
         
         if not isinstance(array, self.interface.num.ndarray):
-            array = self.interface.num.array(array)
+            array = self.interface.num.array(array)\
+                    .astype(self.interface.num.float64)
 
         bmu_list, cls = [], []
         bmu_list = [self.node_list[int(mu)].pos for mu in self.find_bmu_ix(array)]

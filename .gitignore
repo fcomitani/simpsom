@@ -23,4 +23,5 @@ SimpSOM/temp*
 SimpSOM/*BAK
 
 tmp
+benchmark
 .DS_Store
