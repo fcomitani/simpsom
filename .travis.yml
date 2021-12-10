@@ -1,6 +1,5 @@
 language: python
 python:
-       - "2.7"
        - "3.4"
 install:
         - pip install -r requirements.txt
@@ -9,4 +8,4 @@ before_script: # configure a headless display to test plot generation
               - "sh -e /etc/init.d/xvfb start"
               - sleep 3 # give xvfb some time to start	  
 script:
-       - cd tests && python test.py
+       - cd tests && python quick_test.py

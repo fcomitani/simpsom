@@ -1,3 +1,0 @@
-Numpy
-scikit-learn
-Matplotlib
