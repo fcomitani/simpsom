@@ -22,8 +22,8 @@ copyright = '2017-2021, Federico Comitani'
 author = 'Federico Comitani'
 
 # The full version, including alpha/beta/rc tags
-release = '1.3.5'
-version = '1.3'
+release = '2.0.0'
+version = '2.0'
 
 # -- General configuration ---------------------------------------------------
 

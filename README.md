@@ -1,9 +1,11 @@
 # SimpSOM (Simple Self-Organizing Maps)
 
 [![DOI](https://zenodo.org/badge/91130860.svg)](https://zenodo.org/badge/latestdoi/91130860)
-[![PyPI version](https://badge.fury.io/py/SimpSOM.svg)](https://badge.fury.io/py/simpsom)
-[![Build Status](https://travis-ci.org/fcomitani/simpsom.svg?branch=main)](https://travis-ci.org/fcomitani/simpsom)
+[![PyPI version](https://badge.fury.io/py/simpsom.svg)](https://badge.fury.io/py/simpsom)
 [![Documentation Status](https://readthedocs.org/projects/simpsom/badge/?version=latest)](https://simpsom.readthedocs.io/en/latest/?badge=latest)
+
+<!-- [![Build Status](https://travis-ci.org/fcomitani/simpsom.svg?branch=main)](https://travis-ci.org/fcomitani/simpsom)
+-->
 
 ## Version 2.0.0
 

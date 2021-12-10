@@ -8,6 +8,7 @@ __pycache__/
 *~
 *.sh
 
+_build/
 docs/_build/
 docs/build/
 docs/source/
@@ -15,12 +16,12 @@ docs/make.bat
 docs/Makefile
 docs/.doctrees/
 
-SimpSOM/*png
-SimpSOM/*dat
-SimpSOM/*npy
-SimpSOM/*pyc
-SimpSOM/temp*
-SimpSOM/*BAK
+simpsom/*png
+simpsom/*dat
+simpsom/*npy
+simpsom/*pyc
+simpsom/temp*
+simpsom/*BAK
 
 tmp
 benchmark
