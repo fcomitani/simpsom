@@ -11,9 +11,10 @@ SimpSOM is a lightweight implementation of Kohonen Self-Organizing Maps
 (SOM) for Python 3, useful for unsupervised learning,
 clustering and dimensionality reduction.
 
-The package is now available on PyPI, to retrieve it just type
-`pip install SimpSOM` or download it from here and install with
-`python setup.py install`.
+To install this package, clone this repository and install it with
+`python setup.py install`. Alternatively you can download it from PyPI,
+to retrieve it just type `pip install simpsom`, but make sure the
+version you need is available on the database.
 
 It allows you to build and train SOM on your dataset, save/load the trained
 network weights, and display or print graphs of the network with
@@ -41,7 +42,7 @@ If you are migrating from an older version (<=1.3.4), please make sure to check 
 
 ```
 -   Numpy		== 1.19.5 
--   Matplotlib	== 3.3.3 
+-   Matplotlib		== 3.3.3 
 -   Sklearn		== 0.22.2.post1 
 ```
 
@@ -144,11 +145,8 @@ These tests were run on a 32-cores Xeon Gold 6140 CPU and an 8-cores NVIDIA V100
 	
 ## Documentation
 
-See [here](https://simpsom.readthedocs.io/en/master/) the full API documentation
+See [here](https://simpsom.readthedocs.io/en/latest/) the full API documentation
 
 ## Citation
 
-If using this library, please cite it as
-
-> Federico Comitani, 2019. fcomitani/SimpSOM: v1.3.4. doi:10.5281/zenodo.2621560
-
+If using this library, please cite the appropriate version from [Zenodo](https://zenodo.org/badge/latestdoi/91130860)
