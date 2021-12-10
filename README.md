@@ -2,11 +2,8 @@
 
 [![DOI](https://zenodo.org/badge/91130860.svg)](https://zenodo.org/badge/latestdoi/91130860)
 [![PyPI version](https://badge.fury.io/py/SimpSOM.svg)](https://badge.fury.io/py/simpsom)
-[![Build Status](https://travis-ci.org/fcomitani/simpsom.svg?branch=master)](https://travis-ci.org/fcomitani/simpsom)
+[![Build Status](https://travis-ci.org/fcomitani/simpsom.svg?branch=main)](https://travis-ci.org/fcomitani/simpsom)
 [![Documentation Status](https://readthedocs.org/projects/simpsom/badge/?version=latest)](https://simpsom.readthedocs.io/en/latest/?badge=latest)
-
-The version contained in this branch is currently under development.
-Please use the main branch if you are looking for a stable version (1.3.4).
 
 ## Version 2.0.0
 
@@ -109,6 +106,14 @@ It's important to note that only Quality Threshold (`'qthresh'`) and Density Pea
     
     net.cluster(raw_data, clus_type='qthresh')	
     
+## A More Interesting Example: MNIST
+
+Here is another example of SimpSOM capabilities: the library was used to try and reduce a MNIST handwritten digits dataset. A 50x50 nodes map was trained with 500 MINST landmark data points and 100000 epochs in total, starting from a 0.1 learning rate and without PCA Initialization.
+
+![](./docs/figs/nD_annotated.png)
+
+Projecting a few of those points on the map gives the following result, showing a clear distinction between clusters of digits with a few exceptions. Similar shapes (such as 7 and 9) are mapped closed together, while relatively far from other more distinct digits. The accuracy of this mapping could be further improved by tweaking the map parameters and training.
+	
  ## Running on GPU
  
  If you have a CUDA compatible system, you can run this library on GPU just by activating the
@@ -126,14 +131,16 @@ To be able to run this option you will need the following RAPIDS libraries:
 Please note that newer versions may work, but these libraries are still in development and API breaking
 changes are to be expected, make sure to check the RAPIDS repositories for more information.
 These libraries do not need to be installed to run the CPU version of SimpSOM.
-	
-## A More Interesting Example: MNIST
 
-Here is another example of SimpSOM capabilities: the library was used to try and reduce a MNIST handwritten digits dataset. A 50x50 nodes map was trained with 500 MINST landmark data points and 100000 epochs in total, starting from a 0.1 learning rate and without PCA Initialization.
+While both online and batch training can be run on GPU, the latter benefits greatly from this implementation (~10 times faster), as shown in the following plot.
 
-![](./docs/figs/nD_annotated.png)
+![](./docs/figs/bmk.png)
 
-Projecting a few of those points on the map gives the following result, showing a clear distinction between clusters of digits with a few exceptions. Similar shapes (such as 7 and 9) are mapped closed together, while relatively far from other more distinct digits. The accuracy of this mapping could be further improved by tweaking the map parameters and training.
+Here, a map has been trained for 100 epochs on the MNIST dataset for different dataset sizes. The map size was set as (1.5*sqrt(N))^2 where N is the population size.
+The y axis is adjusted per data point evaluation. One epoch in batch training evaluates the distances between network nodes and each point in the dataset, while online training only evaluates one point per epoch. This means the impact on the map will be larger per training epoch with the batch algorithm, and the total number of training iterations should be adapted accordingly.
+As shown in this plot, all tested methods grow linearly with the map and dataset size, but the batch training implementation is a few order of magnitude faster than online training. On GPU it is further ten times faster.
+Make sure to select the algorithm that best suits your needs!	
+These tests were run on a 32-cores Xeon Gold 6140 CPU and an 8-cores NVIDIA V100 32GB Telsa GPU.
 	
 ## Documentation
 
