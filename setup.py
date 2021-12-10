@@ -5,7 +5,7 @@ from os import path
 here    = path.abspath(path.dirname(__file__))
 version = open("simpsom/_version.py").readlines()[-1].split()[-1].strip("\"'")
 
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+with open(path.join(here, 'long.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
@@ -29,8 +29,8 @@ setup(
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python'
-        'Programming Language :: Python :: 3.7'
+        'Programming Language :: Python',
+	'Programming Language :: Python :: 3'
 		],
 
     keywords='kohonen self-organizing maps, self-organizing maps, clustering ,dimension-reduction, som',
