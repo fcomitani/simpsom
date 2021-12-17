@@ -7,7 +7,7 @@
 <!-- [![Build Status](https://travis-ci.org/fcomitani/simpsom.svg?branch=main)](https://travis-ci.org/fcomitani/simpsom)
 -->
 
-## Version 2.0.0
+## Version 2.0.1
 
 SimpSOM is a lightweight implementation of Kohonen Self-Organizing Maps
 (SOM) for Python 3, useful for unsupervised learning,
@@ -153,5 +153,5 @@ See [here](https://simpsom.readthedocs.io/en/latest/) the full API documentation
 
 If using this library, please cite the appropriate version from [Zenodo](https://zenodo.org/badge/latestdoi/91130860)
 
-> Federico Comitani. (2021). SimpSOM (v2.0.0). Zenodo. https://doi.org/10.5281/zenodo.5772918
+> Federico Comitani. (2021). SimpSOM (v2.0.1). Zenodo. https://doi.org/10.5281/zenodo.5788411
 
