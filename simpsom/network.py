@@ -478,7 +478,7 @@ class SOMNet:
             plt.savefig(print_name, bbox_inches='tight', dpi=dpi)
         if show==True:
             plt.show()
-        if show!=False and printout!=False:
+        if show!=False and print_out!=False:
             plt.clf()
 
     def diff_graph(self, show=False, print_out=True, returns=False, out_path='./'):
