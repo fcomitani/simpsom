@@ -1,47 +1,55 @@
 """
-SimpSOM (Simple Self-Organizing Maps) v2.0.0
-F. Comitani @2017-2021 
+SimpSOM (Simple Self-Organizing Maps) v3.0.0
+F Comitani, SG Riva, A Tangherloni
  
 A lightweight python library for Kohonen Self-Organizing Maps (SOM).
 """
 
 from __future__ import print_function
 
-import sys
+import sys, time
 import os, errno
+import subprocess
+import multiprocessing
 
 import random 
+import numpy as np
+import pandas as pd
 from math import sqrt, exp, log
 
+import seaborn as sns
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from matplotlib import cm
-import matplotlib.patches as mpatches
+from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-import simpsom.interface as interface
 import simpsom.hexagons as hx
-from simpsom.cluster import density_peak as dp
-from simpsom.cluster import quality_threshold as qt
+import simpsom.rectangular as rec
+import simpsom.distances as dist
+import simpsom.neighborhoods as neighbor
+
+import warnings
+warnings.filterwarnings('ignore')
 
 class SOMNet:
     """ Kohonen SOM Network class. """
 
-    def __init__(self, net_height, net_width, data, load_file=None, metric='euclidean', metric_kwds={},
-                 init='PCA', PBC=False, GPU=False, random_seed=None):
+    def __init__(self, net_height, net_width, data, load_file=None, metric='euclidean', topology="hexagonal", neighborhood_fun='gaussian',
+                 init='random', PBC=False, GPU=False, CUML=False, random_seed=None, verbose=True):
 
         """Initialise the SOM network.
 
         Args:
             net_height (int): Number of nodes along the first dimension.
             net_width (int): Numer of nodes along the second dimension.
-            data (self.interface.num.array or list): N-dimensional dataset.
+            data (np or cp ..array or list): N-dimensional dataset.
             load_file (str, optional): Name of file to load containing information 
                 to initialize the network weights.
             metric (string): distance metric for the identification of best matching
-                units. Accepts metrics available in scikit-learn (default 'euclidean').
-            metric_kwds (dict): dictionary with optional keywords to pass to the chosen
-                metric (default {}).
-            init (str or list of self.interface.num.array): Nodes initialization method, to be chosen between 'random'
+                units. Accepted metrics are euclidean, manhattan, and cosine (default 'euclidean').
+            topology (string): topology kohonen map. Accepted topology are hexagonal, and rectangular (default 'hexagonal').
+            init (str or list of np or cp ..array): Nodes initialization method, to be chosen between 'random'
                 or 'PCA' (default 'PCA'). Alternatively a couple of vectors can be provided
                 whose values will be spanned uniformly.
             PBC (boolean): Activate/deactivate periodic boundary conditions,
@@ -50,34 +58,62 @@ class SOMNet:
             random_seed (int): Seed for the random numbers generator (default None).
                 
         """
-
-        if random_seed is not None:
-            random.seed(random_seed)
-
+            
         """ Set CPU/GPU libraries. """
+        self.verbose = bool(verbose)
+        
+        self.GPU  = bool(GPU)
+        self.CUML = bool(CUML)
 
-        self.interface = interface.InterfaceGPU() if bool(GPU)\
-                            else interface.InterfaceCPU() 
+        if self.GPU:
+            import numpy
+            import cupy
+            self.np = numpy
+            self.cp = cupy
+        else:
+            import numpy
+            from sklearn import cluster    
+            self.np = numpy
+            self.cp = numpy
 
-        """ Switch to activate special workflow if running the colors example. """
-        self.color_ex = False
+        if self.CUML and self.GPU:
+            try:
+                from cuml import cluster
+            except:
+                print("Warning, cuml libraries not intalled. Loading sklearn ...")
+            from sklearn import cluster
+        elif self.CUML==False and self.GPU:
+            from sklearn import cluster
+        else:
+            from sklearn import cluster
+        self.cluster_algo = cluster
+
+        """ Set seeds for result repetibility. """
+        if random_seed is not None:
+            os.environ['PYTHONHASHSEED'] = str(random_seed)
+            random.seed(random_seed)
+            self.np.random.seed(random_seed)
+            self.cp.random.seed(random_seed)
 
         """ Switch to activate periodic boundary conditions. """
         self.PBC = bool(PBC)
-
-        if self.PBC:
-            print("Periodic Boundary Conditions active.")
-        else:
-            print("Periodic Boundary Conditions inactive.")
+        
+        if self.verbose:
+            if self.PBC:
+                print("Periodic Boundary Conditions active.")
+            else:
+                print("Periodic Boundary Conditions inactive.")
 
         self.node_list = []
-        self.data = self.interface.num.array(data)\
-                         .astype(self.interface.num.float32)
+        self.data = self.cp.array(data).astype(self.cp.float32)
+
+        self.metric = metric
+
+        self.topology = topology
         
-        self.metric      = metric
-        self.metric_kwds = metric_kwds
-        
-        self.convergence   = []
+        self.neighborhood_fun = neighborhood_fun
+
+        self.convergence = []
 
         """ Load the weights from file, generate them randomly or from PCA. """
 
@@ -90,30 +126,35 @@ class SOMNet:
             self.net_width  = net_width
 
             if init == 'PCA':
-                print("The weights will be initialized with PCA.")
-            
-                pca     = self.interface.PCA(n_components = 2)
-                pca.fit(self.data)
-                init_vec = pca.components_
+                if self.verbose:
+                    print("The weights will be initialized with PCA.")
+                
+                if self.cp.__name__ == 'cupy':
+                    init_vec = self.__pca(self.data.get(), n_pca=2)
+                else:
+                    init_vec = self.__pca(self.data, n_pca=2)
             
             elif init == 'random':
-                print("The weights will be initialized randomly.")
+                if self.verbose:
+                    print("The weights will be initialized randomly.")
 
                 for i in range(self.data.shape[1]):
-                    init_bounds = [self.interface.num.min(self.data,axis=0),
-                                   self.interface.num.max(self.data,axis=0)]
+                    init_vec = [self.np.min(self.data,axis=0),
+                                self.np.max(self.data,axis=0)]
             
-            else: 
-                print("Custom weights provided.")
+            else:
+                if self.verbose:
+                    print("Custom weights provided.")
 
                 init_vec = init
 
         else:   
-            print('The weights will be loaded from file.')
+            if self.verbose:
+                print('The weights will be loaded from file.')
 
             if load_file.endswith('.npy')==False:
                 load_file = load_file+'.npy'
-            wei_array = self.interface.num.load(load_file)
+            wei_array = self.np.load(load_file)
             #add something to check that data and array have the same dimensions,
             #or that they are mutually exclusive
             self.net_height = int(wei_array[0][0])
@@ -125,20 +166,161 @@ class SOMNet:
 
         """ Set the weights. """
 
+        init_vec = self.cp.array(init_vec)
         for x in range(self.net_width):
             for y in range(self.net_height):
 
                 #if weights were loaded from file
-                this_wei = wei_array[count_wei] if wei_array is not None\
-                                                else None
+                if wei_array is not None:
+                    this_wei = wei_array[count_wei]
+                else:
+                    this_wei = None
+                
                 count_wei += 1
 
-                self.node_list.append(SOMNode(x, y, self.data.shape[1], \
-                    self.net_height, self.net_width, self.PBC, self.interface,\
-                    wei_bounds=init_bounds, init_vec=init_vec, wei_array=this_wei))
+                self.node_list.append(SOMNode(x, y, self.data.shape[1], 
+                                              self.net_height, self.net_width, self.PBC, self.topology,
+                                              wei_bounds=init_bounds, init_vec=init_vec, wei_array=this_wei))
 
-    def save(self, fileName='SOMNet_trained', out_path='./'):
+
+    def __get_n_parallel(self):
+        
+        if self.cp.__name__ == 'cupy':
+            try:
+                import cupy as cp
+                dev = cp.cuda.Device()
+                n_smp = dev.attributes['MultiProcessorCount']
+                max_thread_per_smp = dev.attributes['MaxThreadsPerMultiProcessor']
+                return n_smp*max_thread_per_smp
+            except:
+                print("Cupy is not available.")
+                return 0
+            try:
+
+                return int(subprocess.check_output("nvidia-settings -q CUDACores -t", shell=True))
+            except:
+                print("Could not infer #cuda_cores")
+                return 0
+        else:
+            try:
+                return multiprocessing.cpu_count()*500
+            except:
+                print("Could not infer #CPU_cores")
+                return 0 
+            
+        
+    # check function's functionality
+    def __datapoint_random_generation(self, data, epochs):
+        
+        """Generates datapoints for online training.
+        Args:
+            data (np or cp ..array or list): N-dimensional dataset.
+            epochs (int): Number of training iterations. 
+        """
+        
+        if epochs < data.shape[0]:
+            if self.verbose:
+                print("Warning, epochs for online training are less than the entry datapoints!")
+            
+        dps = self.np.arange(0, data.shape[0], 1)
+        if epochs <= data.shape[0]:
+            entries = random.sample(dps.tolist(), k=epochs)
+        else:
+            entries = random.sample(dps.tolist(), k=data.shape[0])
+            epcs = epochs - data.shape[0]
+            while epcs > 0:
+                entries += random.sample(dps.tolist(), k=data.shape[0])
+                epcs -= data.shape[0]
+        return entries
     
+    
+    def __pca(self, A, n_pca):
+        
+        """Generates PCA components to initialize network weights.
+        Args:
+            A (np or cp ..array or list): N-dimensional dataset.
+            n_pca (int): number of comporn. 
+                     
+        Returns:            
+            vectors (np or cp ..array or list): Principal axes in feature space, 
+            representing the directions of maximum variance in the data.
+        """
+               
+        M = self.np.mean(A.T, axis=1)
+        C = A - M
+        V = self.np.cov(C.T)
+        vectors = self.np.linalg.eig(V)[-1].T[:n_pca]
+        
+        return vectors
+    
+    
+    def __finding_label(self, c, i):
+        for j in range(len(c)):
+            if i in c[j]:
+                return j            
+
+    def __sorting_clusters(self, a, c):
+        dict_labels = {}
+        for i in range(a.shape[0]):
+            label = self.__finding_label(c, i)
+            dict_labels[i] = label
+        return list(dict_labels.values())
+
+    
+    def plot_convergence(self, logax=False, print_out=False, out_path='./', 
+                         fsize=(5, 5), figtitle=('Convergence', 14), fontsize=12):
+
+        """ Plot the the map training progress according to the 
+            chosen convergence criterion, when train_algo is batch.
+            
+        Args: 
+            logax (bool, optional): if True, plot convergence on logarithmic y axis.
+            show (bool, optional): Choose to display the plot.
+            print_out (bool, optional): Choose to save the plot to a file.
+            out_path (str, optional): Path to the folder where data will be saved.
+            fsize (tuple(int, int), optional): Figure size.
+            figtitle (tuple(str, str), optional): Figure title and fontsize.
+            fontsize (int, optional): Legend fontsize.
+        """
+        
+        if self.convergence==[]:
+            if self.verbose:
+                print("Warning, given the selected train_algo or the early_stop, there is no convergence values.")
+            
+        else:
+            f, ax = plt.subplots(1,1,figsize=(fsize[0], fsize[1]))
+            
+            self.convergence = np.nan_to_num(self.convergence) 
+
+            sns.lineplot(y=self.convergence, x=range(len(self.convergence)), marker="o", ax=ax)
+            
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+
+            plt.xticks(fontsize=fontsize)
+            plt.yticks(fontsize=fontsize)
+
+            if logax:
+                ax.set_yscale('log')
+
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
+
+            plt.xlabel('Iteration', fontsize=fontsize)
+            plt.ylabel('Score', fontsize=fontsize)
+            
+            plt.title(figtitle[0], size=figtitle[1])
+            
+            plt.grid(False)
+            plt.show()
+
+            if print_out == True:
+                print_name = os.path.join(out_path,'convergence.png')
+                plt.savefig(print_name, bbox_inches='tight')
+    
+    
+    def save(self, fileName='SOMNet_trained', out_path='./'):
+ 
         """Saves the network dimensions, the pbc and nodes weights to a file.
 
         Args:
@@ -146,11 +328,11 @@ class SOMNet:
             out_path (str, optional): Path to the folder where data will be saved.
         """
         
-        wei_array = [self.interface.num.zeros(len(self.node_list[0].weights))]
+        wei_array = [self.cp.zeros(len(self.node_list[0].weights))]
         wei_array[0][0], wei_array[0][1], wei_array[0][2] = self.net_height, self.net_width, int(self.PBC)
         for node in self.node_list:
-            wei_array.append(node.weights)
-        self.interface.num.save(os.path.join(out_path,fileName), self.interface.num.asarray(wei_array))
+             wei_array.append(self.cp.asarray(node.weights))
+        self.cp.save(os.path.join(out_path,fileName), self.cp.asarray(wei_array))
     
 
     def update_sigma(self, n_iter):
@@ -176,29 +358,29 @@ class SOMNet:
         
         self.learning_rate =  self.start_learning_rate * exp(n_iter/self.epochs)
     
-
+    
     def find_bmu_ix(self, vecs):
     
         """Find the index of the best matching unit (BMU) for a given list of vectors.
 
         Args:           
-            vec (2d self.interface.num.array or list of lists): vectors whose distance from the network
+            vec (2d np or cp ..array or list of lists): vectors whose distance from the network
                 nodes will be calculated.
             
         Returns:            
             bmu (SOMNode): The best matching unit node index.
             
         """
-        
-        dists = self.interface.pairdist(vecs,
-                        self.interface.num.array([n.weights for n in self.node_list]), 
-                        metric=self.metric, **self.metric_kwds)
 
-        return self.interface.num.argmin(dists,axis=1)
-   
-    def train(self, train_algo='batch', epochs=-1, start_learning_rate=0.01,  
-                early_stop=None, early_stop_patience=3, early_stop_tolerance=1e-4,
-                batch_size=-1):
+
+        dists = dist.pairdist(vecs,
+                              self.cp.array([n.weights for n in self.node_list]), 
+                              metric=self.metric, cpu=not(self.GPU))
+        return self.cp.argmin(dists,axis=1)
+
+    
+    def train(self, train_algo='batch', epochs=-1, start_learning_rate=0.01, early_stop=None, 
+              early_stop_patience=3, early_stop_tolerance=1e-4, batch_size=-1):
     
         """Train the SOM.
 
@@ -225,11 +407,13 @@ class SOMNet:
                 at once. 
 
         """
-
-        print("The map will be trained with the "+train_algo+" algorithm.")
+        if self.verbose:
+            print("The map will be trained with the "+train_algo+" algorithm.")
         self.start_sigma = max(self.net_height, self.net_width)/2
         self.start_learning_rate = start_learning_rate
-
+        
+        self.data = self.cp.array(self.data)
+        
         if epochs == -1:
             epochs  = self.data.shape[0]*10
             
@@ -237,23 +421,29 @@ class SOMNet:
         self.tau    = self.epochs/log(self.start_sigma)
 
         if batch_size == -1 or batch_size > self.data.shape[0]:
-            batch_size = self.data.shape[0]
-
+            _n_parallel = self.__get_n_parallel()
+        else:
+            _n_parallel = batch_size
+        
         if train_algo == 'online':
             """ Online training.
                 Bootstrap: one datapoint is extracted randomly with replacement at each epoch 
                 and used to update the weights.
             """
+            
+            datapoints = self.__datapoint_random_generation(self.data, self.epochs)
 
             for n_iter in range(self.epochs):
 
                 if n_iter%10==0:
-                    print("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)), end=' ')
+                    if self.verbose:
+                        print("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)), end=' ')
 
                 self.update_sigma(n_iter)
                 self.update_learning_rate(n_iter)
-
-                input_vec = self.data[random.randint(0, self.data.shape[0]-1), :].reshape(1,self.data.shape[1])
+                
+                datapoint = datapoints.pop()
+                input_vec = self.data[datapoint, :].reshape(1,self.data.shape[1])
                 
                 bmu = self.node_list[int(self.find_bmu_ix(input_vec)[0])]
 
@@ -268,77 +458,92 @@ class SOMNet:
 
                 Kinouchi, M. et al. "Quick Learning for Batch-Learning Self-Organizing Map" (2002).
             """
-    
+
             #Storing the distances and weight matrices defeats the purpose of having
             #nodes as instances of a class, but it helps with the optimization
             #and parallelization at the cost of memory.
             #The object-oriented structure is kept to simplify code reading. 
 
-            """ Calculate the square euclidean distance matrix to speed up batch training. """
+            """ Calculate the square euclidean distance matrix to speed up batch training & store all weights as matrix. """
 
-
-            dist_matrix_sq = self.interface.num.zeros((self.net_width*self.net_height, 
-                                        self.net_width*self.net_height)) 
-
-            for i in range(self.net_width*self.net_height):
-                for j in range(i + 1, self.net_width*self.net_height):
-                    dist_matrix_sq[i,j] = self.interface.num.linalg.norm(self.node_list[i].pos-self.node_list[j].pos)
-            
-            dist_matrix_sq += dist_matrix_sq.T
-            dist_matrix_sq *= dist_matrix_sq
-
-            """ Store all weights as matrix. """
-
-            all_weights = self.interface.num.array([n.weights for n in self.node_list])
-
+            all_weights = self.cp.array([n.weights for n in self.node_list], dtype=self.cp.float32)
+            all_weights = all_weights.reshape(self.net_width, self.net_height, self.data.shape[1])
             early_stop_counter = 0
 
+            numerator   = self.cp.zeros(all_weights.shape, dtype=self.cp.float32)
+            denominator = self.cp.zeros((all_weights.shape[0], all_weights.shape[1], 1),dtype=self.cp.float32)
+
+            unravel_precomputed = self.cp.unravel_index(self.cp.arange(self.net_width*self.net_height, dtype=self.cp.int64),
+                                                        (self.net_width, self.net_height))
+            _neigx = self.cp.arange(self.net_width)
+            _neigy = self.cp.arange(self.net_height)
+            _xx, _yy = self.cp.meshgrid(_neigx, _neigy)
+            
+            if self.neighborhood_fun == "bubble":
+                neighborhood = neighbor.prepare_neig_func(neighbor.bubble, _neigx, _neigy, xp=self.cp)
+
+            elif self.neighborhood_fun == "mexican":
+                neighborhood = neighbor.prepare_neig_func(neighbor.mexican_hat, _xx, _yy, 0.5, False, xp=self.cp)
+
+            else:
+                neighborhood = neighbor.prepare_neig_func(neighbor.gaussian, _xx, _yy, 0.5, False, xp=self.cp)
+
             for n_iter in range(self.epochs):
+
+                sq_weights = (self.cp.power(all_weights.reshape(-1, all_weights.shape[2]),2).sum(axis=1, keepdims=True))
 
                 """ Early stop check. """
 
                 if early_stop_counter == early_stop_patience:
-
-                    print("\rTolerance reached at epoch {:d}, stopping training.".format(n_iter-1))
+                    
+                    if self.verbose:
+                        print("\rTolerance reached at epoch {:d}, stopping training.".format(n_iter-1))
 
                     break
 
                 self.update_sigma(n_iter)
+                self.update_learning_rate(n_iter)
                 
                 """ Matrix of gaussian effects. """
 
-                gauss = self.interface.num.exp(-dist_matrix_sq/(2*self.sigma*self.sigma))
-
                 if n_iter%10==0:
-                    print("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)), end=' ')
+                    if self.verbose:
+                        print("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)), end=' ')
                         
                 """ Run through mini batches to ease the memory burden. """
 
-                numerator   = self.interface.num.zeros((self.net_width*self.net_height, 
-                                        self.data.shape[1])) 
-                denominator =  self.interface.num.zeros((self.net_width*self.net_height, 
-                                        self.data.shape[1]))
+                try: # reuse already allocated memory
+                    numerator.fill(0)
+                    denominator.fill(0)
+                except AttributeError: # whoops, I haven't allocated it yet
+                    numerator   = self.cp.zeros(all_weights.shape, dtype=self.cp.float32)
+                    denominator = self.cp.zeros((all_weights.shape[0], all_weights.shape[1], 1),dtype=self.cp.float32)
 
-                for b in range(int((self.data.shape[0]+batch_size-1)/batch_size)):
-                    
-                    batchdata = self.data[b*batch_size : min((b+1)*batch_size,self.data.shape[0])]
+                for i in range(0, len(self.data), _n_parallel):
+                    start = i
+                    end = start + _n_parallel
+                    if end > len(self.data):
+                        end = len(self.data)
+
+                    batchdata = self.data[start:end]
 
                     """ Find BMUs for all points and subselect gaussian matrix. """
+                    dists = dist.batchpairdist(batchdata, all_weights, self.metric, sq_weights, self.cp)
 
-                    dists = self.interface.pairdist(batchdata, all_weights,  
-                                    metric=self.metric, **self.metric_kwds)
-                    bmus = self.interface.num.argmin(dists, axis=1)
+                    raveled_idxs = dists.argmin(axis=1)
+                    wins = (unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
 
-                    batchgauss = gauss[bmus]
-                    denominator += self.interface.num.repeat(batchgauss.sum(axis=0)[:, self.interface.num.newaxis], self.data.shape[1], axis=1)
+                    g_gpu = neighborhood(wins, self.sigma, xp=self.cp)*self.learning_rate
+                    
+                    sum_g_gpu = self.cp.sum(g_gpu, axis=0)
+                    g_flat_gpu = g_gpu.reshape(g_gpu.shape[0], -1)
+                    gT_dot_x_flat_gpu = self.cp.dot(g_flat_gpu.T, batchdata)
 
-                    batchgauss = self.interface.num.repeat(batchgauss[:, :, self.interface.num.newaxis], self.data.shape[1], axis=2)
-                    batchdata = self.interface.num.repeat(batchdata[:, self.interface.num.newaxis, :], gauss.shape[1], axis=1)
-
-                    numerator  += self.interface.num.multiply(batchgauss,batchdata).sum(axis=0)
-
-                new_weights = self.interface.num.divide(numerator,denominator)
-                new_weights[self.interface.num.isnan(new_weights)] = all_weights[self.interface.num.isnan(new_weights)] 
+                    numerator   += gT_dot_x_flat_gpu.reshape(numerator.shape)
+                    denominator += sum_g_gpu[:,:,self.cp.newaxis]
+                    
+            
+                new_weights = self.cp.where(denominator != 0, numerator / denominator, all_weights)
 
                 """ Early stopping, active if patience is not None """
 
@@ -346,19 +551,21 @@ class SOMNet:
 
                     #These are pretty ruough convergence tests
                     #To do: add more
-
+                    
                     if early_stop == 'mapdiff':      
 
                         """ Checks if the map weights are not moving. """
 
-                        self.convergence.append(self.interface.pairdist(new_weights,all_weights,  
-                                metric=self.metric, **self.metric_kwds).mean())
+                        self.convergence.append(dist.pairdist(new_weights.reshape(self.net_width*self.net_height, self.data.shape[1]), 
+                                                              all_weights.reshape(self.net_width*self.net_height, self.data.shape[1]), 
+                                                              metric=self.metric).mean())
                     
                     elif early_stop == 'bmudiff':
 
                         """ Checks if the bmus mean distance from the samples has stopped improving. """
 
-                        self.convergence.append(self.interface.num.min(dists,axis=1).mean())
+                        self.convergence.append(self.cp.min(dists, axis=1).mean())
+
 
                     else:
                         sys.exit('Error: convergence method not recognized. Choose between \'mapdiff\' and \'bmudiff\'.')
@@ -366,70 +573,36 @@ class SOMNet:
                     if n_iter > 0 and self.convergence[-2]-self.convergence[-1] < early_stop_tolerance:
                         early_stop_counter += 1
                     else:
-                        early_stop_counter  = 0
+                        early_stop_counter = 0
 
                 all_weights = new_weights
 
             """ Store final weights in the nodes objects. """
             #Revert back to object oriented
             
+            all_weights = all_weights.reshape(self.net_width*self.net_height, self.data.shape[1])
+
             for n_iter, node in enumerate(self.node_list):
                 node.weights = all_weights[n_iter] # * self.learning_rate
 
-            if early_stop is not None:
-
-                """ Plot convergence if it was tracked. """
-                
-                self.plot_convergence(logax=False)
-
         else:
             sys.exit('Error: training algorithm not recognized. Choose between \'online\' and \'batch\'.')
-                        
-        print("\rTraining SOM... done!")
+        if self.verbose:               
+            print("\rTraining SOM... done!")
 
-    def plot_convergence(self, logax=False, show=False, print_out=False, out_path='./'):
-
-        """ Plot the the map training progress according to the 
-            chosen convergence criterion.
+        if self.GPU:
+            for node in self.node_list:
+                node.weights = node.weights.get()
+        if early_stop is not None:
+            if self.GPU:
+                for n_iter, arr in enumerate(self.convergence):
+                    
+                    self.convergence[n_iter] = arr.get()
             
-        Args: 
-            logax (bool, optional): if True, plot convergence on logarithmic y axis.
-            show (bool, optional): Choose to display the plot.
-            print_out (bool, optional): Choose to save the plot to a file.
-            out_path (str, optional): Path to the folder where data will be saved.
-        """
-
-
-        fig=plt.figure(figsize=(30,10))
-        fig, ax = plt.subplots()
-        
-        ax.set_facecolor('white')
-        plt.grid(color='#aaaaaa')
-        
-        plt.plot(self.convergence, color='#444444')
-        plt.xticks(fontsize=15)
-        plt.yticks(fontsize=15)
-
-        if logax:
-            ax.set_yscale('log')
-        
-        ax.spines['right'].set_visible(False)
-        ax.spines['top'].set_visible(False)
-
-        plt.xlabel('Iteration', fontsize=15)
-        plt.ylabel('Convergence score', fontsize=15)
-
-        print_name = os.path.join(out_path,'convergence.png')
-        
-        if print_out == True:
-            plt.savefig(print_name, bbox_inches='tight', dpi=300)
-        if show == True:
-            plt.show()
-        if show != False and print_out != False:
-            plt.clf()
-
-
-    def nodes_graph(self, colnum=0, show=False, print_out=True, out_path='./', colname=None):
+            
+    def nodes_graph(self, colnum=0, show=False, print_out=False, out_path='./', colname=None, 
+                    fsize=(5, 5), figtitle=('Node Grid w Feature', 14), 
+                    cbartitle=('', 12), cbarticksize=10):
     
         """Plot a 2D map with hexagonal nodes and weights values
 
@@ -439,40 +612,42 @@ class SOMNet:
             print_out (bool, optional): Choose to save the plot to a file.
             colname (str, optional): Name of the column to be shown on the map.
             out_path (str, optional): Path to the folder where data will be saved.
+            fsize (tuple(int, int), optional): Figure size.
+            figtitle (tuple(str, str), optional): Figure title and fontsize.
+            cbartitle (tuple(str, int), optional): cbar title and fontsize.
+            cbarticksize (int, optional): cbar size.
         """
-
+            
         if not colname:
             colname = str(colnum)
-
+            
+        if cbartitle[0] == '':
+            cbartitle = (colname, cbartitle[1])
+            
         centers = [[node.pos[0],node.pos[1]] for node in self.node_list]
         
-        side    = sqrt(self.net_width*self.net_height)
-        width_p = 100
-        dpi     = 72
-        xInch   = self.net_width*width_p/dpi 
-        yInch   = self.net_height*width_p/dpi 
-        fig     = plt.figure(figsize=(xInch, yInch), dpi=dpi)
-
-        cols = [self.interface.get_value(node.weights) for node in self.node_list]
         
-        if self.color_ex==True:
-            ax = hx.plot_hex(fig, centers, cols, color_ex=self.color_ex)
-            ax.set_title('Node Grid w Color Features', size=4*side)
-            print_name=os.path.join(out_path,'nodes_colors.png')
+        fig     = plt.figure(figsize=(fsize[0], fsize[1]))
 
-        else:
-            cols = [c[colnum] for c in cols]
+        cols = [node.weights for node in self.node_list]
+
+        cols = [c[colnum] for c in cols]
+
+        if self.topology == "hexagonal":
             ax = hx.plot_hex(fig, centers, cols)
-            ax.set_title('Node Grid w Feature ' +  colname, size=4*side)
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.0)
-            cbar=plt.colorbar(ax.collections[0], cax=cax)
-            cbar.set_label(colname, size=4*side, labelpad=2.5*side)
-            cbar.ax.tick_params(labelsize=2*side)
-            cbar.outline.set_visible(False)
+        else:
+            ax = rec.plot_square(fig, centers, cols)
 
-            plt.sca(ax)
-            print_name=os.path.join(out_path,'nodes_feature_'+str(colnum)+'.png')
+        ax.set_title(figtitle[0], size=figtitle[1])
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.0)
+        cbar=plt.colorbar(ax.collections[0], cax=cax)
+        cbar.set_label(cbartitle[0], size=cbartitle[1])
+        cbar.ax.tick_params(labelsize=cbarticksize)
+        cbar.outline.set_visible(False)
+
+        plt.sca(ax)
+        print_name=os.path.join(out_path,'nodes_feature_'+str(colnum)+'.png')
             
         if print_out==True:
             plt.savefig(print_name, bbox_inches='tight', dpi=dpi)
@@ -481,7 +656,10 @@ class SOMNet:
         if show!=False and print_out!=False:
             plt.clf()
 
-    def diff_graph(self, show=False, print_out=True, returns=False, out_path='./'):
+            
+    def diff_graph(self, show=False, print_out=False, returns=False, out_path='./', 
+                    fsize=(5, 5), figtitle=('Node Grid w Feature', 14), 
+                    cbartitle=('Weights Difference', 12), cbarticksize=10):
     
         """Plot a 2D map with nodes and weights difference among neighboring nodes.
 
@@ -490,36 +668,26 @@ class SOMNet:
             print_out (bool, optional): Choose to save the plot to a file.
             returns (bool, optional): Choose to return the difference value.
             out_path (str, optional): Path to the folder where data will be saved.
-
+            fsize (tuple(int, int), optional): Figure size.
+            figtitle (tuple(str, str), optional): Figure title and fontsize.
+            cbartitle (tuple(str, int), optional): cbar title and fontsize.
+            cbarticksize (int, optional): cbar size.
+            
         Returns:
             (list): difference value for each node.             
         """
         
         """ Find adjacent nodes in the grid. """
-        
-        #print(type(self.node_list[0].weights))
-        #print(type(self.node_list[0].get_node_distance(self.node_list[1])))
-        #print(self.node_list[0].get_node_distance(self.node_list[1])<= 1.001)
-        #pippo=[[node2.weights for node2 in self.node_list \
-        #                            if node != node2 and node.get_node_distance(node2) <= 1.001]
-        #                             for node in self.node_list]
-        #print(pippo, len(pippo), len(pippo[0]))
-        #print(self.interface.num.array)
-        #print(self.interface.num.array(pippo))
-        
 
-        neighbors = [self.interface.num.array([node2.weights for node2 in self.node_list \
-                    if node != node2 and node.get_node_distance(node2) <= 1.001])
-                    for node in self.node_list]
+        neighbors = [self.np.array([node2.weights for node2 in self.node_list
+                                                   if node != node2 and node.get_node_distance(node2) <= 1.001])
+                     for node in self.node_list]
 
         """ Calculate the summed weight difference. """
 
-        diffs = [self.interface.get_value(
-                 self.interface.pairdist(n.weights.reshape(1,n.weights.shape[0]),
-                                         neighbors[i], 
-                                         metric='euclidean', **self.metric_kwds).mean())\
-                 for i,n in enumerate(self.node_list)]
-
+        diffs = [dist.pairdist(n.weights.reshape(1,n.weights.shape[0]), neighbors[i], metric='euclidean', cpu=True).mean()
+                 for i, n in enumerate(self.node_list)]
+        
         """ Define plotting hexagon centers. """
 
         centers = [[node.pos[0],node.pos[1]] for node in self.node_list]
@@ -528,25 +696,24 @@ class SOMNet:
 
         if show == True or print_out==True:
         
-            side    = sqrt(self.net_width*self.net_height)
-            width_p = 100
-            dpi     = 72
-            x_inch  = self.net_width*width_p/dpi 
-            y_inch  = self.net_height*width_p/dpi 
-            fig     = plt.figure(figsize=(x_inch, y_inch), dpi=dpi)
+            fig     = plt.figure(figsize=(fsize[0], fsize[1]))
 
-            ax = hx.plot_hex(fig, centers, diffs)
-            ax.set_title('Nodes Grid w Weights Difference', size=4*side)
+            if self.topology == "hexagonal":
+                ax = hx.plot_hex(fig, centers, diffs)
+            else:
+                ax = rec.plot_square(fig, centers, diffs)
+
+            ax.set_title(figtitle[0], size=figtitle[1])
             divider = make_axes_locatable(ax)
             cax     = divider.append_axes("right", size="5%", pad=0.0)
             cbar    = plt.colorbar(ax.collections[0], cax=cax)
-            cbar.set_label('Weights Difference', size=4*side, labelpad=2.5*side)
-            cbar.ax.tick_params(labelsize=2*side)
+            cbar.set_label(cbartitle[0], size=cbartitle[1])
+            cbar.ax.tick_params(labelsize=cbarticksize)
             cbar.outline.set_visible(False)
 
             plt.sca(ax)
             print_name = os.path.join(out_path,'nodes_difference.png')
-            
+                        
             if print_out == True:
                 plt.savefig(print_name, bbox_inches='tight', dpi=dpi)
             if show == True:
@@ -555,9 +722,11 @@ class SOMNet:
                 plt.clf()
 
         if returns == True:
-            return diffs 
+            return diffs
 
-    def project(self, array, colnum=-1, labels=[], show=False, print_out=True, out_path='./', colname = None):
+        
+    def project(self, array, colnum=-1, labels=[], show=False, print_out=False, returns=False, out_path='./', colname=None, 
+                fsize=(5, 5), figtitle=('Datapoints Projection', 14), legendsize=10):
 
         """Project the datapoints of a given array to the 2D space of the 
             SOM by calculating the bmus. If requested plot a 2D map with as 
@@ -565,13 +734,16 @@ class SOMNet:
             of each datapoint in a given array.
 
         Args:
-            array (self.interface.num.array): An array containing datapoints to be mapped.
+            array (np or cp ..array): An array containing datapoints to be mapped.
             colnum (int): The index of the weight that will be shown as colormap. 
                 If not chosen, the difference map will be used instead.
             show (bool, optional): Choose to display the plot.
             print_out (bool, optional): Choose to save the plot to a file.
             out_path (str, optional): Path to the folder where data will be saved.
             colname (str, optional): Name of the column to be shown on the map.
+            fsize (tuple(int, int), optional): Figure size.
+            figtitle (tuple(str, str), optional): Figure title and fontsize.
+            legendsize (int, optional): Legend fontsize.
             
         Returns:
             (list): bmu x,y position for each input array datapoint. 
@@ -580,147 +752,115 @@ class SOMNet:
         
         if not colname:
             colname = str(colnum)
-
-        if labels != []:
-            colors  = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c',
-                       '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928']
-            counter = 0
-            class_assignment = {}
-            for i in range(len(labels)):
-                if labels[i] not in class_assignment:
-                    class_assignment[labels[i]] = colors[counter]
-                    counter = (counter + 1)%len(colors)
         
-        if not isinstance(array, self.interface.num.ndarray):
-            array = self.interface.num.array(array)\
-                    .astype(self.interface.num.float64)
+        if not isinstance(array, self.cp.ndarray):
+            array = self.cp.array(array).astype(self.cp.float64)
 
         bmu_list, cls = [], []
         bmu_list = [self.node_list[int(mu)].pos for mu in self.find_bmu_ix(array)]
-        
-        if self.color_ex:
-            cls = self.interface.get_value(array)
-        else: 
-            if labels != []:   
-                cls = [class_assignment[labels[i]] for i in range(array.shape[0])]
-            elif colnum == -1:
-                cls = ['#ffffff']*array.shape[0]
-            else: 
-                cls = self.interface.get_value(array[:,colnum])
 
         if show == True or print_out == True:
         
             """ Call nodes_graph/diff_graph to first build the 2D map of the nodes. """
             
-            side = sqrt(self.net_width*self.net_height)
+            df_plot = pd.DataFrame()
+            
+            f, ax = plt.subplots(1,1,figsize=(fsize[0], fsize[1]))
 
-            if self.color_ex == True:
-                print_name = os.path.join(out_path,'color_projection.png')
-                self.nodes_graph(colnum, False, False)
-                plt.scatter([pos[0] for pos in bmu_list],[pos[1] for pos in bmu_list], color=cls,  
-                        s=500, edgecolor='#ffffff', linewidth=5, zorder=10)
-                plt.title('Datapoints Projection', size=4*side)
-            else:
-                #a random perturbation is added to the points positions so that data 
-                #belonging plotted to the same bmu will be visible in the plot      
-                if colnum == -1:
-                    print_name = os.path.join(out_path,'projection_difference.png')
-                    self.diff_graph(False, False, False)
-                    plt.scatter([pos[0]-0.125+random.random()*0.25 for pos in bmu_list],
-                                [pos[1]-0.125+random.random()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
-                                 s=200, linewidth=0, zorder=10)
-                    plt.title('Datapoints Projection on Nodes Difference', size=4*side)
-                else:   
-                    print_name = os.path.join(out_path,'projection_'+ colname +'.png')
-                    self.nodes_graph(colnum, False, False, colname=colname)
-                    plt.scatter([pos[0]-0.125+random.random()*0.25 for pos in bmu_list],
-                                [pos[1]-0.125+random.random()*0.25 for pos in bmu_list], c=cls, cmap=cm.viridis,
-                                 s=200, edgecolor='#ffffff', linewidth=4, zorder=10)
-                    plt.title('Datapoints Projection #' +  str(colnum), size=4*side)
-                
-            if labels != [ ] and not self.color_ex:
-                recs = []
-                for i in class_assignment:
-                    recs.append(mpatches.Rectangle((0,0),1,1,fc=class_assignment[i]))
+            #a random perturbation is added to the points positions so that data 
+            #belonging plotted to the same bmu will be visible in the plot  
+            df_plot['x']      = [pos[0]-0.125+random.random()*0.25 for pos in bmu_list]
+            df_plot['y']      = [pos[1]-0.125+random.random()*0.25 for pos in bmu_list]
+            df_plot['labels'] = labels
 
-                plt.legend(recs, class_assignment.keys(), loc=(1.25,0), frameon=False, fontsize=2*side)
+            self.diff_graph(False, False, False)
+            sns.scatterplot(x='x', y='y', hue='labels', data=df_plot, palette="Paired", ax=ax)
+            ax.set(xlabel=None)
+            ax.set(ylabel=None)
 
+            plt.title(figtitle[0], size=figtitle[1])    
+
+            if colnum == -1:
+                print_name = os.path.join(out_path,'projection_difference.png')
+            else:   
+                print_name = os.path.join(out_path,'projection_'+ colname +'.png')
+            
+            handles, labels = ax.get_legend_handles_labels()
+            ax.legend(bbox_to_anchor=(1.25, 1), borderaxespad=0, 
+                      frameon=False, fontsize=legendsize, handles=handles[1:], labels=labels[1:]) 
+               
+            plt.ylim(0-0.5, self.net_height+0.5)
+            plt.xlim(0-0.5, self.net_width+0.5)
+            plt.grid(False)
+            
             if print_out == True:
-                plt.savefig(print_name, bbox_inches='tight', dpi=72)
+                plt.savefig(print_name, bbox_inches='tight')
             if show == True:
                 plt.show()
-            plt.clf()
+            # plt.clf()
         
-        """ Print the x,y coordinates of bmus, useful for the clustering function. """
+        """ return x,y coordinates of bmus, useful for the clustering function. """
         
-        return [[pos[0],pos[1]] for pos in bmu_list] 
+        if returns:
+            return self.np.array(bmu_list)[:,:2]
         
         
-    def cluster(self, array, clus_type='qthresh', cutoff=5, quant=0.2, percent=0.02, num_cl=8,\
-                    save_file=True, file_type='dat', show=False, print_out=True, out_path='./'):
+    def cluster(self, array, clus_type='KMeans', num_cl=3,
+                save_file=False, file_type='csv', show=True, print_out=False, out_path='./', returns=False, 
+                fsize=(5, 5), figtitle=('Clusters', 14), legendsize=10):
     
         """Clusters the data in a given array according to the SOM trained map.
             The clusters can also be plotted.
 
         Args:
-            array (self.interface.num.array): An array containing datapoints to be clustered.
+            array (np or cp ..array): An array containing datapoints to be clustered.
             clus_type (str, optional): The type of clustering to be applied, so far only quality threshold (qthresh) 
                 algorithm is directly implemented, other algorithms require sklearn.
-            cutoff (float, optional): Cutoff for the quality threshold algorithm. This also doubles as
-                maximum distance of two points to be considered in the same cluster with DBSCAN.
-            percent (float, optional): The percentile that defines the reference distance in density peak clustering (dpeak).
             num_cl (int, optional): The number of clusters for K-Means clustering
-            quant (float, optional): Quantile used to calculate the bandwidth of the mean shift algorithm.
             save_file (bool, optional): Choose to save the resulting clusters in a text file.
             file_type (string, optional): Format of the file where the clusters will be saved (csv or dat)
             show (bool, optional): Choose to display the plot.
             print_out (bool, optional): Choose to save the plot to a file.
             out_path (str, optional): Path to the folder where data will be saved.
+            fsize (tuple(int, int), optional): Figure size.
+            figtitle (tuple(str, str), optional): Figure title and fontsize.
+            legendsize (int, optional): Legend fontsize.
             
         Returns:
-            (list of int): A nested list containing the clusters with indexes of the input array points.
+            (list of int): A list containing the clusters of the input array datapoints.
             
         """
 
         """ Call project to first find the bmu for each array datapoint, but without producing any graph. """
 
-        bmu_list = self.project(array, show=False, print_out=False)
+        if array.shape[1] == 2:
+            bmu_list = array
+        else:
+            bmu_list = self.project(array, returns=True)
         clusters = []
 
-        if clus_type == 'qthresh':
-            
-            """ Cluster according to the quality threshold algorithm (slow!). """
-    
-            clusters = qt.quality_threshold(bmu_list, cutoff, self.PBC, self.net_height, self.net_width)
-
-        elif clus_type == 'dpeak':
-
-            """ Cluster according to the density peak algorithm. """
-
-            clusters = dp.density_peak(bmu_list, PBC=self.PBC, net_height=self.net_height, net_width=self.net_width)
-
-        elif clus_type in ['MeanShift', 'DBSCAN', 'KMeans']:
+        if clus_type in ['KMeans', 'DBSCAN', 'AgglomerativeClustering']:
         
-            """ Cluster according to algorithms implemented in sklearn. """
+            """ Cluster according to algorithms implemented in sklearn, using defaul parameters. """
         
             if self.PBC == True:
                 print("Warning: Only Quality Threshold and Density Peak clustering work with PBC")
 
             try:
-                
-                if clus_type == 'MeanShift':
-                    bandwidth = self.interface.cluster_algo.estimate_bandwidth(self.interface.num.asarray(bmu_list), quantile=quant, n_samples=500)
-                    cl =  self.interface.cluster_algo.MeanShift(bandwidth=bandwidth, bin_seeding=True).fit(bmu_list)
-                
-                if clus_type == 'DBSCAN':
-                    cl = self.interface.cluster_algo.DBSCAN(eps=cutoff, min_samples=5).fit(bmu_list)     
+                bmu_array = self.np.array(bmu_list)
                 
                 if clus_type == 'KMeans':
-                    cl = self.interface.cluster_algo.KMeans(n_clusters=num_cl).fit(bmu_list)
-
+                    cl = self.cluster_algo.KMeans(n_clusters=num_cl).fit(bmu_array)
+                    
+                if clus_type == 'DBSCAN':
+                    cl = self.cluster_algo.DBSCAN().fit(bmu_array)     
+                
+                if clus_type == 'AgglomerativeClustering':
+                    cl = self.cluster_algo.AgglomerativeClustering(n_clusters=num_cl).fit(bmu_array)
+                
                 cl_labs = cl.labels_                 
                     
-                for i in self.interface.num.unique(cl_labs):
+                for i in self.np.unique(cl_labs):
                     cl_list = []
                     tmp_list = range(len(bmu_list))
                     for j,k in zip(tmp_list,cl_labs):
@@ -731,54 +871,61 @@ class SOMNet:
                 print(('Unexpected error: ', sys.exc_info()[0]))
                 raise
         else:
-            sys.exit("Error: unkown clustering algorithm " + clus_type)
+            sys.exit("Error: unkown clustering algorithm %s... Clustering algorithm must be 'KMeans', 'DBSCAN', or 'AgglomerativeClustering'"%clus_type)
 
         
         if save_file == True:
-            with open(os.path.join(out_path,clus_type+'_clusters.'+file_type),
-                      'w') as file:
+            with open(os.path.join(out_path,clus_type+'_clusters.'+file_type), 'w') as file:
                 if file_type == 'csv':
                     separator = ','
                 else: 
-                    separator = ' '
+                    separator = '\t'
                 for line in clusters:
                     for id in line: file.write(str(id)+separator)
                     file.write('\n')
         
         if print_out==True or show==True:
-            
+
             print_name = os.path.join(out_path,clus_type+'_clusters.png')
             
-            fig, ax = plt.subplots()
-            
-            for i in range(len(clusters)):
-                randCl = "#%06x" % random.randint(0, 0xFFFFFF)
-                xc,yc  = [],[]
+            f, ax = plt.subplots(1,1,figsize=(fsize[0], fsize[1]))
+            for ci, i in enumerate(range(len(clusters))):
+                xc, yc  = [], []
                 for c in clusters[i]:
                     #again, invert y and x to be consistent with the previous maps
                     xc.append(bmu_list[int(c)][0])
                     yc.append(self.net_height-bmu_list[int(c)][1])    
-                ax.scatter(xc, yc, color=randCl, label='cluster'+str(i))
+                sns.scatterplot(x=xc, y=yc, hue=i, palette=[sns.color_palette("Paired")[ci]], ax=ax)
+                
+            plt.legend(bbox_to_anchor=(1.25, 1), borderaxespad=0, 
+                       frameon=False, fontsize=legendsize) 
 
+            plt.title(figtitle[0], size=figtitle[1])
+            
+            plt.ylim(0-0.5, self.net_height+0.5)
+            plt.xlim(0-0.5, self.net_width+0.5)
+            plt.grid(False)
+            
             plt.gca().invert_yaxis()
-            plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)           
-            ax.set_title('Clusters')
-            ax.axis('off')
 
-            if print_out == True:
-                plt.savefig(print_name, bbox_inches='tight', dpi=600)
+            ax.set_yticklabels(np.arange(self.net_height+2, -2, -2))
+            ax.set_xticklabels(np.arange(-2, self.net_width+2, 2))
+
             if show == True:
                 plt.show()
-            plt.clf()   
-            
-        return clusters
+            if print_out == True:
+                plt.savefig(print_name, bbox_inches='tight')
+            # plt.clf()   
+        
+        if returns:
+            return cl_labs
 
         
 class SOMNode:
 
     """ Single Kohonen SOM Node class. """
     
-    def __init__(self, x, y, num_weights, net_height, net_width, PBC, interface,
+    def __init__(self, x, y, num_weights, net_height, net_width, PBC, topology,
                 wei_bounds=None, init_vec=None, wei_array=None,):
     
         """Initialise the SOM node.
@@ -790,22 +937,25 @@ class SOMNode:
             net_height (int): Network height, needed for periodic boundary conditions (PBC)
             net_width (int): Network width, needed for periodic boundary conditions (PBC)
             PBC (bool): Activate/deactivate periodic boundary conditions.
-            interface (Interface obj): CPU/GPU interface.
-            wei_bounds(self.interface.num.array, optional): boundary values for the random initialization
+            wei_bounds(np or cp ..array, optional): boundary values for the random initialization
                 of the weights. Must be in the format [min_val, max_val]. 
                 They are overwritten by 'init_vec'.
-            init_vec (self.interface.num.array, optional): Array containing the two custom vectors (e.g. PCA)
+            init_vec (np or cp ..array, optional): Array containing the two custom vectors (e.g. PCA)
                 for the weights initalization.
-            wei_array (self.interface.num.array, optional): Array containing the weights to give
+            wei_array (np or cp ..array, optional): Array containing the weights to give
                 to the node if loaded from a file.
 
                 
         """
-    
-        self.interface = interface
         
+        self.topology  = topology
         self.PBC       = PBC
-        self.pos       = self.interface.num.array(hx.coor_to_hex(x,y))
+        
+        if self.topology == "hexagonal":
+            self.pos = np.array(hx.coor_to_hex(x,y))
+        else:
+            self.pos = np.array((x,y))
+
         self.weights   = []
 
         self.net_height = net_height
@@ -819,8 +969,8 @@ class SOMNode:
         elif init_vec is not None:
             """ Select uniformly in the space spanned by the custom vectors. """
 
-            self.weights = (x-self.net_width/2)*2.0/self.net_width*init_vec[0] + \
-                           (y-self.net_height/2)*2.0/self.net_height*init_vec[1]
+            self.weights = ((x-self.net_width/2)*2.0/self.net_width*init_vec[0] + 
+                            (y-self.net_height/2)*2.0/self.net_height*init_vec[1])
 
         elif wei_bounds is not None:
             """ Select randomly in the space spanned by the data. """
@@ -834,28 +984,27 @@ class SOMNode:
             sys.exit(('Error in the network weights initialization, make sure to provide random initalization boundaries,\
                         custom vectors, or load the weights from file.'))
    
-        self.weights = self.interface.num.array(self.weights)
+        # self.weights = np.array(self.weights)
 
+    
     def get_distance(self, vec):
     
         """Calculate the distance between the weights vector of the node and a given vector.
            DEPRECATED: this function will be removed in future versions, use SOMNet.get_bmu instead.
 
         Args:
-            vec (self.interface.num.array): The vector from which the distance is calculated.
+            vec (np or cp ..array): The vector from which the distance is calculated.
             
         Returns: 
             (float): The distance between the two weight vectors.
         """
     
-        sum = 0
         if len(self.weights) == len(vec):
-            for i in range(len(vec)):
-                sum += (self.weights[i]-vec[i])*(self.weights[i]-vec[i])
-            return sqrt(sum)
+            return self.cp.sqrt(self.cp.sum((self.weights-vec)**2))   
         else:
             sys.exit("Error: dimension of nodes != input data dimension!")
 
+            
     def get_node_distance(self, node):
     
         """Calculate the distance within the network between the node and another node.
@@ -868,45 +1017,44 @@ class SOMNode:
             
         """
 
-        #to clean up
+        n00 = self.pos[0]
+        n01 = self.pos[1]
+        n10 = node.pos[0]
+        n11 = node.pos[1]
 
-        if self.PBC == True:
+        if self.PBC == True and self.topology == "hexagonal":
 
             """ Hexagonal Periodic Boundary Conditions """
+            if self.net_height % 2 == 0:
+                offset = 0  
+            else: 
+                offset = 0.5
 
-            offset = 0 if self.net_height % 2 == 0 else 0.5
+            return  min([sqrt((n00-n10)**2+(n01-n11)**2),
+                         #right
+                         sqrt((n00-n10+self.net_width)**2+(n01-n11)**2),
+                         #bottom 
+                         sqrt((n00-n10+offset)**2+(n01-n11+self.net_height*2/sqrt(3)*3/4)**2),
+                         #left
+                         sqrt((n00-n10-self.net_width)**2+(n01-n11)**2),
+                         #top 
+                         sqrt((n00-n10-offset)**2+(n01-n11-self.net_height*2/sqrt(3)*3/4)**2),
+                         #bottom right
+                         sqrt((n00-n10+self.net_width+offset)**2+(n01-n11+self.net_height*2/sqrt(3)*3/4)**2),
+                         #bottom left
+                         sqrt((n00-n10-self.net_width+offset)**2+(n01-n11+self.net_height*2/sqrt(3)*3/4)**2),
+                         #top right
+                         sqrt((n00-n10+self.net_width-offset)**2+(n01-n11-self.net_height*2/sqrt(3)*3/4)**2),
+                         #top left
+                         sqrt((n00-n10-self.net_width-offset)**2+(n01-n11-self.net_height*2/sqrt(3)*3/4)**2)
+                        ])
 
-            return  min([sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
-                                +(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
-                            #right
-                            sqrt((self.pos[0]-node.pos[0]+self.net_width)*(self.pos[0]-node.pos[0]+self.net_width)\
-                                +(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
-                            #bottom 
-                            sqrt((self.pos[0]-node.pos[0]+offset)*(self.pos[0]-node.pos[0]+offset)\
-                                +(self.pos[1]-node.pos[1]+self.net_height*2/sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.net_height*2/sqrt(3)*3/4)),
-                            #left
-                            sqrt((self.pos[0]-node.pos[0]-self.net_width)*(self.pos[0]-node.pos[0]-self.net_width)\
-                                +(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1])),
-                            #top 
-                            sqrt((self.pos[0]-node.pos[0]-offset)*(self.pos[0]-node.pos[0]-offset)\
-                                +(self.pos[1]-node.pos[1]-self.net_height*2/sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.net_height*2/sqrt(3)*3/4)),
-                            #bottom right
-                            sqrt((self.pos[0]-node.pos[0]+self.net_width+offset)*(self.pos[0]-node.pos[0]+self.net_width+offset)\
-                                +(self.pos[1]-node.pos[1]+self.net_height*2/sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.net_height*2/sqrt(3)*3/4)),
-                            #bottom left
-                            sqrt((self.pos[0]-node.pos[0]-self.net_width+offset)*(self.pos[0]-node.pos[0]-self.net_width+offset)\
-                                +(self.pos[1]-node.pos[1]+self.net_height*2/sqrt(3)*3/4)*(self.pos[1]-node.pos[1]+self.net_height*2/sqrt(3)*3/4)),
-                            #top right
-                            sqrt((self.pos[0]-node.pos[0]+self.net_width-offset)*(self.pos[0]-node.pos[0]+self.net_width-offset)\
-                                +(self.pos[1]-node.pos[1]-self.net_height*2/sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.net_height*2/sqrt(3)*3/4)),
-                            #top left
-                            sqrt((self.pos[0]-node.pos[0]-self.net_width-offset)*(self.pos[0]-node.pos[0]-self.net_width-offset)\
-                                +(self.pos[1]-node.pos[1]-self.net_height*2/sqrt(3)*3/4)*(self.pos[1]-node.pos[1]-self.net_height*2/sqrt(3)*3/4))])
-                        
+        # ### TO DO: Periodic Boundary conditions when topolgy == rectangular
+        # elif self.PBC == True and self.topology == "rectangular":
+        #     return pass
+          
         else:
-            return sqrt((self.pos[0]-node.pos[0])*(self.pos[0]-node.pos[0])\
-                +(self.pos[1]-node.pos[1])*(self.pos[1]-node.pos[1]))
-
+            return sqrt((n00-n10)**2+(n01-n11)**2)
 
 
     def update_weights(self, input_vec, sigma, learning_rate, bmu):
@@ -914,19 +1062,16 @@ class SOMNode:
         """Update the node weights.
 
         Args:
-            input_vec (self.interface.num.array): A weights vector whose distance drives the direction of the update.
+            input_vec (np or cp ..array): A weights vector whose distance drives the direction of the update.
             sigma (float): The updated gaussian sigma.
             learning_rate (float): The updated learning rate.
             bmu (SOMNode): The best matching unit.
         """
     
         dist  = self.get_node_distance(bmu)
-        gauss = exp(-dist*dist/(2*sigma*sigma))
-
-        i=0
+        gauss = exp(-dist**2/(2*sigma**2))
         
-        for i in range(len(self.weights)):
-            self.weights[i] = self.weights[i] - gauss*learning_rate*(self.weights[i]-input_vec[i])
+        self.weights -= gauss*learning_rate*(self.weights-input_vec)
         
         
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """
 Hexagonal tiling library
 
-F. Comitani @2017-2021 
+F Comitani, SG Riva, A Tangherloni
 """
 
 from math import sqrt, radians
@@ -30,7 +30,7 @@ def coor_to_hex(x,y):
     
     if y%2: newx += 0.5
     
-    return [newx,newy]    
+    return [newx, newy]    
     
 
 def plot_hex(fig, centers, weights, color_ex=False):
