@@ -33,7 +33,7 @@ def coor_to_hex(x,y):
     return [newx, newy]    
     
 
-def plot_hex(fig, centers, weights, color_ex=False):
+def plot_map(fig, centers, weights, color_ex=False):
     
     """Plot an hexagonal grid based on the nodes positions and color the tiles
        according to their weights.

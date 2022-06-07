@@ -5,6 +5,14 @@ F Comitani, SG Riva, A Tangherloni
 A lightweight python library for Kohonen Self-Organizing Maps (SOM).
 """
 
+#logger
+#unittest
+#sqr and hex can be one function onlys
+#adjust all headers
+#adjust comments
+#README
+#example
+
 from __future__ import print_function
 
 import sys, time
@@ -25,7 +33,7 @@ from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import simpsom.hexagons as hx
-import simpsom.rectangular as rec
+import simpsom.squares as sqr
 import simpsom.distances as dist
 import simpsom.neighborhoods as neighbor
 
@@ -37,67 +45,55 @@ class SOMNet:
 
     def __init__(self, net_height, net_width, data, load_file=None, metric='euclidean', topology="hexagonal", neighborhood_fun='gaussian',
                  init='random', PBC=False, GPU=False, CUML=False, random_seed=None, verbose=True):
-
-        """Initialise the SOM network.
+        """Initialize the SOM network.
 
         Args:
             net_height (int): Number of nodes along the first dimension.
             net_width (int): Numer of nodes along the second dimension.
-            data (np or cp ..array or list): N-dimensional dataset.
+            data (array): N-dimensional dataset.
             load_file (str, optional): Name of file to load containing information 
                 to initialize the network weights.
             metric (string): distance metric for the identification of best matching
                 units. Accepted metrics are euclidean, manhattan, and cosine (default 'euclidean').
             topology (string): topology kohonen map. Accepted topology are hexagonal, and rectangular (default 'hexagonal').
-            init (str or list of np or cp ..array): Nodes initialization method, to be chosen between 'random'
+            init (str or list of array): Nodes initialization method, to be chosen between 'random'
                 or 'PCA' (default 'PCA'). Alternatively a couple of vectors can be provided
                 whose values will be spanned uniformly.
             PBC (boolean): Activate/deactivate periodic boundary conditions,
                 warning: only quality threshold clustering algorithm works with PBC (default 0).
             GPU (boolean): Activate/deactivate GPU run with RAPIDS (requires CUDA).
-            random_seed (int): Seed for the random numbers generator (default None).
-                
+            random_seed (int): Seed for the random numbers generator (default None).   
         """
             
-        """ Set CPU/GPU libraries. """
         self.verbose = bool(verbose)
         
         self.GPU  = bool(GPU)
         self.CUML = bool(CUML)
 
         if self.GPU:
-            import numpy
             import cupy
-            self.np = numpy
-            self.cp = cupy
-        else:
-            import numpy
-            from sklearn import cluster    
-            self.np = numpy
-            self.cp = numpy
+            self.xp = cupy
 
-        if self.CUML and self.GPU:
-            try:
-                from cuml import cluster
-            except:
-                print("Warning, cuml libraries not intalled. Loading sklearn ...")
-            from sklearn import cluster
-        elif self.CUML==False and self.GPU:
-            from sklearn import cluster
+            if self.CUML:
+                try:
+                    from cuml import cluster
+                except:
+                    print("WARNING: CUML libraries not found. Scikit-learn will be used instead.")
+                    from sklearn import cluster
+
         else:
             from sklearn import cluster
+            self.xp = np
+
         self.cluster_algo = cluster
 
-        """ Set seeds for result repetibility. """
         if random_seed is not None:
             os.environ['PYTHONHASHSEED'] = str(random_seed)
             random.seed(random_seed)
-            self.np.random.seed(random_seed)
-            self.cp.random.seed(random_seed)
+            np.random.seed(random_seed)
+            self.xp.random.seed(random_seed)
 
-        """ Switch to activate periodic boundary conditions. """
         self.PBC = bool(PBC)
-        
         if self.verbose:
             if self.PBC:
                 print("Periodic Boundary Conditions active.")
@@ -105,124 +101,160 @@ class SOMNet:
                 print("Periodic Boundary Conditions inactive.")
 
         self.node_list = []
-        self.data = self.cp.array(data).astype(self.cp.float32)
+        self.data = self.xp.array(data).astype(self.xp.float32)
 
         self.metric = metric
-
         self.topology = topology
-        
+        if self.topology=='hexagonal':
+            self.polygon = hx 
+        else:
+            self.polygon = sqr
+
         self.neighborhood_fun = neighborhood_fun
 
         self.convergence = []
 
-        """ Load the weights from file, generate them randomly or from PCA. """
+        self.net_height = net_height
+        self.net_width  = net_width
+        self._set_weights(load_file, init)
 
-        init_vec     = None
-        init_bounds  = None
-        wei_array    = None
+    def _set_weights(self, load_file, init):
+        """Set initial map weights values, either by loading them from file or with random/PCA.
+
+        Args:
+            load_file (str, optional): Name of file to load containing information 
+                to initialize the network weights.
+            init (str or list of np or cp ..array): Nodes initialization method, to be chosen between 'random'
+                or 'PCA' (default 'PCA'). Alternatively a couple of vectors can be provided
+                whose values will be spanned uniformly.
+        """
+
+        init_vec = None
+        init_bounds = None
+        weights_array = None
+        this_weight = None
+        # When loaded from file, element 0 contains information on the network shape
+        count_weight = 1
 
         if load_file is None:
-            self.net_height = net_height
-            self.net_width  = net_width
 
             if init == 'PCA':
                 if self.verbose:
                     print("The weights will be initialized with PCA.")
-                
-                if self.cp.__name__ == 'cupy':
-                    init_vec = self.__pca(self.data.get(), n_pca=2)
+                if self.xp.__name__ == 'cupy':
+                    init_vec = self.pca(self.data.get(), n_eigv=2)
                 else:
-                    init_vec = self.__pca(self.data, n_pca=2)
+                    init_vec = self.pca(self.data, n_eigv=2)
             
             elif init == 'random':
                 if self.verbose:
                     print("The weights will be initialized randomly.")
-
                 for i in range(self.data.shape[1]):
-                    init_vec = [self.np.min(self.data,axis=0),
-                                self.np.max(self.data,axis=0)]
+                    init_vec = [np.min(self.data, axis=0),
+                                np.max(self.data, axis=0)]
             
             else:
                 if self.verbose:
                     print("Custom weights provided.")
-
                 init_vec = init
 
         else:   
+            # TODO: add format checks
+
             if self.verbose:
-                print('The weights will be loaded from file.')
+                print("The weights will be loaded from file.\n"+ \
+                    "The map shape will be overwritten and no weights"+ \
+                    "initialization will be applied.")
+            if not load_file.endswith('.npy'):
+                load_file += '.npy' 
+            weights_array = np.load(load_file)
+            self.net_height = int(weights_array[0][0])
+            self.net_width  = int(weights_array[0][1])
+            self.PBC        = bool(weights_array[0][2])
 
-            if load_file.endswith('.npy')==False:
-                load_file = load_file+'.npy'
-            wei_array = self.np.load(load_file)
-            #add something to check that data and array have the same dimensions,
-            #or that they are mutually exclusive
-            self.net_height = int(wei_array[0][0])
-            self.net_width  = int(wei_array[0][1])
-            self.PBC        = bool(wei_array[0][2])
+        init_vec = self.xp.array(init_vec)
 
-        """ When loaded from file, element 0 contains information on the network shape."""
-        count_wei = 1
-
-        """ Set the weights. """
-
-        init_vec = self.cp.array(init_vec)
         for x in range(self.net_width):
             for y in range(self.net_height):
 
-                #if weights were loaded from file
-                if wei_array is not None:
-                    this_wei = wei_array[count_wei]
-                else:
-                    this_wei = None
-                
-                count_wei += 1
-
+                if weights_array is not None:
+                    this_weight = weights_array[count_wei]
+                    count_weight += 1
+ 
                 self.node_list.append(SOMNode(x, y, self.data.shape[1], 
-                                              self.net_height, self.net_width, self.PBC, self.topology,
-                                              wei_bounds=init_bounds, init_vec=init_vec, wei_array=this_wei))
+                                              self.net_height, self.net_width, 
+                                              self.PBC, self.topology,
+                                              weight_bounds=init_bounds, 
+                                              init_vec=init_vec, 
+                                              weights_array=this_weight))
 
-
-    def __get_n_parallel(self):
+    @staticmethod
+    def pca(A, n_eigv):
         
-        if self.cp.__name__ == 'cupy':
+        """Generates PCA components to initialize network weights.
+
+        Args:
+            A (array): N-dimensional dataset.
+            n_eigv (int): number of components to keep. 
+                     
+        Returns:            
+            vectors (array): Principal axes in feature space, 
+                representing the directions of maximum variance in the data.
+        """
+               
+        M = np.mean(A.T, axis=1)
+        C = A - M
+        V = np.cov(C.T)
+
+        return np.linalg.eig(V)[-1].T[:n_eigv]
+
+    #ask simone
+    def _get_n_process(self):
+        
+        if self.xp.__name__ == 'cupy':
             try:
-                import cupy as cp
-                dev = cp.cuda.Device()
+                dev = self.xp.cuda.Device()
                 n_smp = dev.attributes['MultiProcessorCount']
                 max_thread_per_smp = dev.attributes['MaxThreadsPerMultiProcessor']
-                return n_smp*max_thread_per_smp
+                return n_smp*max_thread_per_smp    
             except:
-                print("Cupy is not available.")
+                print("There was an error in loading GPU processors information")
                 return 0
-            try:
 
-                return int(subprocess.check_output("nvidia-settings -q CUDACores -t", shell=True))
-            except:
-                print("Could not infer #cuda_cores")
-                return 0
+        # not sure why any of this would be necessary
+        # if cupy was loaded successfully get the n_process out
+        # otherwise this shouldn't happen  
+        #    try:
+        #        return int(subprocess.check_output("nvidia-settings -q CUDACores -t", shell=True))
+        #    except:
+        #        print("Could not infer #cuda_cores")
+        #        return 0
         else:
             try:
+                #why 500
                 return multiprocessing.cpu_count()*500
             except:
-                print("Could not infer #CPU_cores")
+                print("Could not infer number of CPU_cores")
                 return 0 
-            
         
-    # check function's functionality
-    def __datapoint_random_generation(self, data, epochs):
+    #not sure about this, why not simply sample with replcement if 
+    def _randomize_dataset(self, data, epochs):
         
         """Generates datapoints for online training.
+
         Args:
-            data (np or cp ..array or list): N-dimensional dataset.
+            data (array or list): N-dimensional dataset.
             epochs (int): Number of training iterations. 
+
+        Returns:
+
         """
         
         if epochs < data.shape[0]:
             if self.verbose:
                 print("Warning, epochs for online training are less than the entry datapoints!")
             
-        dps = self.np.arange(0, data.shape[0], 1)
+        dps = np.arange(0, data.shape[0], 1)
         if epochs <= data.shape[0]:
             entries = random.sample(dps.tolist(), k=epochs)
         else:
@@ -232,39 +264,20 @@ class SOMNet:
                 entries += random.sample(dps.tolist(), k=data.shape[0])
                 epcs -= data.shape[0]
         return entries
-    
-    
-    def __pca(self, A, n_pca):
-        
-        """Generates PCA components to initialize network weights.
-        Args:
-            A (np or cp ..array or list): N-dimensional dataset.
-            n_pca (int): number of comporn. 
-                     
-        Returns:            
-            vectors (np or cp ..array or list): Principal axes in feature space, 
-            representing the directions of maximum variance in the data.
-        """
-               
-        M = self.np.mean(A.T, axis=1)
-        C = A - M
-        V = self.np.cov(C.T)
-        vectors = self.np.linalg.eig(V)[-1].T[:n_pca]
-        
-        return vectors
-    
-    
-    def __finding_label(self, c, i):
-        for j in range(len(c)):
-            if i in c[j]:
-                return j            
+            
+    # #unused function
+    # def _find_label(self, c, i):
+    #     for j in range(len(c)):
+    #         if i in c[j]:
+    #             return j            
 
-    def __sorting_clusters(self, a, c):
-        dict_labels = {}
-        for i in range(a.shape[0]):
-            label = self.__finding_label(c, i)
-            dict_labels[i] = label
-        return list(dict_labels.values())
+    # #ask simone why dictionary and why is unused
+    # def _sort_clusters(self, a, c):
+    #     dict_labels = {}
+    #     for i in range(a.shape[0]):
+    #         label = self._find_label(c, i)
+    #         dict_labels[i] = label
+    #     return list(dict_labels.values())
 
     
     def plot_convergence(self, logax=False, print_out=False, out_path='./', 
@@ -295,7 +308,6 @@ class SOMNet:
             sns.lineplot(y=self.convergence, x=range(len(self.convergence)), marker="o", ax=ax)
             
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-
 
             plt.xticks(fontsize=fontsize)
             plt.yticks(fontsize=fontsize)
@@ -328,11 +340,11 @@ class SOMNet:
             out_path (str, optional): Path to the folder where data will be saved.
         """
         
-        wei_array = [self.cp.zeros(len(self.node_list[0].weights))]
-        wei_array[0][0], wei_array[0][1], wei_array[0][2] = self.net_height, self.net_width, int(self.PBC)
+        weights_array = [self.xp.zeros(len(self.node_list[0].weights))]
+        weights_array[0][0], weights_array[0][1], weights_array[0][2] = self.net_height, self.net_width, int(self.PBC)
         for node in self.node_list:
-             wei_array.append(self.cp.asarray(node.weights))
-        self.cp.save(os.path.join(out_path,fileName), self.cp.asarray(wei_array))
+             weights_array.append(self.xp.asarray(node.weights))
+        self.xp.save(os.path.join(out_path,fileName), self.xp.asarray(weights_array))
     
 
     def update_sigma(self, n_iter):
@@ -374,9 +386,9 @@ class SOMNet:
 
 
         dists = dist.pairdist(vecs,
-                              self.cp.array([n.weights for n in self.node_list]), 
+                              self.xp.array([n.weights for n in self.node_list]), 
                               metric=self.metric, cpu=not(self.GPU))
-        return self.cp.argmin(dists,axis=1)
+        return self.xp.argmin(dists,axis=1)
 
     
     def train(self, train_algo='batch', epochs=-1, start_learning_rate=0.01, early_stop=None, 
@@ -412,7 +424,7 @@ class SOMNet:
         self.start_sigma = max(self.net_height, self.net_width)/2
         self.start_learning_rate = start_learning_rate
         
-        self.data = self.cp.array(self.data)
+        self.data = self.xp.array(self.data)
         
         if epochs == -1:
             epochs  = self.data.shape[0]*10
@@ -421,7 +433,7 @@ class SOMNet:
         self.tau    = self.epochs/log(self.start_sigma)
 
         if batch_size == -1 or batch_size > self.data.shape[0]:
-            _n_parallel = self.__get_n_parallel()
+            _n_parallel = self._get_n_process()
         else:
             _n_parallel = batch_size
         
@@ -431,7 +443,7 @@ class SOMNet:
                 and used to update the weights.
             """
             
-            datapoints = self.__datapoint_random_generation(self.data, self.epochs)
+            datapoints = self._randomize_dataset(self.data, self.epochs)
 
             for n_iter in range(self.epochs):
 
@@ -466,31 +478,31 @@ class SOMNet:
 
             """ Calculate the square euclidean distance matrix to speed up batch training & store all weights as matrix. """
 
-            all_weights = self.cp.array([n.weights for n in self.node_list], dtype=self.cp.float32)
+            all_weights = self.xp.array([n.weights for n in self.node_list], dtype=self.xp.float32)
             all_weights = all_weights.reshape(self.net_width, self.net_height, self.data.shape[1])
             early_stop_counter = 0
 
-            numerator   = self.cp.zeros(all_weights.shape, dtype=self.cp.float32)
-            denominator = self.cp.zeros((all_weights.shape[0], all_weights.shape[1], 1),dtype=self.cp.float32)
+            numerator   = self.xp.zeros(all_weights.shape, dtype=self.xp.float32)
+            denominator = self.xp.zeros((all_weights.shape[0], all_weights.shape[1], 1),dtype=self.xp.float32)
 
-            unravel_precomputed = self.cp.unravel_index(self.cp.arange(self.net_width*self.net_height, dtype=self.cp.int64),
+            unravel_precomputed = self.xp.unravel_index(self.xp.arange(self.net_width*self.net_height, dtype=self.xp.int64),
                                                         (self.net_width, self.net_height))
-            _neigx = self.cp.arange(self.net_width)
-            _neigy = self.cp.arange(self.net_height)
-            _xx, _yy = self.cp.meshgrid(_neigx, _neigy)
+            _neigx = self.xp.arange(self.net_width)
+            _neigy = self.xp.arange(self.net_height)
+            _xx, _yy = self.xp.meshgrid(_neigx, _neigy)
             
             if self.neighborhood_fun == "bubble":
-                neighborhood = neighbor.prepare_neig_func(neighbor.bubble, _neigx, _neigy, xp=self.cp)
+                neighborhood = neighbor.prepare_neig_func(neighbor.bubble, _neigx, _neigy, xp=self.xp)
 
             elif self.neighborhood_fun == "mexican":
-                neighborhood = neighbor.prepare_neig_func(neighbor.mexican_hat, _xx, _yy, 0.5, False, xp=self.cp)
+                neighborhood = neighbor.prepare_neig_func(neighbor.mexican_hat, _xx, _yy, 0.5, False, xp=self.xp)
 
             else:
-                neighborhood = neighbor.prepare_neig_func(neighbor.gaussian, _xx, _yy, 0.5, False, xp=self.cp)
+                neighborhood = neighbor.prepare_neig_func(neighbor.gaussian, _xx, _yy, 0.5, False, xp=self.xp)
 
             for n_iter in range(self.epochs):
 
-                sq_weights = (self.cp.power(all_weights.reshape(-1, all_weights.shape[2]),2).sum(axis=1, keepdims=True))
+                sq_weights = (self.xp.power(all_weights.reshape(-1, all_weights.shape[2]),2).sum(axis=1, keepdims=True))
 
                 """ Early stop check. """
 
@@ -516,8 +528,8 @@ class SOMNet:
                     numerator.fill(0)
                     denominator.fill(0)
                 except AttributeError: # whoops, I haven't allocated it yet
-                    numerator   = self.cp.zeros(all_weights.shape, dtype=self.cp.float32)
-                    denominator = self.cp.zeros((all_weights.shape[0], all_weights.shape[1], 1),dtype=self.cp.float32)
+                    numerator   = self.xp.zeros(all_weights.shape, dtype=self.xp.float32)
+                    denominator = self.xp.zeros((all_weights.shape[0], all_weights.shape[1], 1),dtype=self.xp.float32)
 
                 for i in range(0, len(self.data), _n_parallel):
                     start = i
@@ -528,22 +540,22 @@ class SOMNet:
                     batchdata = self.data[start:end]
 
                     """ Find BMUs for all points and subselect gaussian matrix. """
-                    dists = dist.batchpairdist(batchdata, all_weights, self.metric, sq_weights, self.cp)
+                    dists = dist.batchpairdist(batchdata, all_weights, self.metric, sq_weights, self.xp)
 
                     raveled_idxs = dists.argmin(axis=1)
                     wins = (unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
 
-                    g_gpu = neighborhood(wins, self.sigma, xp=self.cp)*self.learning_rate
+                    g_gpu = neighborhood(wins, self.sigma, xp=self.xp)*self.learning_rate
                     
-                    sum_g_gpu = self.cp.sum(g_gpu, axis=0)
+                    sum_g_gpu = self.xp.sum(g_gpu, axis=0)
                     g_flat_gpu = g_gpu.reshape(g_gpu.shape[0], -1)
-                    gT_dot_x_flat_gpu = self.cp.dot(g_flat_gpu.T, batchdata)
+                    gT_dot_x_flat_gpu = self.xp.dot(g_flat_gpu.T, batchdata)
 
                     numerator   += gT_dot_x_flat_gpu.reshape(numerator.shape)
-                    denominator += sum_g_gpu[:,:,self.cp.newaxis]
+                    denominator += sum_g_gpu[:,:,self.xp.newaxis]
                     
             
-                new_weights = self.cp.where(denominator != 0, numerator / denominator, all_weights)
+                new_weights = self.xp.where(denominator != 0, numerator / denominator, all_weights)
 
                 """ Early stopping, active if patience is not None """
 
@@ -564,7 +576,7 @@ class SOMNet:
 
                         """ Checks if the bmus mean distance from the samples has stopped improving. """
 
-                        self.convergence.append(self.cp.min(dists, axis=1).mean())
+                        self.convergence.append(self.xp.min(dists, axis=1).mean())
 
 
                     else:
@@ -633,10 +645,7 @@ class SOMNet:
 
         cols = [c[colnum] for c in cols]
 
-        if self.topology == "hexagonal":
-            ax = hx.plot_hex(fig, centers, cols)
-        else:
-            ax = rec.plot_square(fig, centers, cols)
+        ax = self.polygon.plot_map(fig, centers, cols)
 
         ax.set_title(figtitle[0], size=figtitle[1])
         divider = make_axes_locatable(ax)
@@ -657,7 +666,7 @@ class SOMNet:
             plt.clf()
 
             
-    def diff_graph(self, show=False, print_out=False, returns=False, out_path='./', 
+    def difference_graph(self, show=False, print_out=False, returns=False, out_path='./', 
                     fsize=(5, 5), figtitle=('Node Grid w Feature', 14), 
                     cbartitle=('Weights Difference', 12), cbarticksize=10):
     
@@ -679,7 +688,7 @@ class SOMNet:
         
         """ Find adjacent nodes in the grid. """
 
-        neighbors = [self.np.array([node2.weights for node2 in self.node_list
+        neighbors = [np.array([node2.weights for node2 in self.node_list
                                                    if node != node2 and node.get_node_distance(node2) <= 1.001])
                      for node in self.node_list]
 
@@ -698,10 +707,7 @@ class SOMNet:
         
             fig     = plt.figure(figsize=(fsize[0], fsize[1]))
 
-            if self.topology == "hexagonal":
-                ax = hx.plot_hex(fig, centers, diffs)
-            else:
-                ax = rec.plot_square(fig, centers, diffs)
+            ax = self.polygon.plot_map(fig, centers, diffs)
 
             ax.set_title(figtitle[0], size=figtitle[1])
             divider = make_axes_locatable(ax)
@@ -753,15 +759,15 @@ class SOMNet:
         if not colname:
             colname = str(colnum)
         
-        if not isinstance(array, self.cp.ndarray):
-            array = self.cp.array(array).astype(self.cp.float64)
+        if not isinstance(array, self.xp.ndarray):
+            array = self.xp.array(array).astype(self.xp.float64)
 
         bmu_list, cls = [], []
         bmu_list = [self.node_list[int(mu)].pos for mu in self.find_bmu_ix(array)]
 
         if show == True or print_out == True:
         
-            """ Call nodes_graph/diff_graph to first build the 2D map of the nodes. """
+            """ Call nodes_graph/difference_graph to first build the 2D map of the nodes. """
             
             df_plot = pd.DataFrame()
             
@@ -773,7 +779,7 @@ class SOMNet:
             df_plot['y']      = [pos[1]-0.125+random.random()*0.25 for pos in bmu_list]
             df_plot['labels'] = labels
 
-            self.diff_graph(False, False, False)
+            self.difference_graph(False, False, False)
             sns.scatterplot(x='x', y='y', hue='labels', data=df_plot, palette="Paired", ax=ax)
             ax.set(xlabel=None)
             ax.set(ylabel=None)
@@ -802,7 +808,7 @@ class SOMNet:
         """ return x,y coordinates of bmus, useful for the clustering function. """
         
         if returns:
-            return self.np.array(bmu_list)[:,:2]
+            return np.array(bmu_list)[:,:2]
         
         
     def cluster(self, array, clus_type='KMeans', num_cl=3,
@@ -847,7 +853,7 @@ class SOMNet:
                 print("Warning: Only Quality Threshold and Density Peak clustering work with PBC")
 
             try:
-                bmu_array = self.np.array(bmu_list)
+                bmu_array = np.array(bmu_list)
                 
                 if clus_type == 'KMeans':
                     cl = self.cluster_algo.KMeans(n_clusters=num_cl).fit(bmu_array)
@@ -860,7 +866,7 @@ class SOMNet:
                 
                 cl_labs = cl.labels_                 
                     
-                for i in self.np.unique(cl_labs):
+                for i in np.unique(cl_labs):
                     cl_list = []
                     tmp_list = range(len(bmu_list))
                     for j,k in zip(tmp_list,cl_labs):
@@ -926,9 +932,9 @@ class SOMNode:
     """ Single Kohonen SOM Node class. """
     
     def __init__(self, x, y, num_weights, net_height, net_width, PBC, topology,
-                wei_bounds=None, init_vec=None, wei_array=None,):
+                weight_bounds=None, init_vec=None, weights_array=None,):
     
-        """Initialise the SOM node.
+        """Initialize the SOM node.
 
         Args:
             x (int): Position along the first network dimension.
@@ -937,22 +943,20 @@ class SOMNode:
             net_height (int): Network height, needed for periodic boundary conditions (PBC)
             net_width (int): Network width, needed for periodic boundary conditions (PBC)
             PBC (bool): Activate/deactivate periodic boundary conditions.
-            wei_bounds(np or cp ..array, optional): boundary values for the random initialization
+            weight_bounds(np or cp ..array, optional): boundary values for the random initialization
                 of the weights. Must be in the format [min_val, max_val]. 
                 They are overwritten by 'init_vec'.
             init_vec (np or cp ..array, optional): Array containing the two custom vectors (e.g. PCA)
                 for the weights initalization.
-            wei_array (np or cp ..array, optional): Array containing the weights to give
+            weights_array (np or cp ..array, optional): Array containing the weights to give
                 to the node if loaded from a file.
-
-                
         """
         
         self.topology  = topology
         self.PBC       = PBC
         
         if self.topology == "hexagonal":
-            self.pos = np.array(hx.coor_to_hex(x,y))
+            self.pos = np.array(self.polygon.coor_to_hex(x,y))
         else:
             self.pos = np.array((x,y))
 
@@ -961,10 +965,10 @@ class SOMNode:
         self.net_height = net_height
         self.net_width  = net_width
 
-        if wei_array is not None:
+        if weights_array is not None:
             """ Load nodes's weights from file. """
             
-            self.weights = wei_array
+            self.weights = weights_array
 
         elif init_vec is not None:
             """ Select uniformly in the space spanned by the custom vectors. """
@@ -972,11 +976,11 @@ class SOMNode:
             self.weights = ((x-self.net_width/2)*2.0/self.net_width*init_vec[0] + 
                             (y-self.net_height/2)*2.0/self.net_height*init_vec[1])
 
-        elif wei_bounds is not None:
+        elif weight_bounds is not None:
             """ Select randomly in the space spanned by the data. """
             
             for i in range(num_weights):
-                self.weights.append(random.random()*(wei_bounds[1][i]-wei_bounds[0][i])+wei_bounds[0][i])
+                self.weights.append(random.random()*(weight_bounds[1][i]-weight_bounds[0][i])+weight_bounds[0][i])
        
         else: 
             """ Else return error. """
@@ -986,25 +990,6 @@ class SOMNode:
    
         # self.weights = np.array(self.weights)
 
-    
-    def get_distance(self, vec):
-    
-        """Calculate the distance between the weights vector of the node and a given vector.
-           DEPRECATED: this function will be removed in future versions, use SOMNet.get_bmu instead.
-
-        Args:
-            vec (np or cp ..array): The vector from which the distance is calculated.
-            
-        Returns: 
-            (float): The distance between the two weight vectors.
-        """
-    
-        if len(self.weights) == len(vec):
-            return self.cp.sqrt(self.cp.sum((self.weights-vec)**2))   
-        else:
-            sys.exit("Error: dimension of nodes != input data dimension!")
-
-            
     def get_node_distance(self, node):
     
         """Calculate the distance within the network between the node and another node.
@@ -1017,44 +1002,50 @@ class SOMNode:
             
         """
 
-        n00 = self.pos[0]
-        n01 = self.pos[1]
-        n10 = node.pos[0]
-        n11 = node.pos[1]
+        x0 = self.pos[0]
+        y0 = self.pos[1]
+        x1 = node.pos[0]
+        y1 = node.pos[1]
 
-        if self.PBC == True and self.topology == "hexagonal":
+        if self.PBC:
 
-            """ Hexagonal Periodic Boundary Conditions """
-            if self.net_height % 2 == 0:
-                offset = 0  
-            else: 
-                offset = 0.5
+            if self.topology == "hexagonal":
+                
+                offset = 0 if self.net_height % 2 == 0 else 0.5
+                
+                return  min([sqrt((x0-x1)**2+(y0-y1)**2),
+                             #right
+                             sqrt((x0-x1+self.net_width)**2+(y0-y1)**2),
+                             #bottom 
+                             sqrt((x0-x1+offset)**2+(y0-y1+self.net_height*2/sqrt(3)*3/4)**2),
+                             #left
+                             sqrt((x0-x1-self.net_width)**2+(y0-y1)**2),
+                             #top 
+                             sqrt((x0-x1-offset)**2+(y0-y1-self.net_height*2/sqrt(3)*3/4)**2),
+                             #bottom right
+                             sqrt((x0-x1+self.net_width+offset)**2+(y0-y1+self.net_height*2/sqrt(3)*3/4)**2),
+                             #bottom left
+                             sqrt((x0-x1-self.net_width+offset)**2+(y0-y1+self.net_height*2/sqrt(3)*3/4)**2),
+                             #top right
+                             sqrt((x0-x1+self.net_width-offset)**2+(y0-y1-self.net_height*2/sqrt(3)*3/4)**2),
+                             #top left
+                             sqrt((x0-x1-self.net_width-offset)**2+(y0-y1-self.net_height*2/sqrt(3)*3/4)**2)
+                            ])
 
-            return  min([sqrt((n00-n10)**2+(n01-n11)**2),
-                         #right
-                         sqrt((n00-n10+self.net_width)**2+(n01-n11)**2),
-                         #bottom 
-                         sqrt((n00-n10+offset)**2+(n01-n11+self.net_height*2/sqrt(3)*3/4)**2),
-                         #left
-                         sqrt((n00-n10-self.net_width)**2+(n01-n11)**2),
-                         #top 
-                         sqrt((n00-n10-offset)**2+(n01-n11-self.net_height*2/sqrt(3)*3/4)**2),
-                         #bottom right
-                         sqrt((n00-n10+self.net_width+offset)**2+(n01-n11+self.net_height*2/sqrt(3)*3/4)**2),
-                         #bottom left
-                         sqrt((n00-n10-self.net_width+offset)**2+(n01-n11+self.net_height*2/sqrt(3)*3/4)**2),
-                         #top right
-                         sqrt((n00-n10+self.net_width-offset)**2+(n01-n11-self.net_height*2/sqrt(3)*3/4)**2),
-                         #top left
-                         sqrt((n00-n10-self.net_width-offset)**2+(n01-n11-self.net_height*2/sqrt(3)*3/4)**2)
-                        ])
+            elif self.topology == "rectangular":
 
-        # ### TO DO: Periodic Boundary conditions when topolgy == rectangular
-        # elif self.PBC == True and self.topology == "rectangular":
-        #     return pass
+                ### WRITE SQUARE HERE
+                pass
+
+            else:
+
+                # This shouldn't happen
+                print("WARNING: topology type not compatible with PBC.\n"+ \
+                      "PBC will be turned off.")
+                self.PBC = False
           
         else:
-            return sqrt((n00-n10)**2+(n01-n11)**2)
+            return sqrt((x0-x1)**2+(y0-y1)**2)
 
 
     def update_weights(self, input_vec, sigma, learning_rate, bmu):
