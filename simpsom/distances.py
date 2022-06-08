@@ -1,3 +1,9 @@
+"""
+Distance_function.
+
+F Comitani, SG Riva, A Tangherloni 
+"""
+
 import sys
 
 def __euclidean_squared_distance_part(x, w, w_flat_sq=None, xp=None):

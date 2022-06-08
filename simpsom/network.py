@@ -1,14 +1,12 @@
 """
-SimpSOM (Simple Self-Organizing Maps) v3.0.0
-F Comitani, SG Riva, A Tangherloni
- 
+SimpSOM (Simple Self-Organizing Maps) v3.0.0 
 A lightweight python library for Kohonen Self-Organizing Maps (SOM).
+
+F Comitani, SG Riva, A Tangherloni
 """
 
 #logger
 #unittest
-#sqr and hex can be one function onlys
-#adjust all headers
 #adjust comments
 #README
 #example
@@ -32,8 +30,7 @@ from matplotlib import cm
 from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-import simpsom.hexagons as hx
-import simpsom.squares as sqr
+from simpsom.polygons import Squares, Hexagons
 import simpsom.distances as dist
 import simpsom.neighborhoods as neighbor
 
@@ -51,12 +48,13 @@ class SOMNet:
             net_height (int): Number of nodes along the first dimension.
             net_width (int): Numer of nodes along the second dimension.
             data (array): N-dimensional dataset.
-            load_file (str, optional): Name of file to load containing information 
+            load_file (str): Name of file to load containing information 
                 to initialize the network weights.
             metric (string): distance metric for the identification of best matching
                 units. Accepted metrics are euclidean, manhattan, and cosine (default 'euclidean').
-            topology (string): topology kohonen map. Accepted topology are hexagonal, and rectangular (default 'hexagonal').
-            init (str or list of array): Nodes initialization method, to be chosen between 'random'
+            topology (string): topology of the map tiling. 
+                Accepted shapes are hexagonal, and square (default 'hexagonal').
+            init (str or list[array, ...]): Nodes initialization method, to be chosen between 'random'
                 or 'PCA' (default 'PCA'). Alternatively a couple of vectors can be provided
                 whose values will be spanned uniformly.
             PBC (boolean): Activate/deactivate periodic boundary conditions,
@@ -104,11 +102,11 @@ class SOMNet:
         self.data = self.xp.array(data).astype(self.xp.float32)
 
         self.metric = metric
-        self.topology = topology
-        if self.topology=='hexagonal':
-            self.polygon = hx 
+
+        if topology == 'hexagonal':
+            self.polygons = Hexagons
         else:
-            self.polygon = sqr
+            self.polygons = Squares
 
         self.neighborhood_fun = neighborhood_fun
 
@@ -122,9 +120,9 @@ class SOMNet:
         """Set initial map weights values, either by loading them from file or with random/PCA.
 
         Args:
-            load_file (str, optional): Name of file to load containing information 
+            load_file (str): Name of file to load containing information 
                 to initialize the network weights.
-            init (str or list of np or cp ..array): Nodes initialization method, to be chosen between 'random'
+            init (str or list[array, ..]): Nodes initialization method, to be chosen between 'random'
                 or 'PCA' (default 'PCA'). Alternatively a couple of vectors can be provided
                 whose values will be spanned uniformly.
         """
@@ -183,7 +181,7 @@ class SOMNet:
  
                 self.node_list.append(SOMNode(x, y, self.data.shape[1], 
                                               self.net_height, self.net_width, 
-                                              self.PBC, self.topology,
+                                              self.PBC, self.polygons,
                                               weight_bounds=init_bounds, 
                                               init_vec=init_vec, 
                                               weights_array=this_weight))
@@ -278,57 +276,6 @@ class SOMNet:
     #         label = self._find_label(c, i)
     #         dict_labels[i] = label
     #     return list(dict_labels.values())
-
-    
-    def plot_convergence(self, logax=False, print_out=False, out_path='./', 
-                         fsize=(5, 5), figtitle=('Convergence', 14), fontsize=12):
-
-        """ Plot the the map training progress according to the 
-            chosen convergence criterion, when train_algo is batch.
-            
-        Args: 
-            logax (bool, optional): if True, plot convergence on logarithmic y axis.
-            show (bool, optional): Choose to display the plot.
-            print_out (bool, optional): Choose to save the plot to a file.
-            out_path (str, optional): Path to the folder where data will be saved.
-            fsize (tuple(int, int), optional): Figure size.
-            figtitle (tuple(str, str), optional): Figure title and fontsize.
-            fontsize (int, optional): Legend fontsize.
-        """
-        
-        if self.convergence==[]:
-            if self.verbose:
-                print("Warning, given the selected train_algo or the early_stop, there is no convergence values.")
-            
-        else:
-            f, ax = plt.subplots(1,1,figsize=(fsize[0], fsize[1]))
-            
-            self.convergence = np.nan_to_num(self.convergence) 
-
-            sns.lineplot(y=self.convergence, x=range(len(self.convergence)), marker="o", ax=ax)
-            
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-
-            plt.xticks(fontsize=fontsize)
-            plt.yticks(fontsize=fontsize)
-
-            if logax:
-                ax.set_yscale('log')
-
-            ax.spines['right'].set_visible(False)
-            ax.spines['top'].set_visible(False)
-
-            plt.xlabel('Iteration', fontsize=fontsize)
-            plt.ylabel('Score', fontsize=fontsize)
-            
-            plt.title(figtitle[0], size=figtitle[1])
-            
-            plt.grid(False)
-            plt.show()
-
-            if print_out == True:
-                print_name = os.path.join(out_path,'convergence.png')
-                plt.savefig(print_name, bbox_inches='tight')
     
     
     def save(self, fileName='SOMNet_trained', out_path='./'):
@@ -336,8 +283,8 @@ class SOMNet:
         """Saves the network dimensions, the pbc and nodes weights to a file.
 
         Args:
-            fileName (str, optional): Name of file where the data will be saved.
-            out_path (str, optional): Path to the folder where data will be saved.
+            fileName (str): Name of file where the data will be saved.
+            out_path (str): Path to the folder where data will be saved.
         """
         
         weights_array = [self.xp.zeros(len(self.node_list[0].weights))]
@@ -347,7 +294,7 @@ class SOMNet:
         self.xp.save(os.path.join(out_path,fileName), self.xp.asarray(weights_array))
     
 
-    def update_sigma(self, n_iter):
+    def _update_sigma(self, n_iter):
     
         """Update the gaussian sigma.
 
@@ -359,7 +306,7 @@ class SOMNet:
         self.sigma = self.start_sigma * exp(-n_iter/self.tau)
     
 
-    def update_learning_rate(self, n_iter):
+    def _update_learning_rate(self, n_iter):
     
         """Update the learning rate.
 
@@ -376,7 +323,7 @@ class SOMNet:
         """Find the index of the best matching unit (BMU) for a given list of vectors.
 
         Args:           
-            vec (2d np or cp ..array or list of lists): vectors whose distance from the network
+            vec (array or list[lists, ..]): vectors whose distance from the network
                 nodes will be calculated.
             
         Returns:            
@@ -451,8 +398,8 @@ class SOMNet:
                     if self.verbose:
                         print("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)), end=' ')
 
-                self.update_sigma(n_iter)
-                self.update_learning_rate(n_iter)
+                self._update_sigma(n_iter)
+                self._update_learning_rate(n_iter)
                 
                 datapoint = datapoints.pop()
                 input_vec = self.data[datapoint, :].reshape(1,self.data.shape[1])
@@ -460,7 +407,7 @@ class SOMNet:
                 bmu = self.node_list[int(self.find_bmu_ix(input_vec)[0])]
 
                 for node in self.node_list:
-                    node.update_weights(input_vec[0], self.sigma, self.learning_rate, bmu)
+                    node._update_weights(input_vec[0], self.sigma, self.learning_rate, bmu)
 
         elif train_algo == 'batch':
             """ Batch training.
@@ -471,10 +418,11 @@ class SOMNet:
                 Kinouchi, M. et al. "Quick Learning for Batch-Learning Self-Organizing Map" (2002).
             """
 
-            #Storing the distances and weight matrices defeats the purpose of having
-            #nodes as instances of a class, but it helps with the optimization
-            #and parallelization at the cost of memory.
-            #The object-oriented structure is kept to simplify code reading. 
+            # PBC currently not working for batch algo
+            # Storing the distances and weight matrices defeats the purpose of having
+            # nodes as instances of a class, but it helps with the optimization
+            # and parallelization at the cost of memory.
+            # The object-oriented structure is kept to simplify code reading. 
 
             """ Calculate the square euclidean distance matrix to speed up batch training & store all weights as matrix. """
 
@@ -513,8 +461,8 @@ class SOMNet:
 
                     break
 
-                self.update_sigma(n_iter)
-                self.update_learning_rate(n_iter)
+                self._update_sigma(n_iter)
+                self._update_learning_rate(n_iter)
                 
                 """ Matrix of gaussian effects. """
 
@@ -620,14 +568,14 @@ class SOMNet:
 
         Args:
             colnum (int): The index of the weight that will be shown as colormap.
-            show (bool, optional): Choose to display the plot.
-            print_out (bool, optional): Choose to save the plot to a file.
-            colname (str, optional): Name of the column to be shown on the map.
-            out_path (str, optional): Path to the folder where data will be saved.
-            fsize (tuple(int, int), optional): Figure size.
-            figtitle (tuple(str, str), optional): Figure title and fontsize.
-            cbartitle (tuple(str, int), optional): cbar title and fontsize.
-            cbarticksize (int, optional): cbar size.
+            show (bool): Choose to display the plot.
+            print_out (bool): Choose to save the plot to a file.
+            colname (str): Name of the column to be shown on the map.
+            out_path (str): Path to the folder where data will be saved.
+            fsize (tuple[int, int]): Figure size.
+            figtitle (tuple[str, str]): Figure title and fontsize.
+            cbartitle (tuple[str, int]): cbar title and fontsize.
+            cbarticksize (int): cbar size.
         """
             
         if not colname:
@@ -645,7 +593,7 @@ class SOMNet:
 
         cols = [c[colnum] for c in cols]
 
-        ax = self.polygon.plot_map(fig, centers, cols)
+        ax = self.polygons.plot_map(fig, centers, cols)
 
         ax.set_title(figtitle[0], size=figtitle[1])
         divider = make_axes_locatable(ax)
@@ -673,14 +621,14 @@ class SOMNet:
         """Plot a 2D map with nodes and weights difference among neighboring nodes.
 
         Args:
-            show (bool, optional): Choose to display the plot.
-            print_out (bool, optional): Choose to save the plot to a file.
-            returns (bool, optional): Choose to return the difference value.
-            out_path (str, optional): Path to the folder where data will be saved.
-            fsize (tuple(int, int), optional): Figure size.
-            figtitle (tuple(str, str), optional): Figure title and fontsize.
-            cbartitle (tuple(str, int), optional): cbar title and fontsize.
-            cbarticksize (int, optional): cbar size.
+            show (bool): Choose to display the plot.
+            print_out (bool): Choose to save the plot to a file.
+            returns (bool): Choose to return the difference value.
+            out_path (str): Path to the folder where data will be saved.
+            fsize (tuple[int, int]): Figure size.
+            figtitle (tuple[str, str]): Figure title and fontsize.
+            cbartitle (tuple[str, int]): cbar title and fontsize.
+            cbarticksize (int): cbar size.
             
         Returns:
             (list): difference value for each node.             
@@ -707,7 +655,7 @@ class SOMNet:
         
             fig     = plt.figure(figsize=(fsize[0], fsize[1]))
 
-            ax = self.polygon.plot_map(fig, centers, diffs)
+            ax = self.polygons.plot_map(fig, centers, diffs)
 
             ax.set_title(figtitle[0], size=figtitle[1])
             divider = make_axes_locatable(ax)
@@ -730,6 +678,55 @@ class SOMNet:
         if returns == True:
             return diffs
 
+    def plot_convergence(self, logax=False, print_out=False, out_path='./', 
+                         fsize=(5, 5), figtitle=('Convergence', 14), fontsize=12):
+
+        """ Plot the the map training progress according to the 
+            chosen convergence criterion, when train_algo is batch.
+            
+        Args: 
+            logax (bool): if True, plot convergence on logarithmic y axis.
+            show (bool): Choose to display the plot.
+            print_out (bool): Choose to save the plot to a file.
+            out_path (str): Path to the folder where data will be saved.
+            fsize (tuple[int, int]): Figure size.
+            figtitle (tuple[str, str]): Figure title and fontsize.
+            fontsize (int): Legend fontsize.
+        """
+        
+        if self.convergence==[]:
+            if self.verbose:
+                print("Warning, given the selected train_algo or the early_stop, there is no convergence values.")
+            
+        else:
+            f, ax = plt.subplots(1,1,figsize=(fsize[0], fsize[1]))
+            
+            self.convergence = np.nan_to_num(self.convergence) 
+
+            sns.lineplot(y=self.convergence, x=range(len(self.convergence)), marker="o", ax=ax)
+            
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+            plt.xticks(fontsize=fontsize)
+            plt.yticks(fontsize=fontsize)
+
+            if logax:
+                ax.set_yscale('log')
+
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
+
+            plt.xlabel('Iteration', fontsize=fontsize)
+            plt.ylabel('Score', fontsize=fontsize)
+            
+            plt.title(figtitle[0], size=figtitle[1])
+            
+            plt.grid(False)
+            plt.show()
+
+            if print_out == True:
+                print_name = os.path.join(out_path,'convergence.png')
+                plt.savefig(print_name, bbox_inches='tight')
         
     def project(self, array, colnum=-1, labels=[], show=False, print_out=False, returns=False, out_path='./', colname=None, 
                 fsize=(5, 5), figtitle=('Datapoints Projection', 14), legendsize=10):
@@ -740,16 +737,16 @@ class SOMNet:
             of each datapoint in a given array.
 
         Args:
-            array (np or cp ..array): An array containing datapoints to be mapped.
+            array (array): An array containing datapoints to be mapped.
             colnum (int): The index of the weight that will be shown as colormap. 
                 If not chosen, the difference map will be used instead.
-            show (bool, optional): Choose to display the plot.
-            print_out (bool, optional): Choose to save the plot to a file.
-            out_path (str, optional): Path to the folder where data will be saved.
-            colname (str, optional): Name of the column to be shown on the map.
-            fsize (tuple(int, int), optional): Figure size.
-            figtitle (tuple(str, str), optional): Figure title and fontsize.
-            legendsize (int, optional): Legend fontsize.
+            show (bool): Choose to display the plot.
+            print_out (bool): Choose to save the plot to a file.
+            out_path (str): Path to the folder where data will be saved.
+            colname (str): Name of the column to be shown on the map.
+            fsize (tuple[int, int]): Figure size.
+            figtitle (tuple[str, str]): Figure title and fontsize.
+            legendsize (int): Legend fontsize.
             
         Returns:
             (list): bmu x,y position for each input array datapoint. 
@@ -819,18 +816,18 @@ class SOMNet:
             The clusters can also be plotted.
 
         Args:
-            array (np or cp ..array): An array containing datapoints to be clustered.
-            clus_type (str, optional): The type of clustering to be applied, so far only quality threshold (qthresh) 
+            array (array): An array containing datapoints to be clustered.
+            clus_type (str): The type of clustering to be applied, so far only quality threshold (qthresh) 
                 algorithm is directly implemented, other algorithms require sklearn.
-            num_cl (int, optional): The number of clusters for K-Means clustering
-            save_file (bool, optional): Choose to save the resulting clusters in a text file.
-            file_type (string, optional): Format of the file where the clusters will be saved (csv or dat)
-            show (bool, optional): Choose to display the plot.
-            print_out (bool, optional): Choose to save the plot to a file.
-            out_path (str, optional): Path to the folder where data will be saved.
-            fsize (tuple(int, int), optional): Figure size.
-            figtitle (tuple(str, str), optional): Figure title and fontsize.
-            legendsize (int, optional): Legend fontsize.
+            num_cl (int): The number of clusters for K-Means clustering
+            save_file (bool): Choose to save the resulting clusters in a text file.
+            file_type (string): Format of the file where the clusters will be saved (csv or dat)
+            show (bool): Choose to display the plot.
+            print_out (bool): Choose to save the plot to a file.
+            out_path (str): Path to the folder where data will be saved.
+            fsize (tuple[int, int]): Figure size.
+            figtitle (tuple[str, str]): Figure title and fontsize.
+            legendsize (int): Legend fontsize.
             
         Returns:
             (list of int): A list containing the clusters of the input array datapoints.
@@ -849,7 +846,7 @@ class SOMNet:
         
             """ Cluster according to algorithms implemented in sklearn, using defaul parameters. """
         
-            if self.PBC == True:
+            if self.PBC:
                 print("Warning: Only Quality Threshold and Density Peak clustering work with PBC")
 
             try:
@@ -921,18 +918,16 @@ class SOMNet:
                 plt.show()
             if print_out == True:
                 plt.savefig(print_name, bbox_inches='tight')
-            # plt.clf()   
         
         if returns:
             return cl_labs
 
         
 class SOMNode:
-
     """ Single Kohonen SOM Node class. """
     
-    def __init__(self, x, y, num_weights, net_height, net_width, PBC, topology,
-                weight_bounds=None, init_vec=None, weights_array=None,):
+    def __init__(self, x, y, num_weights, net_height, net_width, PBC, polygons,
+                weight_bounds=None, init_vec=None, weights_array=None):
     
         """Initialize the SOM node.
 
@@ -943,22 +938,19 @@ class SOMNode:
             net_height (int): Network height, needed for periodic boundary conditions (PBC)
             net_width (int): Network width, needed for periodic boundary conditions (PBC)
             PBC (bool): Activate/deactivate periodic boundary conditions.
-            weight_bounds(np or cp ..array, optional): boundary values for the random initialization
+            weight_bounds(array): boundary values for the random initialization
                 of the weights. Must be in the format [min_val, max_val]. 
                 They are overwritten by 'init_vec'.
-            init_vec (np or cp ..array, optional): Array containing the two custom vectors (e.g. PCA)
+            init_vec (array): Array containing the two custom vectors (e.g. PCA)
                 for the weights initalization.
-            weights_array (np or cp ..array, optional): Array containing the weights to give
+            weights_array (array): Array containing the weights to give
                 to the node if loaded from a file.
         """
         
-        self.topology  = topology
+        self.polygons  = polygons
         self.PBC       = PBC
         
-        if self.topology == "hexagonal":
-            self.pos = np.array(self.polygon.coor_to_hex(x,y))
-        else:
-            self.pos = np.array((x,y))
+        self.pos = polygons.to_tiles((x,y))
 
         self.weights   = []
 
@@ -991,69 +983,27 @@ class SOMNode:
         # self.weights = np.array(self.weights)
 
     def get_node_distance(self, node):
-    
-        """Calculate the distance within the network between the node and another node.
+        """Calculate the distance within the network between the current node and second node.
 
         Args:
             node (SOMNode): The node from which the distance is calculated.
             
         Returns:
             (float): The distance between the two nodes.
-            
         """
 
-        x0 = self.pos[0]
-        y0 = self.pos[1]
-        x1 = node.pos[0]
-        y1 = node.pos[1]
-
         if self.PBC:
-
-            if self.topology == "hexagonal":
-                
-                offset = 0 if self.net_height % 2 == 0 else 0.5
-                
-                return  min([sqrt((x0-x1)**2+(y0-y1)**2),
-                             #right
-                             sqrt((x0-x1+self.net_width)**2+(y0-y1)**2),
-                             #bottom 
-                             sqrt((x0-x1+offset)**2+(y0-y1+self.net_height*2/sqrt(3)*3/4)**2),
-                             #left
-                             sqrt((x0-x1-self.net_width)**2+(y0-y1)**2),
-                             #top 
-                             sqrt((x0-x1-offset)**2+(y0-y1-self.net_height*2/sqrt(3)*3/4)**2),
-                             #bottom right
-                             sqrt((x0-x1+self.net_width+offset)**2+(y0-y1+self.net_height*2/sqrt(3)*3/4)**2),
-                             #bottom left
-                             sqrt((x0-x1-self.net_width+offset)**2+(y0-y1+self.net_height*2/sqrt(3)*3/4)**2),
-                             #top right
-                             sqrt((x0-x1+self.net_width-offset)**2+(y0-y1-self.net_height*2/sqrt(3)*3/4)**2),
-                             #top left
-                             sqrt((x0-x1-self.net_width-offset)**2+(y0-y1-self.net_height*2/sqrt(3)*3/4)**2)
-                            ])
-
-            elif self.topology == "rectangular":
-
-                ### WRITE SQUARE HERE
-                pass
-
-            else:
-
-                # This shouldn't happen
-                print("WARNING: topology type not compatible with PBC.\n"+ \
-                      "PBC will be turned off.")
-                self.PBC = False
-          
+            return self.polygons.distance_pbc((self.pos, node.pos), 
+                                        (self.net_width, self.net_height))
         else:
-            return sqrt((x0-x1)**2+(y0-y1)**2)
+            return np.sum(np.square(self.pos - node.pos))
 
 
-    def update_weights(self, input_vec, sigma, learning_rate, bmu):
-    
+    def _update_weights(self, input_vec, sigma, learning_rate, bmu):
         """Update the node weights.
 
         Args:
-            input_vec (np or cp ..array): A weights vector whose distance drives the direction of the update.
+            input_vec (array): A weights vector whose distance drives the direction of the update.
             sigma (float): The updated gaussian sigma.
             learning_rate (float): The updated learning rate.
             bmu (SOMNode): The best matching unit.

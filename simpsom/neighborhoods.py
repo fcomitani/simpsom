@@ -1,8 +1,7 @@
 """
-SimpSOM (Simple Self-Organizing Maps) v3.0.0
-F Comitani, SG Riva, A Tangherloni
- 
-A lightweight python library for Kohonen Self-Organizing Maps (SOM).
+Neighborhood functions.
+
+F Comitani, SG Riva, A Tangherloni 
 """
 
 def __importxc(xp):
