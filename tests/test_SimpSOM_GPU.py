@@ -40,8 +40,6 @@ end   = time.time()
 elaps = end-start
 print("\t *** topology='hexagonal', GPU=True, train_algo='batch', early_stop='bmudiff', elapsed_time=%.5f"%elaps)
 
-
-
 start = time.time()
 net   = sps.SOMNet(x, x, data, GPU=True, topology="rectangular")
 net.train(train_algo='online', epochs=1000)

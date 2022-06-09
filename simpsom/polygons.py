@@ -36,12 +36,13 @@ class Polygon():
         return np.array(coor)
 
     @staticmethod
-    def _tile(coor, color):
+    def _tile(coor, color, edgecolor=None):
         """ Set the tile shape for plotting.
 
         Args:
             coor (tuple[float, float]): positon of the tile in the plot figure.
             color (tuple[float,...]): color tuple.
+            edgecolor (tuple[float,...]): border color tuple.
 
         Returns:
             (matplotlib patch object): the tile to add to the plot.
@@ -50,11 +51,12 @@ class Polygon():
         return Rectangle(coor,
                          width=.95,
                          height=.95,
-                         facecolor=color)
+                         facecolor=color,
+                         edgecolor=edgecolor)
 
     @classmethod
-    def plot_map(cls, fig, centers, features):
-        """Plot a grid based on the selected tiling, nodes positions and color the tiles
+    def draw_map(cls, fig, centers, features):
+        """Draw a grid based on the selected tiling, nodes positions and color the tiles
         according to a given feature.
 
         Args:
@@ -68,31 +70,37 @@ class Polygon():
             ax (matplotlib axis object): the axis on which the hexagonal grid has been plotted.         
         """
 
-        ax = fig.add_subplot(111, aspect='equal')
+        ax = fig.add_subplot(111, aspect="equal")
 
         xpoints = [x[0]  for x in centers]
         ypoints = [x[1]  for x in centers]
         patches = []
 
-        cmap = plt.get_cmap('viridis')
+        cmap = plt.get_cmap("viridis")
+        cmap.set_bad(color="#ffffff", alpha=1.)
+        edgecolor = None
 
-        for x,y,w in zip(xpoints, ypoints, features):
+        if np.isnan(features).all():
+            edgecolor = "#555555"
+
+        for x,y,f in zip(xpoints, ypoints, features):
             
             patches.append(cls._tile((x,y),
-                           color=cmap(w))
+                           color=cmap(f),
+                           edgecolor=edgecolor)
                           ) 
 
         pc = PatchCollection(patches,  match_original=True)
         pc.set_array(np.array(features))
         ax.add_collection(pc)
           
-        ax.axis('off')
+        ax.axis("off")
         ax.autoscale_view()
         
         return ax
 
     @staticmethod
-    def distance_pbc(nodes, net_shape):
+    def distance_pbc(nodes, net_shape, distance_func):
         """ Manage distances with PBC based on the tiling.
 
         Args:
@@ -100,32 +108,34 @@ class Polygon():
                 whose distance will be calculated.
             net_shape (tuple[float, float]): the sizes of
                 the network.
+            distance_func (function): the function
+                to calculate distance between nodes.
 
         Returns:
             (float): the distance adjusted by PBC.
         """
         
-        return  np.min([np.sum(np.square(nodes[0]-nodes[1])),
-                     np.sum(np.square(nodes[0]-nodes[1]-(net_shape[0],0))),
-                     np.sum(np.square(nodes[0]-nodes[1]+(net_shape[0],0))),
-                     np.sum(np.square(nodes[0]-nodes[1]-(0,net_shape[1]))),
-                     np.sum(np.square(nodes[0]-nodes[1]+(0,net_shape[1]))),
-                     np.sum(np.square(nodes[0]-nodes[1]-(net_shape[0],net_shape[1]))),
-                     np.sum(np.square(nodes[0]-nodes[1]+(net_shape[0],net_shape[1]))),
-                     np.sum(np.square(nodes[0]-nodes[1]-(-net_shape[0],net_shape[1]))),
-                     np.sum(np.square(nodes[0]-nodes[1]+(-net_shape[0],net_shape[1])))])
+        return  np.min([distance_func(nodes[0],nodes[1]),
+                     distance_func(nodes[0],nodes[1]+(net_shape[0],0)),
+                     distance_func(nodes[0],nodes[1]-(net_shape[0],0)),
+                     distance_func(nodes[0],nodes[1]+(0,net_shape[1])),
+                     distance_func(nodes[0],nodes[1]-(0,net_shape[1])),
+                     distance_func(nodes[0],nodes[1]+(net_shape[0],net_shape[1])),
+                     distance_func(nodes[0],nodes[1]-(net_shape[0],net_shape[1])),
+                     distance_func(nodes[0],nodes[1]+(-net_shape[0],net_shape[1])),
+                     distance_func(nodes[0],nodes[1]-(-net_shape[0],net_shape[1]))])
 
 
 class Squares(Polygon):
     """ Class to define a square tiling. """
 
-    topology = 'square'
+    topology = "square"
 
 
 class Hexagons(Polygon):
     """ Class to define a hexagonal tiling. """
 
-    topology = 'hexagonal'
+    topology = "hexagonal"
 
     @staticmethod
     def to_tiles(coor):
@@ -147,12 +157,13 @@ class Hexagons(Polygon):
         return np.array((newx, newy))
     
     @staticmethod
-    def _tile(coor, color):
+    def _tile(coor, color, edgecolor=None):
         """ Set the hexagonal tile for plotting.
 
         Args:
             coor (tuple[float, float]): positon of the tile in the plot figure.
             color (tuple[float,...]): color tuple.
+            edgecolor (tuple[float,...]): border color tuple.
 
         Returns:
             (matplotlib patch object): the tile to add to the plot.
@@ -162,10 +173,11 @@ class Hexagons(Polygon):
                               numVertices=6, 
                               radius=.95/np.sqrt(3), 
                               orientation=np.radians(0), 
-                              facecolor=color)
+                              facecolor=color,
+                              edgecolor=edgecolor)
 
     @staticmethod
-    def distance_pbc(nodes, net_shape):
+    def distance_pbc(nodes, net_shape, distance_func):
         """ Manage distances with PBC based on the tiling.
 
         Args:
@@ -173,6 +185,8 @@ class Hexagons(Polygon):
                 whose distance will be calculated.
             net_shape (tuple[float, float]): the sizes of
                 the network.
+            distance_func (function): the function
+                to calculate distance between nodes.
 
         Returns:
             (float): the distance adjusted by PBC.
@@ -181,12 +195,12 @@ class Hexagons(Polygon):
         offset = 0 if net_shape[1]%2 == 0 else 0.5
         net_shape = (net_shape[0], net_shape[1]*2/np.sqrt(3)*3/4)
 
-        return  np.min([np.sum(np.square(nodes[0]-nodes[1])),
-                     np.sum(np.square(nodes[0]-nodes[1]-(net_shape[0],0))),
-                     np.sum(np.square(nodes[0]-nodes[1]+(net_shape[0],0))),
-                     np.sum(np.square(nodes[0]-nodes[1]-(offset,net_shape[1]))),
-                     np.sum(np.square(nodes[0]-nodes[1]+(offset,net_shape[1]))),
-                     np.sum(np.square(nodes[0]-nodes[1]-(net_shape[0]+offset,net_shape[1]))),
-                     np.sum(np.square(nodes[0]-nodes[1]+(net_shape[0]+offset,net_shape[1]))),
-                     np.sum(np.square(nodes[0]-nodes[1]-(-net_shape[0]+offset,net_shape[1]))),
-                     np.sum(np.square(nodes[0]-nodes[1]+(-net_shape[0]+offset,net_shape[1])))])
+        return  np.min([distance_func(nodes[0],nodes[1]),
+                     distance_func(nodes[0],nodes[1]+(net_shape[0],0)),
+                     distance_func(nodes[0],nodes[1]-(net_shape[0],0)),
+                     distance_func(nodes[0],nodes[1]+(offset,net_shape[1])),
+                     distance_func(nodes[0],nodes[1]-(offset,net_shape[1])),
+                     distance_func(nodes[0],nodes[1]+(net_shape[0]+offset,net_shape[1])),
+                     distance_func(nodes[0],nodes[1]-(net_shape[0]+offset,net_shape[1])),
+                     distance_func(nodes[0],nodes[1]+(-net_shape[0]+offset,net_shape[1])),
+                     distance_func(nodes[0],nodes[1]-(-net_shape[0]+offset,net_shape[1]))])
