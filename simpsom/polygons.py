@@ -48,14 +48,15 @@ class Polygon():
             (matplotlib patch object): the tile to add to the plot.
         """
 
-        return Rectangle(coor,
-                         width=.95,
-                         height=.95,
-                         facecolor=color,
-                         edgecolor=edgecolor)
+        return RegularPolygon(coor, 
+                              numVertices=4, 
+                              radius=.95/np.sqrt(2), 
+                              orientation=np.radians(45), 
+                              facecolor=color,
+                              edgecolor=edgecolor)
 
     @classmethod
-    def draw_map(cls, fig, centers, features):
+    def draw_map(cls, fig, centers, feature):
         """Draw a grid based on the selected tiling, nodes positions and color the tiles
         according to a given feature.
 
@@ -63,7 +64,7 @@ class Polygon():
             fig (matplotlib figure object): the figure on which the hexagonal grid will be plotted.
             centers (list, float): array containing couples of coordinates for each cell 
                 to be plotted in the Hexagonal tiling space.
-            features (list, float): array contaning informations on the weigths of each cell, 
+            feature (list, float): array contaning informations on the weigths of each cell, 
                 to be plotted as colors.
             
         Returns:
@@ -80,18 +81,17 @@ class Polygon():
         cmap.set_bad(color="#ffffff", alpha=1.)
         edgecolor = None
 
-        if np.isnan(features).all():
+        if np.isnan(feature).all():
             edgecolor = "#555555"
 
-        for x,y,f in zip(xpoints, ypoints, features):
-            
+        for x,y,f in zip(xpoints, ypoints, feature):
             patches.append(cls._tile((x,y),
                            color=cmap(f),
                            edgecolor=edgecolor)
                           ) 
 
         pc = PatchCollection(patches,  match_original=True)
-        pc.set_array(np.array(features))
+        pc.set_array(np.array(feature))
         ax.add_collection(pc)
           
         ax.axis("off")
@@ -139,7 +139,6 @@ class Hexagons(Polygon):
 
     @staticmethod
     def to_tiles(coor):
-
         """Convert 2D cartesian coordinates to tiling coordinates.
 
         Args:

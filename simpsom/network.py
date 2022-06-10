@@ -6,12 +6,12 @@ F Comitani, SG Riva, A Tangherloni
 """
 
 # ToDo:
-# - plotting as separate file
 # - logger
 # - unittest
 # - README
 # - Docs: API + tutorial
 # - PyPI
+# - add PBC to clustering
 
 from __future__ import print_function
 
@@ -34,7 +34,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from simpsom.polygons import Squares, Hexagons
 import simpsom.distances as dist
 import simpsom.neighborhoods as neighbor
-from simpsom.plots import plot_map, line_plot
+from simpsom.plots import plot_map, line_plot, scatter_on_map
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -284,7 +284,7 @@ class SOMNet:
 
         return entries 
     
-    def save(self, file_name="./trained_som.npy"):
+    def save_map(self, file_name="./trained_som.npy"):
         """Saves the network dimensions, the pbc and nodes weights to a file.
 
         Args:
@@ -296,7 +296,9 @@ class SOMNet:
         for node in self.node_list:
              weights_array.append(node.weights)
 
-        self.xp.save(os.path.join(self.output_path,file_name), self.xp.asarray(weights_array))   
+        if not file_name.endswith((".npy")):
+            file_name+=".npy" 
+        np.save(os.path.join(self.output_path,file_name), np.asarray(weights_array))   
 
     def _update_sigma(self, n_iter):    
         """Update the gaussian sigma.
@@ -508,7 +510,7 @@ class SOMNet:
                         # Checks if the map weights are not moving. 
                         self.convergence.append(dist.pairdist(new_weights.reshape(self.net_width*self.net_height, self.data.shape[1]), 
                                                               all_weights.reshape(self.net_width*self.net_height, self.data.shape[1]), 
-                                                              metric=self.metric).mean(), xp=self.xp)
+                                                              metric=self.metric, xp=self.xp).mean())
                     
                     elif early_stop == "bmudiff":
 
@@ -556,7 +558,97 @@ class SOMNet:
             neighbors = np.array([node2.weights for node2 in self.node_list
                                                    if node != node2 and node.get_node_distance(node2) <= 1.001])
             node._set_difference(dist.pairdist(node.weights.reshape(1, node.weights.shape[0]), neighbors, metric="euclidean", xp=self.xp).mean())
-                 
+
+    def project_onto_map(self, array, 
+                file_name="./som_projected.npy"):
+
+        """Project the datapoints of a given array to the 2D space of the 
+        SOM by calculating the bmus.
+
+        Args:
+            array (array): An array containing datapoints to be mapped.
+            file_name (str): Name of the file to which the data will be saved
+                if not None.
+
+        Returns:
+            (list): bmu x,y position for each input array datapoint. 
+        """
+
+        if not isinstance(array, self.xp.ndarray):
+            array = self.xp.array(array).astype(self.xp.float64)
+
+        bmu_list, cls = [], []
+        bmu_list = [self.node_list[int(mu)].pos for mu in self.find_bmu_ix(array)]
+
+        if file_name is not None:
+            if not file_name.endswith((".npy")):
+                file_name+=".npy"
+            np.save(os.path.join(self.output_path, file_name), np.array(bmu_list))   
+
+        return np.array(bmu_list, dtype=self.xp.float32)   
+
+    def cluster(self, coor, project=True, clu_algo="DBSCAN", 
+                file_name="./som_clusters.npy", **kwargs):
+    
+        """Project data onto the map and find clusters with scikit-learn clustering algorithms.
+        ToDo: for the moment PBC will be ignored.
+
+        Args:
+            coor (array): An array containing datapoints to be mapped or
+                pre-mapped if project False.
+            project (bool): if True, project the points in coor onto the map.
+            clu_algo (clustering obj or str): The clusters identification algorithm. A scikit-like
+                class can be provided (must have a fit method), or a string among a pre-set list
+                of algorithms ('KMeans', 'DBSCAN', 'AgglomerativeClustering')
+            file_name (str): Name of the file to which the data will be saved
+                if not None.
+            kwargs (dict): Keyword arguments to the clustering algorithm:
+
+        Returns:
+            (list of int): A list containing the clusters of the input array datapoints.
+            
+        """
+
+        bmu_coor = self.project_onto_map(coor) if project else coor
+
+        if self.PBC:
+            # ToDo: implement PBC, but basically providing the PBC-adjusted distance metric to 
+            # the clustering algorithms
+            print("Warning: PBC are not implemented with clustering yet and will be ignored for now.")
+  
+        if clu_algo == "KMeans":
+            if 'n_clusters' not in kwargs.keys():
+                kwargs['n_clusters'] = 3
+            clu_algo = self.cluster_algo.KMeans(**kwargs)    
+        elif clu_algo == "DBSCAN":
+            clu_algo  = self.cluster_algo.DBSCAN(**kwargs)  
+        elif clu_algo == "AgglomerativeClustering":
+            if 'n_clusters' not in kwargs.keys():
+                kwargs['n_clusters'] = 3
+            clu_algo  = self.cluster_algo.AgglomerativeClustering(**kwargs)
+        else:
+            clu_algo = clu_algo(**kwargs)
+            if not callable(getattr(self, "fit", None)):
+                print("ERROR: There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
+                    "class or use one of among the preset list 'KMeans', 'DBSCAN', or 'AgglomerativeClustering',\n"+ \
+                    "Custom classes must have a 'fit' method.")
+                return None
+
+        try:
+            clu_labs = clu_algo.fit(bmu_coor).labels_
+        except:
+            print("ERROR: There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
+                    "class or use one of among the preset list 'KMeans', 'DBSCAN', or 'AgglomerativeClustering',\n"+ \
+                    "Custom classes must have a 'fit' method.")
+            return None
+    
+        if file_name is not None:
+            if not file_name.endswith((".npy")):
+                file_name+=".npy"
+            np.save(os.path.join(self.output_path, file_name), np.array(clu_labs))   
+
+        return np.array(clu_labs), bmu_coor
+
     def plot_map_by_feature(self, feature, show=False, print_out=True,
                              **kwargs):
         """ Wrapper function to plot a trained 2D SOM map 
@@ -574,15 +666,12 @@ class SOMNet:
                     the title will be 15% larger,
                     ticks will be 15% smaller.
         """
-        
-        if "cbar_label" not in kwargs.keys():
-            kwargs["cbar_label"] = "Feature {} value".format(str(feature))
 
-        plot_map([[node.pos[0],node.pos[1]] for node in self.node_list], 
+        _, _ = plot_map([[node.pos[0],node.pos[1]] for node in self.node_list], 
                 [node.weights[feature] for node in self.node_list], 
                 self.polygons,
                 show=show, print_out=print_out, 
-                file_name=os.path.join(self.output_path,"./som_feature_{}.png".format(str(feature))),
+                file_name=os.path.join(self.output_path, "./som_feature_{}.png".format(str(feature))),
                 **kwargs) 
 
     def plot_map_by_difference(self, show=False, print_out=True,
@@ -610,11 +699,11 @@ class SOMNet:
         if "cbar_label" not in kwargs.keys():
             kwargs["cbar_label"] = "Nodes difference value"
 
-        plot_map([[node.pos[0],node.pos[1]] for node in self.node_list], 
+        _, _ = plot_map([[node.pos[0],node.pos[1]] for node in self.node_list], 
                 [node.difference for node in self.node_list], 
                 self.polygons,
                 show=show, print_out=print_out, 
-                file_name=os.path.join(self.output_path,"./som_difference.png"),
+                file_name=os.path.join(self.output_path, "./som_difference.png"),
                 **kwargs) 
 
     def plot_convergence(self, show=False, print_out=True,
@@ -653,204 +742,91 @@ class SOMNet:
             if "ylabel" not in kwargs.keys():
                 kwargs["ylabel"] = "Score"
 
-            line_plot(conv_values, 
+            _, _ = line_plot(conv_values, 
                     show=show, print_out=print_out, 
-                    file_name=os.path.join(self.output_path,"./som_convergence.png"),
+                    file_name=os.path.join(self.output_path, "./som_convergence.png"),
                     **kwargs)
-        
-    def project(self, array, colnum=-1, labels=[], show=False, print_out=False, returns=False, out_path="./", colname=None, 
-                fsize=(5, 5), figtitle=("Datapoints Projection", 14), legendsize=10):
 
-        """Project the datapoints of a given array to the 2D space of the 
-            SOM by calculating the bmus. If requested plot a 2D map with as 
-            implemented in nodes_graph and adds circles to the bmu
-            of each datapoint in a given array.
+    def plot_projected_points(self, coor, color_val=None,
+                             project=True, jitter=True, 
+                             show=False, print_out=True,
+                             **kwargs):
 
-        Args:
-            array (array): An array containing datapoints to be mapped.
-            colnum (int): The index of the weight that will be shown as colormap. 
-                If not chosen, the difference map will be used instead.
-            show (bool): Choose to display the plot.
-            print_out (bool): Choose to save the plot to a file.
-            out_path (str): Path to the folder where data will be saved.
-            colname (str): Name of the column to be shown on the map.
-            fsize (tuple[int, int]): Figure size.
-            figtitle (tuple[str, str]): Figure title and fontsize.
-            legendsize (int): Legend fontsize.
-            
-        Returns:
-            (list): bmu x,y position for each input array datapoint. 
-            
-        """
-        
-        if not colname:
-            colname = str(colnum)
-        
-        if not isinstance(array, self.xp.ndarray):
-            array = self.xp.array(array).astype(self.xp.float64)
-
-        bmu_list, cls = [], []
-        bmu_list = [self.node_list[int(mu)].pos for mu in self.find_bmu_ix(array)]
-
-        if show == True or print_out == True:
-        
-            """ Call nodes_graph/difference_graph to first build the 2D map of the nodes. """
-            
-            df_plot = pd.DataFrame()
-            
-            f, ax = plt.subplots(1,1,figsize=(fsize[0], fsize[1]))
-
-            #a random perturbation is added to the points positions so that data 
-            #belonging plotted to the same bmu will be visible in the plot  
-            df_plot["x"]      = [pos[0]-0.125+random.random()*0.25 for pos in bmu_list]
-            df_plot["y"]      = [pos[1]-0.125+random.random()*0.25 for pos in bmu_list]
-            df_plot["labels"] = labels
-
-            self.plot_map_by_difference(False, False)
-            sns.scatterplot(x="x", y="y", hue="labels", data=df_plot, palette="Paired", ax=ax)
-            ax.set(xlabel=None)
-            ax.set(ylabel=None)
-
-            plt.title(figtitle[0], size=figtitle[1])    
-
-            if colnum == -1:
-                print_name = os.path.join(out_path,"projection_difference.png")
-            else:   
-                print_name = os.path.join(out_path,"projection_"+ colname +".png")
-            
-            handles, labels = ax.get_legend_handles_labels()
-            ax.legend(bbox_to_anchor=(1.25, 1), borderaxespad=0, 
-                      frameon=False, fontsize=legendsize, handles=handles[1:], labels=labels[1:]) 
-               
-            plt.ylim(0-0.5, self.net_height+0.5)
-            plt.xlim(0-0.5, self.net_width+0.5)
-            plt.grid(False)
-            
-            if print_out == True:
-                plt.savefig(print_name, bbox_inches="tight")
-            if show == True:
-                plt.show()
-            # plt.clf()
-        
-        """ return x,y coordinates of bmus, useful for the clustering function. """
-        
-        if returns:
-            return np.array(bmu_list)[:,:2]       
-        
-    def cluster(self, array, clus_type="KMeans", num_cl=3,
-                save_file=False, file_type="csv", show=True, print_out=False, out_path="./", returns=False, 
-                fsize=(5, 5), figtitle=("Clusters", 14), legendsize=10):
-    
-        """Clusters the data in a given array according to the SOM trained map.
-            The clusters can also be plotted.
+        """Project points onto the trained 2D map and plot the result.
 
         Args:
-            array (array): An array containing datapoints to be clustered.
-            clus_type (str): The type of clustering to be applied, so far only quality threshold (qthresh) 
-                algorithm is directly implemented, other algorithms require sklearn.
-            num_cl (int): The number of clusters for K-Means clustering
-            save_file (bool): Choose to save the resulting clusters in a text file.
-            file_type (string): Format of the file where the clusters will be saved (csv or dat)
+            coor (array): An array containing datapoints to be mapped or
+                pre-mapped if project False.
+            color_val (array): The feature value to use as color map, if None
+                the map will be plotted as white.
+            project (bool): if True, project the points in coor onto the map.
+            jitter (bool): if True, add jitter to points coordinates to help
+                with overlapping points.
             show (bool): Choose to display the plot.
             print_out (bool): Choose to save the plot to a file.
-            out_path (str): Path to the folder where data will be saved.
-            fsize (tuple[int, int]): Figure size.
-            figtitle (tuple[str, str]): Figure title and fontsize.
-            legendsize (int): Legend fontsize.
-            
-        Returns:
-            (list of int): A list containing the clusters of the input array datapoints.
-            
+            kwargs (dict): Keyword arguments to format the plot:
+                - figsize (tuple(int, int)): the figure size,
+                - title (str): figure title,
+                - cbar_label (str): colorbar label,
+                - labelsize (int): font size of label, 
+                    the title will be 15% larger,
+                    ticks will be 15% smaller.
         """
-
-        """ Call project to first find the bmu for each array datapoint, but without producing any graph. """
-
-        if array.shape[1] == 2:
-            bmu_list = array
-        else:
-            bmu_list = self.project(array, returns=True)
-        clusters = []
-
-        if clus_type in ["KMeans", "DBSCAN", "AgglomerativeClustering"]:
         
-            """ Cluster according to algorithms implemented in sklearn, using defaul parameters. """
+        bmu_coor = self.project_onto_map(coor) if project else coor
+
+        if jitter:
+            bmu_coor += np.random.uniform(low=-.15, high=.15, size=(bmu_coor.shape[0],2))
+
+        _, _ = scatter_on_map([bmu_coor], 
+                       [[node.pos[0],node.pos[1]] for node in self.node_list],
+                       self.polygons,
+                       color_val=color_val, 
+                       show=show, print_out=print_out,
+                       file_name=os.path.join(self.output_path, "./som_projected.png"),
+                       **kwargs)
+
+    def plot_clusters(self, coor, clusters,
+                             color_val=None,
+                             project=False, jitter=False, 
+                             show=False, print_out=True,
+                             **kwargs):
+
+        """Project points onto the trained 2D map and plot the result.
+
+        Args:
+            coor (array): An array containing datapoints to be mapped or
+                pre-mapped if project False.
+            clusters (list): Cluster assignment list.
+            color_val (array): The feature value to use as color map, if None
+                the map will be plotted as white.
+            project (bool): if True, project the points in coor onto the map.
+            jitter (bool): if True, add jitter to points coordinates to help
+                with overlapping points.
+            show (bool): Choose to display the plot.
+            print_out (bool): Choose to save the plot to a file.
+            kwargs (dict): Keyword arguments to format the plot:
+                - figsize (tuple(int, int)): the figure size,
+                - title (str): figure title,
+                - cbar_label (str): colorbar label,
+                - labelsize (int): font size of label, 
+                    the title will be 15% larger,
+                    ticks will be 15% smaller.
+
+        """
         
-            if self.PBC:
-                print("Warning: Only Quality Threshold and Density Peak clustering work with PBC")
+        bmu_coor = self.project_onto_map(coor) if project else coor
 
-            try:
-                bmu_array = np.array(bmu_list)
-                
-                if clus_type == "KMeans":
-                    cl = self.cluster_algo.KMeans(n_clusters=num_cl).fit(bmu_array)
-                    
-                if clus_type == "DBSCAN":
-                    cl = self.cluster_algo.DBSCAN().fit(bmu_array)     
-                
-                if clus_type == "AgglomerativeClustering":
-                    cl = self.cluster_algo.AgglomerativeClustering(n_clusters=num_cl).fit(bmu_array)
-                
-                cl_labs = cl.labels_                 
-                    
-                for i in np.unique(cl_labs):
-                    cl_list = []
-                    tmp_list = range(len(bmu_list))
-                    for j,k in zip(tmp_list,cl_labs):
-                        if i == k:
-                            cl_list.append(j)
-                    clusters.append(cl_list)     
-            except:
-                print(("Unexpected error: ", sys.exc_info()[0]))
-                raise
-        else:
-            sys.exit("Error: unkown clustering algorithm %s... Clustering algorithm must be 'KMeans', 'DBSCAN', or 'AgglomerativeClustering'"%clus_type)
+        if jitter:
+            bmu_coor += np.random.uniform(low=-.15, high=.15, size=(bmu_coor.shape[0],2))
 
-        
-        if save_file == True:
-            with open(os.path.join(out_path,clus_type+"_clusters."+file_type), "w") as file:
-                if file_type == "csv":
-                    separator = ","
-                else: 
-                    separator = "\t"
-                for line in clusters:
-                    for id in line: file.write(str(id)+separator)
-                    file.write("\n")
-        
-        if print_out==True or show==True:
-
-            print_name = os.path.join(out_path,clus_type+"_clusters.png")
-            
-            f, ax = plt.subplots(1,1,figsize=(fsize[0], fsize[1]))
-            for ci, i in enumerate(range(len(clusters))):
-                xc, yc  = [], []
-                for c in clusters[i]:
-                    #again, invert y and x to be consistent with the previous maps
-                    xc.append(bmu_list[int(c)][0])
-                    yc.append(self.net_height-bmu_list[int(c)][1])    
-                sns.scatterplot(x=xc, y=yc, hue=i, palette=[sns.color_palette("Paired")[ci]], ax=ax)
-                
-            plt.legend(bbox_to_anchor=(1.25, 1), borderaxespad=0, 
-                       frameon=False, fontsize=legendsize) 
-
-            plt.title(figtitle[0], size=figtitle[1])
-            
-            plt.ylim(0-0.5, self.net_height+0.5)
-            plt.xlim(0-0.5, self.net_width+0.5)
-            plt.grid(False)
-            
-            plt.gca().invert_yaxis()
-
-            ax.set_yticklabels(np.arange(self.net_height+2, -2, -2))
-            ax.set_xticklabels(np.arange(-2, self.net_width+2, 2))
-
-            if show == True:
-                plt.show()
-            if print_out == True:
-                plt.savefig(print_name, bbox_inches="tight")
-        
-        if returns:
-            return cl_labs
-
+        _, _ = scatter_on_map([bmu_coor[clusters==clu] for clu in set(clusters)], 
+                       [[node.pos[0],node.pos[1]] for node in self.node_list],
+                       self.polygons,
+                       color_val=color_val, 
+                       show=show, print_out=print_out,
+                       file_name=os.path.join(self.output_path, "./som_clusters.png"),
+                       **kwargs)
         
 class SOMNode:
     """ Single Kohonen SOM node class. """

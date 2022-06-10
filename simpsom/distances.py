@@ -91,12 +91,6 @@ def _manhattan_distance(x, w, xp=None):
         return d.reshape(x.shape[0], w.shape[0]*w.shape[1])
     
 def batchpairdist(x, w, metric, sq=None, xp=None):
-
-    if xp.__name__ not in ["numpy", "cupy"]:
-        print("Error in importing numpy/cupy!")
-        sys.exit()
-    
-    xp = __import__(xp.__name__)
         
     if metric not in ["cosine", "euclidean", "manhattan"]:
         print("Chose a correct distance metric!")
@@ -109,7 +103,6 @@ def batchpairdist(x, w, metric, sq=None, xp=None):
         return _manhattan_distance(x, w, xp=xp)
     
 def pairdist(a, b, metric, xp=None):
-
     """Calculating distances betweens points.
 
     Args:
