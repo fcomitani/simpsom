@@ -1,3 +1,4 @@
 Numpy
 scikit-learn
 Matplotlib
+loguru

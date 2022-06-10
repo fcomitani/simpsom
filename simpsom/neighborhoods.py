@@ -6,14 +6,6 @@ F Comitani, SG Riva, A Tangherloni
 
 #ToDo: add docstring
 
-def _importxc(xp):
-    
-    if xp.__name__ not in ["numpy", "cupy"]:
-        print("Error in importing numpy/cupy!")
-        sys.exit()
-    
-    xp = __import__(xp.__name__)
-
 def prepare_neig_func(func, *first_args, xp=None):
     def _inner(*args, **kwargs):
         return func(*first_args, *args, **kwargs)
@@ -24,8 +16,6 @@ def gaussian(xx, yy, std_coeff, compact_support, c, sigma, xp=None):
     
     TODO: this function is much slower than the _rect one
     """
-
-    _importxc(xp)
 
     d = 2*std_coeff**2*sigma**2
 
@@ -51,8 +41,6 @@ def mexican_hat(xx, yy, std_coeff, compact_support, c, sigma, xp=None):
     TODO: this function is much slower than the _rect one
     """
 
-    _importxc(xp)
-
     d = 2*std_coeff**2*sigma**2
 
     nx = xx[xp.newaxis,:,:]
@@ -75,9 +63,6 @@ def bubble(neigx, neigy, c, sigma, xp=None):
     """Constant function centered in c with spread sigma.
     sigma should be an odd value.
     """
-
-    _importxc(xp)
-
     
     nx = neigx[xp.newaxis,:]
     ny = neigy[xp.newaxis,:]

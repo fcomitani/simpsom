@@ -7,7 +7,7 @@ F Comitani, SG Riva, A Tangherloni
 import numpy as np
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, RegularPolygon
+from matplotlib.patches import RegularPolygon
 from matplotlib.collections import PatchCollection
 
 
@@ -77,7 +77,7 @@ class Polygon():
         ypoints = [x[1]  for x in centers]
         patches = []
 
-        cmap = plt.get_cmap("viridis")
+        cmap = plt.get_cmap("viridis").copy()
         cmap.set_bad(color="#ffffff", alpha=1.)
         edgecolor = None
 

@@ -6,7 +6,6 @@ F Comitani, SG Riva, A Tangherloni
 """
 
 # ToDo:
-# - logger
 # - unittest
 # - README
 # - Docs: API + tutorial
@@ -15,7 +14,7 @@ F Comitani, SG Riva, A Tangherloni
 
 from __future__ import print_function
 
-import sys, time
+import sys
 import os 
 import subprocess
 import multiprocessing
@@ -24,26 +23,19 @@ from functools import partial
 
 import random 
 import numpy as np
-import pandas as pd
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+from loguru import logger
 
-from simpsom.polygons import Squares, Hexagons
 import simpsom.distances as dist
 import simpsom.neighborhoods as neighbor
+from simpsom.polygons import Squares, Hexagons
 from simpsom.plots import plot_map, line_plot, scatter_on_map
-
-import warnings
-warnings.filterwarnings("ignore")
 
 class SOMNet:
     """ Kohonen SOM Network class. """
 
     def __init__(self, net_height, net_width, data, load_file=None, metric="euclidean", topology="hexagonal", neighborhood_fun="gaussian",
-                 init="random", PBC=False, GPU=False, CUML=False, random_seed=None, verbose=False, output_path="./"):
+                 init="random", PBC=False, GPU=False, CUML=False, random_seed=None, debug=False, output_path="./"):
         """Initialize the SOM network.
 
         Args:
@@ -67,12 +59,17 @@ class SOMNet:
             CUML (boolean): Use CUML for clustering. If deactivate, use scikit-learn instead
                 (requires CUDA, default False).
             random_seed (int): Seed for the random numbers generator (default None).   
-            verbose (boolean): Activate verbose mode (default False).
+            debug (bool): Set logging level printed to screen as debug.
             out_path (str): Path to the folder where all data and plots will be saved 
                 (default, current folder).
         """
             
-        self.verbose = bool(verbose)
+        self.output_path = output_path
+
+        if not debug:
+            logger.remove()
+            logger.add(sys.stderr, level="INFO")
+        logger.add(os.path.join(self.output_path,"som_{time}.log"), level="DEBUG")
 
         self.GPU  = bool(GPU)
         self.CUML = bool(CUML)
@@ -85,7 +82,7 @@ class SOMNet:
                 try:
                     from cuml import cluster
                 except:
-                    print("WARNING: CUML libraries not found. Scikit-learn will be used instead.")
+                    logger.warn("CUML libraries not found. Scikit-learn will be used instead.")
                     from sklearn import cluster
 
         else:
@@ -101,11 +98,8 @@ class SOMNet:
             self.xp.random.seed(random_seed)
 
         self.PBC = bool(PBC)
-        if self.verbose:
-            if self.PBC:
-                print("Periodic Boundary Conditions active.")
-            else:
-                print("Periodic Boundary Conditions inactive.")
+        if self.PBC:
+            logger.info("Periodic Boundary Conditions active.")
 
         self.node_list = []
         self.data = self.xp.array(data).astype(self.xp.float32)
@@ -114,8 +108,10 @@ class SOMNet:
 
         if topology == "hexagonal":
             self.polygons = Hexagons
+            logger.info("Hexagonal topology.")
         else:
             self.polygons = Squares
+            logger.info("Square topology.")
 
         self.neighborhood_fun = neighborhood_fun
 
@@ -124,8 +120,6 @@ class SOMNet:
         self.net_height = net_height
         self.net_width  = net_width
         self._set_weights(load_file, init)
-
-        self.output_path = output_path
 
 
     def _set_weights(self, load_file, init):
@@ -150,31 +144,27 @@ class SOMNet:
         if load_file is None:
 
             if init == "PCA":
-                if self.verbose:
-                    print("The weights will be initialized with PCA.")
+                logger.info("The weights will be initialized with PCA.")
                 if self.xp.__name__ == "cupy":
                     init_vec = self.pca(self.data.get(), n_eigv=2)
                 else:
                     init_vec = self.pca(self.data, n_eigv=2)
             
             elif init == "random":
-                if self.verbose:
-                    print("The weights will be initialized randomly.")
+                logger.info("The weights will be initialized randomly.")
                 for i in range(self.data.shape[1]):
                     init_vec = [np.min(self.data, axis=0),
                                 np.max(self.data, axis=0)]
             
             else:
-                if self.verbose:
-                    print("Custom weights provided.")
+                logger.info("Custom weights provided.")
                 init_vec = init
 
         else:   
             # TODO: add format checks
-            if self.verbose:
-                print("The weights will be loaded from file.\n"+ \
-                    "The map shape will be overwritten and no weights"+ \
-                    "initialization will be applied.")
+            logger.info("The weights will be loaded from file.\n"+ \
+                "The map shape will be overwritten and no weights"+ \
+                "initialization will be applied.")
             if not load_file.endswith(".npy"):
                 load_file += ".npy" 
             weights_array = np.load(load_file)
@@ -223,16 +213,14 @@ class SOMNet:
 
         if self.xp.__name__ == "cupy":
             try:
-                #Is the repeated load needed?
-                # dev = self.xp.cuda.Device() instead
-                import cupy as cp
-                dev = cp.cuda.Device()
+                dev = self.xp.cuda.Device() 
                 n_smp = dev.attributes["MultiProcessorCount"]
                 max_thread_per_smp = dev.attributes["MaxThreadsPerMultiProcessor"]
                 return n_smp * max_thread_per_smp
             except:
-                print("Cupy is not available.")
-                return 0
+                logger.error("Something went wrong when trying to count the number\n"+ \
+                              "of GPU processors from CuPy.")
+                return -1
                 
             #the following block will never be executed, since both try and and except return something
             # try:
@@ -245,8 +233,10 @@ class SOMNet:
                 # Why * 500?
                 return multiprocessing.cpu_count()*500
             except:
-                print("Could not infer #CPU_cores")
-                return 0 
+                logger.error("Something went wrong when trying to count the number\n"+ \
+                              "of CPU processors.")
+                return -1
+                
         
     # not sure about the following, why not simply sample with replcement if 
     def _randomize_dataset(self, data, epochs):   
@@ -261,8 +251,7 @@ class SOMNet:
         """
         
         if epochs < data.shape[0]:
-            if self.verbose:
-                print("Warning, epochs for online training are less than the entry datapoints!")
+            logger.warning("Epochs for online training are less than the entry datapoints.")
             
 
         dps = np.arange(0, data.shape[0], 1)
@@ -297,7 +286,9 @@ class SOMNet:
              weights_array.append(node.weights)
 
         if not file_name.endswith((".npy")):
-            file_name+=".npy" 
+            file_name+=".npy"
+        logger.info("Map shape and weights will be saved to:\n"+ \
+                    os.path.join(self.output_path, file_name))
         np.save(os.path.join(self.output_path,file_name), np.asarray(weights_array))   
 
     def _update_sigma(self, n_iter):    
@@ -362,8 +353,7 @@ class SOMNet:
                 at once. 
         """
 
-        if self.verbose:
-            print("The map will be trained with the "+train_algo+" algorithm.")
+        logger.info("The map will be trained with the "+train_algo+" algorithm.")
         self.start_sigma = max(self.net_height, self.net_width)/2
         self.start_learning_rate = start_learning_rate
         
@@ -391,8 +381,7 @@ class SOMNet:
             for n_iter in range(self.epochs):
 
                 if n_iter%10==0:
-                    if self.verbose:
-                        print("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)), end=" ")
+                    logger.debug("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)))
 
                 self._update_sigma(n_iter)
                 self._update_learning_rate(n_iter)
@@ -416,7 +405,7 @@ class SOMNet:
 
             # WARNING: PBC currently not working for batch algo
             if self.PBC:
-                print("WARNING: PBC currently unavailable for batch training and will be turned off.")
+                logger.warning("PBC currently unavailable for batch training and will be turned off.")
                 self.PBC = False
 
             # Storing the distances and weight matrices defeats the purpose of having
@@ -451,18 +440,14 @@ class SOMNet:
                 sq_weights = (self.xp.power(all_weights.reshape(-1, all_weights.shape[2]),2).sum(axis=1, keepdims=True))
 
                 if early_stop_counter == early_stop_patience:
-                    
-                    if self.verbose:
-                        print("\rTolerance reached at epoch {:d}, stopping training.".format(n_iter-1))
-
+                    logger.info("\rEarly stop tolerance reached at epoch {:d}, stopping training.".format(n_iter-1))
                     break
 
                 self._update_sigma(n_iter)
                 self._update_learning_rate(n_iter)
                 
                 if n_iter%10==0:
-                    if self.verbose:
-                        print("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)), end=" ")
+                    logger.debug("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)))
                         
                 # Run through mini batches to ease the memory burden.
 
@@ -506,20 +491,18 @@ class SOMNet:
                     # ToDo: These are pretty ruough convergence tests, add more
                     
                     if early_stop == "mapdiff":      
-
                         # Checks if the map weights are not moving. 
                         self.convergence.append(dist.pairdist(new_weights.reshape(self.net_width*self.net_height, self.data.shape[1]), 
                                                               all_weights.reshape(self.net_width*self.net_height, self.data.shape[1]), 
                                                               metric=self.metric, xp=self.xp).mean())
                     
                     elif early_stop == "bmudiff":
-
                         # Checks if the bmus mean distance from the samples has stopped improving. 
                         self.convergence.append(self.xp.min(dists, axis=1).mean())
 
-
                     else:
-                        sys.exit("Error: convergence method not recognized. Choose between \"mapdiff\" and \"bmudiff\".")
+                        logger.error("Convergence method not recognized. Choose between \"mapdiff\" and \"bmudiff\".")
+                        sys.exit(1)
 
                     if n_iter > 0 and self.convergence[-2]-self.convergence[-1] < early_stop_tolerance:
                         early_stop_counter += 1
@@ -535,9 +518,8 @@ class SOMNet:
                 node.weights = all_weights[n_iter] # * self.learning_rate
 
         else:
-            sys.exit("Error: training algorithm not recognized. Choose between \"online\" and \"batch\".")
-        if self.verbose:               
-            print("\rTraining SOM... done!")
+            logger.error("Training algorithm not recognized. Choose between \"online\" and \"batch\".")
+            sys.exit(1)
 
         if self.GPU:
             for node in self.node_list:
@@ -545,7 +527,6 @@ class SOMNet:
         if early_stop is not None:
             if self.GPU:
                 for n_iter, arr in enumerate(self.convergence):
-                    
                     self.convergence[n_iter] = arr.get()     
 
     def get_nodes_difference(self):
@@ -558,6 +539,7 @@ class SOMNet:
             neighbors = np.array([node2.weights for node2 in self.node_list
                                                    if node != node2 and node.get_node_distance(node2) <= 1.001])
             node._set_difference(dist.pairdist(node.weights.reshape(1, node.weights.shape[0]), neighbors, metric="euclidean", xp=self.xp).mean())
+        logger.info('Weights difference among neighboring nodes calculated.')
 
     def project_onto_map(self, array, 
                 file_name="./som_projected.npy"):
@@ -583,6 +565,8 @@ class SOMNet:
         if file_name is not None:
             if not file_name.endswith((".npy")):
                 file_name+=".npy"
+            logger.info("Projected coordinates will be saved to:\n"+ \
+                        os.path.join(self.output_path, file_name))
             np.save(os.path.join(self.output_path, file_name), np.array(bmu_list))   
 
         return np.array(bmu_list, dtype=self.xp.float32)   
@@ -614,7 +598,7 @@ class SOMNet:
         if self.PBC:
             # ToDo: implement PBC, but basically providing the PBC-adjusted distance metric to 
             # the clustering algorithms
-            print("Warning: PBC are not implemented with clustering yet and will be ignored for now.")
+            logger.warning("PBC are not implemented with clustering yet and will be ignored for now.")
   
         if clu_algo == "KMeans":
             if 'n_clusters' not in kwargs.keys():
@@ -629,7 +613,7 @@ class SOMNet:
         else:
             clu_algo = clu_algo(**kwargs)
             if not callable(getattr(self, "fit", None)):
-                print("ERROR: There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
+                logger.error("ERROR: There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
                     "class or use one of among the preset list 'KMeans', 'DBSCAN', or 'AgglomerativeClustering',\n"+ \
                     "Custom classes must have a 'fit' method.")
                 return None
@@ -637,7 +621,7 @@ class SOMNet:
         try:
             clu_labs = clu_algo.fit(bmu_coor).labels_
         except:
-            print("ERROR: There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
+            logger.error("ERROR: There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
                     "class or use one of among the preset list 'KMeans', 'DBSCAN', or 'AgglomerativeClustering',\n"+ \
                     "Custom classes must have a 'fit' method.")
             return None
@@ -645,6 +629,8 @@ class SOMNet:
         if file_name is not None:
             if not file_name.endswith((".npy")):
                 file_name+=".npy"
+            logger.info("Clustering results will be saved to:\n"+ \
+                        os.path.join(self.output_path, file_name))
             np.save(os.path.join(self.output_path, file_name), np.array(clu_labs))   
 
         return np.array(clu_labs), bmu_coor
@@ -673,6 +659,10 @@ class SOMNet:
                 show=show, print_out=print_out, 
                 file_name=os.path.join(self.output_path, "./som_feature_{}.png".format(str(feature))),
                 **kwargs) 
+
+        if print_out:
+            logger.info("Feature map will be saved to:\n"+ \
+                        os.path.join(self.output_path, "./som_feature_{}.png".format(str(feature))))
 
     def plot_map_by_difference(self, show=False, print_out=True,
                              **kwargs):
@@ -706,6 +696,10 @@ class SOMNet:
                 file_name=os.path.join(self.output_path, "./som_difference.png"),
                 **kwargs) 
 
+        if print_out:
+            logger.info("Node difference map will be saved to:\n"+ \
+                        os.path.join(self.output_path, "./som_difference.png"))
+
     def plot_convergence(self, show=False, print_out=True,
                              **kwargs):
 
@@ -728,8 +722,7 @@ class SOMNet:
         """
         
         if len(self.convergence)==0:
-            if self.verbose:
-                print("WARNING: the current parameters yelded no convergence. The plot will not be produced.")
+            logger.warning("The current parameters yelded no convergence. The plot will not be produced.")
             
         else:
 
@@ -746,6 +739,10 @@ class SOMNet:
                     show=show, print_out=print_out, 
                     file_name=os.path.join(self.output_path, "./som_convergence.png"),
                     **kwargs)
+
+        if print_out:
+            logger.info("Convergence results will be saved to:\n"+ \
+                        os.path.join(self.output_path, "./som_convergence.png"))
 
     def plot_projected_points(self, coor, color_val=None,
                              project=True, jitter=True, 
@@ -785,6 +782,10 @@ class SOMNet:
                        show=show, print_out=print_out,
                        file_name=os.path.join(self.output_path, "./som_projected.png"),
                        **kwargs)
+
+        if print_out:
+            logger.info("Projected data scatter plot will be saved to:\n"+ \
+                        os.path.join(self.output_path, "./som_projected.png"))
 
     def plot_clusters(self, coor, clusters,
                              color_val=None,
@@ -827,6 +828,11 @@ class SOMNet:
                        show=show, print_out=print_out,
                        file_name=os.path.join(self.output_path, "./som_clusters.png"),
                        **kwargs)
+
+        if print_out:
+            logger.info("Clustering plot will be saved to:\n"+ \
+                        os.path.join(self.output_path, "./som_clustering.png"))
+
         
 class SOMNode:
     """ Single Kohonen SOM node class. """
@@ -878,8 +884,9 @@ class SOMNode:
                 self.weights.append(random.random()*(weight_bounds[1][i]-weight_bounds[0][i])+weight_bounds[0][i])
        
         else: 
-            sys.exit(("Error in the network weights initialization, make sure to provide random initalization boundaries,\
-                        custom vectors, or load the weights from file."))
+            logger.error("Error in the network weights initialization, make sure to provide random initalization boundaries,\n"+ \
+                         "custom vectors, or load the weights from file.")
+            sys.exit(1)
    
         self.weights = np.array(self.weights)
 
