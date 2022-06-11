@@ -21,7 +21,6 @@ import multiprocessing
 
 from functools import partial
 
-import random 
 import numpy as np
 
 from loguru import logger
@@ -36,7 +35,7 @@ class SOMNet:
 
     def __init__(self, net_height, net_width, data, load_file=None, metric="euclidean", topology="hexagonal", neighborhood_fun="gaussian",
                  init="random", PBC=False, GPU=False, CUML=False, random_seed=None, debug=False, output_path="./"):
-        """Initialize the SOM network.
+        """ Initialize the SOM network.
 
         Args:
             net_height (int): Number of nodes along the first dimension.
@@ -99,7 +98,6 @@ class SOMNet:
 
         if random_seed is not None:
             os.environ["PYTHONHASHSEED"] = str(random_seed)
-            random.seed(random_seed)
             np.random.seed(random_seed)
             self.xp.random.seed(random_seed)
 
@@ -131,8 +129,24 @@ class SOMNet:
         self.net_width  = net_width
         self._set_weights(load_file, init)
 
+    def _get(self, data):
+        """ Moves data from GPU to CPU.
+        If already on CPU, it will be left as it is.
+
+        Args:
+            data (array): data to move from GPU to CPU.
+        
+        Returns:
+            (array): the same data on CPU.
+        """
+
+        if self.xp.__name__ == "cupy":
+            return data.get()
+        
+        return data
+
     def _set_weights(self, load_file, init):
-        """Set initial map weights values, either by loading them from file or with random/PCA.
+        """ Set initial map weights values, either by loading them from file or with random/PCA.
 
         Args:
             load_file (str): Name of file to load containing information 
@@ -154,22 +168,13 @@ class SOMNet:
 
             if init == "PCA":
                 logger.info("The weights will be initialized with PCA.")
-                if self.xp.__name__ == "cupy":
-                    init_vec = self.pca(self.data.get(), n_eigv=2)
-                else:
-                    init_vec = self.pca(self.data, n_eigv=2)
+                init_vec = self.pca(self._get(self.data), n_eigv=2)
             
             elif init == "random":
                 logger.info("The weights will be initialized randomly.")
-
-                if self.xp.__name__ == "cupy":
-                    data = self.data.get()
-                else:
-                    data = self.data
-
-                for i in range(data.shape[1]):
-                    init_vec = [np.min(data, axis=0),
-                                np.max(data, axis=0)]
+                for i in range(self.data.shape[1]):
+                    init_vec = [np.min(self._get(self.data), axis=0),
+                                np.max(self._get(self.data), axis=0)]
             
             else:
                 logger.info("Custom weights provided.")
@@ -257,26 +262,15 @@ class SOMNet:
         """
         
         if epochs < data.shape[0]:
-            logger.warning("Epochs for online training are less than the entry datapoints.") 
+            logger.warning("Epochs for online training are less than the input datapoints.") 
+            epochs = data.shape[0]
 
-        dps = np.arange(0, data.shape[0], 1)
-        if epochs <= data.shape[0]:
-            entries = random.sample(dps.tolist(), k=epochs)
-        else:
-            entries = random.sample(dps.tolist(), k=data.shape[0])
-            epcs = epochs - data.shape[0]
-            while epcs > 0:
-                entries += random.sample(dps.tolist(), k=data.shape[0])
-                epcs -= data.shape[0]
-        
-        # alternatively, if we don"t care running the whole dataset multiple times
-        # we could just sample with replacement if epochs > data.shape[0]
-        # replacement = False
-        # if epochs > data.shape[0]:
-        #     replacement = True
-        # entries = random.sample(dps.tolist(), k=epochs, replacement=replacement)
+        iterations = int(np.ceil(epochs/data.shape[0]))
 
-        return entries 
+        return [ix 
+                for shuffled in [np.random.permutation(data.shape[0])  
+                                 for it in np.arange(iterations)] 
+                for ix in shuffled]
     
     def save_map(self, file_name="./trained_som.npy"):
         """Saves the network dimensions, the pbc and nodes weights to a file.
@@ -294,7 +288,7 @@ class SOMNet:
             file_name+=".npy"
         logger.info("Map shape and weights will be saved to:\n"+ \
                     os.path.join(self.output_path, file_name))
-        np.save(os.path.join(self.output_path,file_name), np.asarray(weights_array))   
+        np.save(os.path.join(self.output_path,file_name), self._get(weights_array))   
 
     def _update_sigma(self, n_iter):    
         """Update the gaussian sigma.
@@ -330,8 +324,9 @@ class SOMNet:
                                        metric=self.metric)
 
         return self.xp.argmin(dists,axis=1)
-
     
+    # TODO: Consider changing epoch in online training to be equivalent to 1 full run
+    # of the dataset rather than a single data poing
     def train(self, train_algo="batch", epochs=-1, start_learning_rate=0.01, early_stop=None, 
               early_stop_patience=3, early_stop_tolerance=1e-4, batch_size=-1):
         """Train the SOM.
@@ -342,6 +337,9 @@ class SOMNet:
                 per epoch, while the batch algorithm runs all points at one for each epoch.
             epochs (int): Number of training iterations. If not selected (or -1)
                 automatically set epochs as 10 times the number of datapoints. 
+                Warning: for online training each epoch corresponds to 1 sample in the
+                input dataset, for batch training it corresponds to one full dataset
+                training.
             start_learning_rate (float): Initial learning rate, used only in online
                 learning.
             early_stop (str): Early stopping method, for now only "mapdiff" (checks if the
@@ -577,7 +575,7 @@ class SOMNet:
                 file_name+=".npy"
             logger.info("Projected coordinates will be saved to:\n"+ \
                         os.path.join(self.output_path, file_name))
-            np.save(os.path.join(self.output_path, file_name), np.array(bmu_list))   
+            np.save(os.path.join(self.output_path, file_name), self._get(bmu_list))   
 
         return np.array(bmu_list, dtype=self.xp.float32)   
 
@@ -646,7 +644,7 @@ class SOMNet:
                 file_name+=".npy"
             logger.info("Clustering results will be saved to:\n"+ \
                         os.path.join(self.output_path, file_name))
-            np.save(os.path.join(self.output_path, file_name), np.array(clu_labs))   
+            np.save(os.path.join(self.output_path, file_name), self._get(clu_labs))   
 
         return np.array(clu_labs), bmu_coor
 
@@ -899,7 +897,7 @@ class SOMNode:
         elif weight_bounds is not None:
             #Sample Select randomly in the space spanned by the data. 
             for i in range(num_weights):
-                self.weights.append(random.random()*(weight_bounds[1][i]-weight_bounds[0][i])+weight_bounds[0][i])
+                self.weights.append(np.random.random()*(weight_bounds[1][i]-weight_bounds[0][i])+weight_bounds[0][i])
        
         else: 
             logger.error("Error in the network weights initialization, make sure to provide random initalization boundaries,\n"+ \
