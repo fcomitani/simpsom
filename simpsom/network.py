@@ -26,8 +26,8 @@ import numpy as np
 
 from loguru import logger
 
-import simpsom.distances as dist
-import simpsom.neighborhoods as neighbor
+from simpsom.distances import Distance
+from simpsom.neighborhoods import Neighborhoods
 from simpsom.polygons import Squares, Hexagons
 from simpsom.plots import plot_map, line_plot, scatter_on_map
 
@@ -81,13 +81,21 @@ class SOMNet:
             if self.CUML:
                 try:
                     from cuml import cluster
+                    self.cluster_algo = cluster
                 except:
-                    logger.warning("CUML libraries not found. Scikit-learn will be used instead.")
+                    logger.warn("CUML libraries not found. Scikit-learn will be used instead.")
+                    from sklearn import cluster
+                    self.cluster_algo = cluster
+
+            else:
+                from sklearn import cluster
+                self.cluster_algo = cluster
 
         else:
             self.xp = np
-            
-        self.cluster_algo = cluster
+
+            from sklearn import cluster
+            self.cluster_algo = cluster
 
         if random_seed is not None:
             os.environ["PYTHONHASHSEED"] = str(random_seed)
@@ -110,6 +118,11 @@ class SOMNet:
         else:
             self.polygons = Squares
             logger.info("Square topology.")
+
+        self.distance_xp  = Distance(self.xp)
+        self.distance_cpu = Distance(np)
+        
+        self.neighborhoods = Neighborhoods(self.xp)
 
         self.neighborhood_fun = neighborhood_fun
 
@@ -144,15 +157,21 @@ class SOMNet:
             if init == "PCA":
                 logger.info("The weights will be initialized with PCA.")
                 if self.xp.__name__ == "cupy":
-                    init_vec = self.pca(self.data.get(), n_eigv=2)
+                    init_vec = SOMNet.pca(self.data.get(), n_eigv=2)
                 else:
-                    init_vec = self.pca(self.data, n_eigv=2)
+                    init_vec = SOMNet.pca(self.data, n_eigv=2)
             
             elif init == "random":
                 logger.info("The weights will be initialized randomly.")
-                for i in range(self.data.shape[1]):
-                    init_vec = [np.min(self.data, axis=0),
-                                np.max(self.data, axis=0)]
+
+                if self.xp.__name__ == "cupy":
+                    data = self.data.get()
+                else:
+                    data = self.data
+
+                for i in range(data.shape[1]):
+                    init_vec = [np.min(data, axis=0),
+                                np.max(data, axis=0)]
             
             else:
                 logger.info("Custom weights provided.")
@@ -170,7 +189,7 @@ class SOMNet:
             self.net_width  = int(weights_array[0][1])
             self.PBC        = bool(weights_array[0][2])
 
-        init_vec = self.xp.array(init_vec)
+        # init_vec = self.xp.array(init_vec)
 
         for x in range(self.net_width):
             for y in range(self.net_height):
@@ -318,9 +337,10 @@ class SOMNet:
             bmu (SOMNode): The best matching unit node index.   
         """
 
-        dists = dist.pairdist(vecs,
-                              self.xp.array([n.weights for n in self.node_list]), 
-                              metric=self.metric, xp=self.xp)
+        dists = self.distance_xp.pairdist(vecs,
+                                       self.xp.array([n.weights for n in self.node_list]),
+                                       metric=self.metric)
+
         return self.xp.argmin(dists,axis=1)
 
     
@@ -425,13 +445,13 @@ class SOMNet:
             _xx, _yy = self.xp.meshgrid(_neigx, _neigy)
             
             if self.neighborhood_fun == "bubble":
-                neighborhood = neighbor.prepare_neig_func(neighbor.bubble, _neigx, _neigy, xp=self.xp)
+                neighborhood_caller = self.neighborhoods.prepare_neig_func(self.neighborhoods.bubble, _neigx, _neigy)
 
             elif self.neighborhood_fun == "mexican":
-                neighborhood = neighbor.prepare_neig_func(neighbor.mexican_hat, _xx, _yy, 0.5, False, xp=self.xp)
+                neighborhood_caller = self.neighborhoods.prepare_neig_func(self.neighborhoods.mexican_hat, _xx, _yy, 0.5, False)
 
             else:
-                neighborhood = neighbor.prepare_neig_func(neighbor.gaussian, _xx, _yy, 0.5, False, xp=self.xp)
+                neighborhood_caller = self.neighborhoods.prepare_neig_func(self.neighborhoods.gaussian, _xx, _yy, 0.5, False)
 
             for n_iter in range(self.epochs):
 
@@ -467,13 +487,13 @@ class SOMNet:
                     batchdata = self.data[start:end]
 
                     # Find BMUs for all points and subselect gaussian matrix.
-                    dists = dist.batchpairdist(batchdata, all_weights, self.metric, sq_weights, self.xp)
+                    dists = self.distance_xp.batchpairdist(batchdata, all_weights, self.metric, sq_weights)
 
                     raveled_idxs = dists.argmin(axis=1)
                     wins = (unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
 
                     # ToDo: Add PBC here
-                    g_gpu = neighborhood(wins, self.sigma, xp=self.xp)*self.learning_rate
+                    g_gpu = neighborhood_caller(wins, self.sigma)*self.learning_rate
                     
                     sum_g_gpu = self.xp.sum(g_gpu, axis=0)
                     g_flat_gpu = g_gpu.reshape(g_gpu.shape[0], -1)
@@ -490,9 +510,9 @@ class SOMNet:
                     
                     if early_stop == "mapdiff":      
                         # Checks if the map weights are not moving. 
-                        self.convergence.append(dist.pairdist(new_weights.reshape(self.net_width*self.net_height, self.data.shape[1]), 
-                                                              all_weights.reshape(self.net_width*self.net_height, self.data.shape[1]), 
-                                                              metric=self.metric, xp=self.xp).mean())
+                        self.convergence.append(self.distance_xp.pairdist(new_weights.reshape(self.net_width*self.net_height, self.data.shape[1]),
+                                                                       all_weights.reshape(self.net_width*self.net_height, self.data.shape[1]),
+                                                                       metric=self.metric).mean())
                     
                     elif early_stop == "bmudiff":
                         # Checks if the bmus mean distance from the samples has stopped improving. 
@@ -536,7 +556,7 @@ class SOMNet:
         for node in self.node_list:
             neighbors = np.array([node2.weights for node2 in self.node_list
                                                    if node != node2 and node.get_node_distance(node2) <= 1.001])
-            node._set_difference(dist.pairdist(node.weights.reshape(1, node.weights.shape[0]), neighbors, metric="euclidean", xp=self.xp).mean())
+            node._set_difference(self.distance_cpu.pairdist(node.weights.reshape(1, node.weights.shape[0]), neighbors, metric="euclidean").mean())
         logger.info('Weights difference among neighboring nodes calculated.')
 
     def project_onto_map(self, array, 
@@ -569,8 +589,7 @@ class SOMNet:
 
         return np.array(bmu_list, dtype=self.xp.float32)   
 
-    def cluster(self, coor, project=True, clu_algo="DBSCAN", 
-                file_name="./som_clusters.npy", **kwargs):
+    def cluster(self, coor, project=True, algorithm="DBSCAN", file_name="./som_clusters.npy", **kwargs):
     
         """Project data onto the map and find clusters with scikit-learn clustering algorithms.
         ToDo: for the moment PBC will be ignored.
@@ -579,9 +598,9 @@ class SOMNet:
             coor (array): An array containing datapoints to be mapped or
                 pre-mapped if project False.
             project (bool): if True, project the points in coor onto the map.
-            clu_algo (clustering obj or str): The clusters identification algorithm. A scikit-like
-                class can be provided (must have a fit method), or a string among a pre-set list
-                of algorithms ('KMeans', 'DBSCAN', 'AgglomerativeClustering')
+            algorithm (clustering obj or str): The clusters identification algorithm. A scikit-like
+                class can be provided (must have a fit method), or a string indicating one of the algorithms
+                provided by the scikit library
             file_name (str): Name of the file to which the data will be saved
                 if not None.
             kwargs (dict): Keyword arguments to the clustering algorithm:
@@ -597,30 +616,36 @@ class SOMNet:
             # ToDo: implement PBC, but basically providing the PBC-adjusted distance metric to 
             # the clustering algorithms
             logger.warning("PBC are not implemented with clustering yet and will be ignored for now.")
-  
-        if clu_algo == "KMeans":
-            if 'n_clusters' not in kwargs.keys():
-                kwargs['n_clusters'] = 3
-            clu_algo = self.cluster_algo.KMeans(**kwargs)    
-        elif clu_algo == "DBSCAN":
-            clu_algo  = self.cluster_algo.DBSCAN(**kwargs)  
-        elif clu_algo == "AgglomerativeClustering":
-            if 'n_clusters' not in kwargs.keys():
-                kwargs['n_clusters'] = 3
-            clu_algo  = self.cluster_algo.AgglomerativeClustering(**kwargs)
+
+        if type(algorithm) is str:
+
+            import inspect
+            modules = [module[0] for module in inspect.getmembers(self.cluster_algo, inspect.isclass)]
+
+            if algorithm not in modules:
+                logger.error("ERROR: The desired algorithm is not among the algorithms provided by the scikit library,\n"+ \
+                    "please provide one of the algorithms provided by the scikit library:\n"+ \
+                    "|".join(modules))
+                return None, None
+
+            clu_algo  = eval("self.cluster_algo."+algorithm)
+
         else:
-            clu_algo = clu_algo(**kwargs)
-            if not callable(getattr(self, "fit", None)):
+            clu_algo = algorithm
+        
+            if not callable(getattr(clu_algo, "fit", None)):
                 logger.error("ERROR: There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
-                    "class or use one of among the preset list 'KMeans', 'DBSCAN', or 'AgglomerativeClustering',\n"+ \
+                    "class or use one of the algorithms provided by the scikit library,\n"+ \
                     "Custom classes must have a 'fit' method.")
-                return None
+                return None, None
+
+        clu_algo = clu_algo(**kwargs)
 
         try:
             clu_labs = clu_algo.fit(bmu_coor).labels_
         except:
             logger.error("ERROR: There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
-                    "class or use one of among the preset list 'KMeans', 'DBSCAN', or 'AgglomerativeClustering',\n"+ \
+                    "class or use one of the algorithms provided by the scikit library,\n"+ \
                     "Custom classes must have a 'fit' method.")
             return None
     
