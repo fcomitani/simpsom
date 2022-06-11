@@ -82,13 +82,11 @@ class SOMNet:
                 try:
                     from cuml import cluster
                 except:
-                    logger.warn("CUML libraries not found. Scikit-learn will be used instead.")
-                    from sklearn import cluster
+                    logger.warning("CUML libraries not found. Scikit-learn will be used instead.")
 
         else:
-            from sklearn import cluster
             self.xp = np
-
+            
         self.cluster_algo = cluster
 
         if random_seed is not None:

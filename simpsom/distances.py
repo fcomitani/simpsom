@@ -66,7 +66,7 @@ def _manhattan_distance(x, w, xp=None):
 
     if xp.__name__ == "cupy":
         
-        _manhattan_distance_kernel = cp.ReductionKernel(
+        _manhattan_distance_kernel = xp.ReductionKernel(
             "T x, T w",
             "T y",
             "abs(x-w)",
