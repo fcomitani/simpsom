@@ -197,6 +197,7 @@ class SOMNet:
                 self.node_list.append(SOMNode(x, y, self.data.shape[1], 
                                               self.net_height, self.net_width, 
                                               self.PBC, self.polygons,
+                                              self.xp,
                                               weight_bounds=init_bounds, 
                                               init_vec=init_vec, 
                                               weights_array=this_weight))
@@ -851,7 +852,8 @@ class SOMNet:
 class SOMNode:
     """ Single Kohonen SOM node class. """
     
-    def __init__(self, x, y, num_weights, net_height, net_width, PBC, polygons,
+    def __init__(self, x, y, num_weights, net_height, net_width, 
+                PBC, polygons, xp=np, 
                 weight_bounds=None, init_vec=None, weights_array=None):
     
         """Initialize the SOM node.
@@ -864,6 +866,7 @@ class SOMNode:
             net_width (int): Network width, needed for periodic boundary conditions (PBC)
             PBC (bool): Activate/deactivate periodic boundary conditions.
             polygons (Polygon obj): a polygon object with information on the map topology.
+            xp (numpy or cupy): the numeric library to be used.
             weight_bounds(array): boundary values for the random initialization
                 of the weights. Must be in the format [min_val, max_val]. 
                 They are overwritten by "init_vec".
@@ -873,10 +876,11 @@ class SOMNode:
                 to the node if loaded from a file.
         """
         
+        self.xp        = xp
         self.polygons  = polygons
         self.PBC       = PBC
         
-        self.pos = polygons.to_tiles((x,y))
+        self.pos = self.xp.array(polygons.to_tiles((x,y)))
 
         self.weights    = []
         self.difference = None 
@@ -902,7 +906,7 @@ class SOMNode:
                          "custom vectors, or load the weights from file.")
             sys.exit(1)
    
-        self.weights = np.array(self.weights)
+        self.weights = self.xp.array(self.weights)
 
     def get_node_distance(self, node):
         """ Calculate the distance within the network between the current node and second node.
@@ -917,9 +921,9 @@ class SOMNode:
         if self.PBC:
             return self.polygons.distance_pbc((self.pos, node.pos), 
                                         (self.net_width, self.net_height),
-                                         lambda x, y: np.sqrt(np.sum(np.square(x-y))))
+                                         lambda x, y: self.xp.sqrt(self.xp.sum(self.xp.square(x-y))))
         else:
-            return np.sum(np.square(self.pos - node.pos))
+            return self.xp.sqrt(self.xp.sum(self.xp.square(self.pos - node.pos)))
 
     def _update_weights(self, input_vec, sigma, learning_rate, bmu):
         """ Update the node weights.
@@ -932,7 +936,7 @@ class SOMNode:
         """
     
         dist  = self.get_node_distance(bmu)
-        gauss = np.exp(-dist**2/(2*sigma**2))
+        gauss = self.xp.exp(-dist**2/(2*sigma**2))
         
         self.weights -= gauss*learning_rate*(self.weights-input_vec)
         
