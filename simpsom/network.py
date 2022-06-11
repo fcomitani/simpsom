@@ -105,7 +105,7 @@ class SOMNet:
         if self.PBC:
             logger.info("Periodic Boundary Conditions active.")
 
-        self.node_list = []
+        self.nodes_list = []
         self.data = self.xp.array(data).astype(self.xp.float32)
 
         self.metric = metric
@@ -117,8 +117,7 @@ class SOMNet:
             self.polygons = Squares
             logger.info("Square topology.")
 
-        self.distance_xp  = Distance(self.xp)
-        self.distance_cpu = Distance(np)
+        self.distance  = Distance(self.xp)
 
         self.neighborhood_fun = neighborhood_fun.lower()        
         self.neighborhoods = Neighborhoods(self.xp)
@@ -141,6 +140,8 @@ class SOMNet:
         """
 
         if self.xp.__name__ == "cupy":
+            if isinstance(data, list):
+                return [d.get() for d in data]
             return data.get()
         
         return data
@@ -168,13 +169,13 @@ class SOMNet:
 
             if init == "PCA":
                 logger.info("The weights will be initialized with PCA.")
-                init_vec = self.pca(self._get(self.data), n_eigv=2)
+                init_vec = self.pca(self.data, n_eigv=2)
             
             elif init == "random":
                 logger.info("The weights will be initialized randomly.")
                 for i in range(self.data.shape[1]):
-                    init_vec = [np.min(self._get(self.data), axis=0),
-                                np.max(self._get(self.data), axis=0)]
+                    init_vec = [self.xp.min(self.data, axis=0),
+                                self.xp.max(self.data, axis=0)]
             
             else:
                 logger.info("Custom weights provided.")
@@ -199,7 +200,7 @@ class SOMNet:
                     this_weight = weights_array[count_weight]
                     count_weight += 1
  
-                self.node_list.append(SOMNode(x, y, self.data.shape[1], 
+                self.nodes_list.append(SOMNode(x, y, self.data.shape[1], 
                                               self.net_height, self.net_width, 
                                               self.PBC, self.polygons,
                                               self.xp,
@@ -207,8 +208,7 @@ class SOMNet:
                                               init_vec=init_vec, 
                                               weights_array=this_weight))
 
-    @staticmethod
-    def pca(matrix, n_eigv):
+    def pca(self, matrix, n_eigv):
         """Get principal components to initialize network weights.
 
         Args:
@@ -220,11 +220,15 @@ class SOMNet:
                 representing the directions of maximum variance in the data.
         """
                
-        mean_mat = np.mean(matrix.T, axis=1)
+        mean_mat = self.xp.mean(matrix.T, axis=1)
         center_mat = matrix - mean_mat
-        cov_mat = np.cov(center_mat.T)
+        cov_mat = self.xp.cov(center_mat.T)
 
-        return np.linalg.eig(cov_mat)[-1].T[:n_eigv]
+        eigenvals = self.xp.linalg.eigh(cov_mat)[-1].T[:n_eigv]
+
+        if self.xp.__name__ == 'cupy':
+            return eigenvals[0]
+        return eigenvals
 
     def _get_n_process(self):
         """ Count number of GPU or CPU processors. """
@@ -279,9 +283,9 @@ class SOMNet:
             file_name (str): Name of the file where the data will be saved.
         """
         
-        weights_array = [self.xp.zeros(len(self.node_list[0].weights))]
+        weights_array = [self.xp.zeros(len(self.nodes_list[0].weights))]
         weights_array[0][0], weights_array[0][1], weights_array[0][2] = self.net_height, self.net_width, int(self.PBC)
-        for node in self.node_list:
+        for node in self.nodes_list:
              weights_array.append(node.weights)
 
         if not file_name.endswith((".npy")):
@@ -297,7 +301,7 @@ class SOMNet:
             n_iter (int): Iteration number.   
         """
     
-        self.sigma = self.start_sigma * np.exp(-n_iter/self.tau)   
+        self.sigma = self.start_sigma * self.xp.exp(-n_iter/self.tau)   
 
     def _update_learning_rate(self, n_iter):   
         """Update the learning rate.
@@ -306,7 +310,7 @@ class SOMNet:
             n_iter (int): Iteration number.   
         """
         
-        self.learning_rate =  self.start_learning_rate * np.exp(n_iter/self.epochs)    
+        self.learning_rate =  self.start_learning_rate * self.xp.exp(n_iter/self.epochs)    
     
     def find_bmu_ix(self, vecs):
         """Find the index of the best matching unit (BMU) for a given list of vectors.
@@ -318,9 +322,9 @@ class SOMNet:
         Returns:            
             bmu (SOMNode): The best matching unit node index.   
         """
-
-        dists = self.distance_xp.pairdist(vecs,
-                                       self.xp.array([n.weights for n in self.node_list]),
+        
+        dists = self.distance.pairdist(self.xp.array(vecs, dtype=self.xp.float32),
+                                       self.xp.array([n.weights for n in self.nodes_list]),
                                        metric=self.metric)
 
         return self.xp.argmin(dists,axis=1)
@@ -367,7 +371,7 @@ class SOMNet:
             epochs  = self.data.shape[0]*10
             
         self.epochs = epochs
-        self.tau    = self.epochs/np.log(self.start_sigma)
+        self.tau    = self.epochs/self.xp.log(self.start_sigma)
 
         if batch_size == -1 or batch_size > self.data.shape[0]:
             _n_parallel = self._get_n_process()
@@ -393,9 +397,9 @@ class SOMNet:
                 datapoint_ix = datapoints_ix.pop()
                 input_vec = self.data[datapoint_ix, :].reshape(1,self.data.shape[1])
                 
-                bmu = self.node_list[int(self.find_bmu_ix(input_vec)[0])]
+                bmu = self.nodes_list[int(self.find_bmu_ix(input_vec)[0])]
 
-                for node in self.node_list:
+                for node in self.nodes_list:
                     node._update_weights(input_vec[0], self.sigma, self.learning_rate, bmu)
 
         elif train_algo == "batch":
@@ -417,7 +421,7 @@ class SOMNet:
             # and parallelization at the cost of memory.
             # The object-oriented structure is kept to simplify code reading. 
 
-            all_weights = self.xp.array([n.weights for n in self.node_list], dtype=self.xp.float32)
+            all_weights = self.xp.array([n.weights for n in self.nodes_list], dtype=self.xp.float32)
             all_weights = all_weights.reshape(self.net_width, self.net_height, self.data.shape[1])
             early_stop_counter = 0
 
@@ -477,7 +481,7 @@ class SOMNet:
                     batchdata = self.data[start:end]
 
                     # Find BMUs for all points and subselect gaussian matrix.
-                    dists = self.distance_xp.batchpairdist(batchdata, all_weights, self.metric, sq_weights)
+                    dists = self.distance.batchpairdist(batchdata, all_weights, self.metric, sq_weights)
 
                     raveled_idxs = dists.argmin(axis=1)
                     wins = (unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
@@ -500,7 +504,7 @@ class SOMNet:
                     
                     if early_stop == "mapdiff":      
                         # Checks if the map weights are not moving. 
-                        self.convergence.append(self.distance_xp.pairdist(new_weights.reshape(self.net_width*self.net_height, self.data.shape[1]),
+                        self.convergence.append(self.distance.pairdist(new_weights.reshape(self.net_width*self.net_height, self.data.shape[1]),
                                                                        all_weights.reshape(self.net_width*self.net_height, self.data.shape[1]),
                                                                        metric=self.metric).mean())
                     
@@ -522,7 +526,7 @@ class SOMNet:
             # Revert back to object oriented            
             all_weights = all_weights.reshape(self.net_width*self.net_height, self.data.shape[1])
 
-            for n_iter, node in enumerate(self.node_list):
+            for n_iter, node in enumerate(self.nodes_list):
                 node.weights = all_weights[n_iter] # * self.learning_rate
 
         else:
@@ -530,7 +534,7 @@ class SOMNet:
             sys.exit(1)
 
         if self.GPU:
-            for node in self.node_list:
+            for node in self.nodes_list:
                 node.weights = node.weights.get()
         if early_stop is not None:
             if self.GPU:
@@ -543,10 +547,10 @@ class SOMNet:
         to each node object.
         """
 
-        for node in self.node_list:
-            neighbors = np.array([node2.weights for node2 in self.node_list
-                                                   if node != node2 and node.get_node_distance(node2) <= 1.001])
-            node._set_difference(self.distance_cpu.pairdist(node.weights.reshape(1, node.weights.shape[0]), neighbors, metric="euclidean").mean())
+        for node in self.nodes_list:
+            neighbors = self.xp.array([node2.weights for node2 in self.nodes_list
+                                                   if node != node2 and node.get_node_distance(node2) <= 1.001], dtype=self.xp.float32)
+            node._set_difference(self.distance.pairdist(node.weights.reshape(1, node.weights.shape[0]), neighbors, metric="euclidean").mean())
         logger.info('Weights difference among neighboring nodes calculated.')
 
     def project_onto_map(self, array, 
@@ -568,7 +572,7 @@ class SOMNet:
             array = self.xp.array(array).astype(self.xp.float64)
 
         bmu_list, cls = [], []
-        bmu_list = [self.node_list[int(mu)].pos for mu in self.find_bmu_ix(array)]
+        bmu_list = [self.nodes_list[int(mu)].pos for mu in self.find_bmu_ix(array)]
 
         if file_name is not None:
             if not file_name.endswith((".npy")):
@@ -577,7 +581,7 @@ class SOMNet:
                         os.path.join(self.output_path, file_name))
             np.save(os.path.join(self.output_path, file_name), self._get(bmu_list))   
 
-        return np.array(bmu_list, dtype=self.xp.float32)   
+        return self.xp.array(bmu_list, dtype=self.xp.float32)   
 
     def cluster(self, coor, project=True, algorithm="DBSCAN", file_name="./som_clusters.npy", **kwargs):
     
@@ -646,7 +650,7 @@ class SOMNet:
                         os.path.join(self.output_path, file_name))
             np.save(os.path.join(self.output_path, file_name), self._get(clu_labs))   
 
-        return np.array(clu_labs), bmu_coor
+        return self.xp.array(clu_labs), bmu_coor
 
     def plot_map_by_feature(self, feature, show=False, print_out=True,
                              **kwargs):
@@ -666,8 +670,8 @@ class SOMNet:
                     ticks will be 15% smaller.
         """
 
-        _, _ = plot_map([[node.pos[0],node.pos[1]] for node in self.node_list], 
-                [node.weights[feature] for node in self.node_list], 
+        _, _ = plot_map([[node.pos[0],node.pos[1]] for node in self.nodes_list], 
+                [node.weights[feature] for node in self.nodes_list], 
                 self.polygons,
                 show=show, print_out=print_out, 
                 file_name=os.path.join(self.output_path, "./som_feature_{}.png".format(str(feature))),
@@ -696,14 +700,14 @@ class SOMNet:
                     ticks will be 15% smaller.
         """
         
-        if self.node_list[0].difference is None:
+        if self.nodes_list[0].difference is None:
             self.get_nodes_difference()
 
         if "cbar_label" not in kwargs.keys():
             kwargs["cbar_label"] = "Nodes difference value"
 
-        _, _ = plot_map([[node.pos[0],node.pos[1]] for node in self.node_list], 
-                [node.difference for node in self.node_list], 
+        _, _ = plot_map([[node.pos[0],node.pos[1]] for node in self.nodes_list], 
+                [node.difference for node in self.nodes_list], 
                 self.polygons,
                 show=show, print_out=print_out, 
                 file_name=os.path.join(self.output_path, "./som_difference.png"),
@@ -784,12 +788,13 @@ class SOMNet:
         """
         
         bmu_coor = self.project_onto_map(coor) if project else coor
+        bmu_coor = self._get(bmu_coor)
 
         if jitter:
             bmu_coor += np.random.uniform(low=-.15, high=.15, size=(bmu_coor.shape[0],2))
 
         _, _ = scatter_on_map([bmu_coor], 
-                       [[node.pos[0],node.pos[1]] for node in self.node_list],
+                       [[node.pos[0],node.pos[1]] for node in self.nodes_list],
                        self.polygons,
                        color_val=color_val, 
                        show=show, print_out=print_out,
@@ -830,12 +835,13 @@ class SOMNet:
         """
         
         bmu_coor = self.project_onto_map(coor) if project else coor
+        bmu_coor = self._get(bmu_coor)
 
         if jitter:
             bmu_coor += np.random.uniform(low=-.15, high=.15, size=(bmu_coor.shape[0],2))
 
         _, _ = scatter_on_map([bmu_coor[clusters==clu] for clu in set(clusters)], 
-                       [[node.pos[0],node.pos[1]] for node in self.node_list],
+                       [[node.pos[0],node.pos[1]] for node in self.nodes_list],
                        self.polygons,
                        color_val=color_val, 
                        show=show, print_out=print_out,
@@ -897,7 +903,7 @@ class SOMNode:
         elif weight_bounds is not None:
             #Sample Select randomly in the space spanned by the data. 
             for i in range(num_weights):
-                self.weights.append(np.random.random()*(weight_bounds[1][i]-weight_bounds[0][i])+weight_bounds[0][i])
+                self.weights.append(self.xprandom.random()*(weight_bounds[1][i]-weight_bounds[0][i])+weight_bounds[0][i])
        
         else: 
             logger.error("Error in the network weights initialization, make sure to provide random initalization boundaries,\n"+ \
@@ -919,7 +925,8 @@ class SOMNode:
         if self.PBC:
             return self.polygons.distance_pbc((self.pos, node.pos), 
                                         (self.net_width, self.net_height),
-                                         lambda x, y: self.xp.sqrt(self.xp.sum(self.xp.square(x-y))))
+                                         lambda x, y: self.xp.sqrt(self.xp.sum(self.xp.square(x-y))),
+                                         xp=self.xp)
         else:
             return self.xp.sqrt(self.xp.sum(self.xp.square(self.pos - node.pos)))
 
@@ -942,7 +949,7 @@ class SOMNode:
     def _set_difference(self, diff_value):
         """ Set the neighbouring nodes weights difference."""
 
-        self.difference = np.float(diff_value)
+        self.difference = self.xp.float(diff_value)
 
 
 if __name__ == "__main__":
