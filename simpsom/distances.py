@@ -6,13 +6,13 @@ F Comitani, SG Riva, A Tangherloni
 #ToDo: add docstring.
 
 import sys
+from loguru import logger
 
 class Distance:
+    """ Container class for distance functions. """
 
     def __init__(self, xp=None):
-
         self.xp = xp
-
 
     def euclidean_distance(self, x, w, w_flat_sq=None):
         """Calculate L2 distance
@@ -81,45 +81,43 @@ class Distance:
             return d.reshape(x.shape[0], w.shape[0]*w.shape[1])
         
     def batchpairdist(self, x, w, metric, sq=None):
-            
-        if metric not in ["cosine", "euclidean", "manhattan"]:
-            print("Chose a correct distance metric!")
-            sys.exit()
-        if metric=="cosine":
-            return self.cosine_distance(x, w, w_flat_sq=sq)
-        elif metric=="euclidean":
+                
+        if metric=="euclidean":
             return self.euclidean_distance(x, w, w_flat_sq=sq)
-        else: # Slow
+        elif metric=="cosine":
+            return self.cosine_distance(x, w, w_flat_sq=sq)
+        elif metric=="manhattan":
             return self.manhattan_distance(x, w)
         
+        logger.error("Available metrics are: "+ \
+                     "\"euclidean\", \"cosine\" and \"manhattan\"")
+        sys.exit(1)
+
     def pairdist(self, a, b, metric):
         """Calculating distances betweens points.
 
         Args:
             a (array): .
             b (array): .
-            metric (string): distance metric. Accepted metrics are euclidean, manhattan, and cosine (default "euclidean").
+            metric (string): distance metric. 
+                Accepted metrics are euclidean, manhattan, and cosine (default "euclidean").
 
         Returns:
             d (narray or list): distances. 
 
         """
 
-        if metric not in ["cosine", "euclidean", "manhattan"]:
-            print("Chose a correct distance metric!")
-            sys.exit()
-
         if metric=="euclidean":
             squares_a = self.xp.sum(self.xp.power(a, 2), axis=1, keepdims=True)
             squares_b = self.xp.sum(self.xp.power(b, 2), axis=1, keepdims=True)
-            d         = self.xp.sqrt(squares_a + squares_b.T - 2*a.dot(b.T))
-        
-        elif metric=="manhattan": # Slow
-            funz = lambda x,y: self.xp.sum(self.xp.abs(x.T - y), axis=-1)
-            d    = self.xp.stack([funz(a[i], b) for i in range(a.shape[0])])
-        
-        else:
-            d = 1 - self.xp.dot(a/self.xp.linalg.norm(a,axis=1)[:,None],
+            return self.xp.sqrt(squares_a + squares_b.T - 2*a.dot(b.T))      
+        elif metric=="cosine":
+            return 1 - self.xp.dot(a/self.xp.linalg.norm(a,axis=1)[:,None],
                            (b/self.xp.linalg.norm(b,axis=1)[:,None]).T)
-
-        return d
+        elif metric=="manhattan": 
+            funz = lambda x,y: self.xp.sum(self.xp.abs(x.T - y), axis=-1)
+            return self.xp.stack([funz(a[i], b) for i in range(a.shape[0])])
+        
+        logger.error("Available metrics are: "+ \
+                     "\"euclidean\", \"cosine\" and \"manhattan\"")
+        sys.exit(1)

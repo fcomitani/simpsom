@@ -5,7 +5,7 @@ A lightweight python library for Kohonen Self-Organizing Maps (SOM).
 F Comitani, SG Riva, A Tangherloni
 """
 
-# ToDo:
+# TODO:
 # - unittest
 # - README
 # - Docs: API + tutorial
@@ -74,28 +74,28 @@ class SOMNet:
         self.GPU  = bool(GPU)
         self.CUML = bool(CUML)
 
+        # TODO: clean
         if self.GPU:
-            import cupy
-            self.xp = cupy
+            try:
+                import cupy
+                self.xp = cupy
 
-            if self.CUML:
-                try:
-                    from cuml import cluster
-                    self.cluster_algo = cluster
-                except:
-                    logger.warn("CUML libraries not found. Scikit-learn will be used instead.")
-                    from sklearn import cluster
-                    self.cluster_algo = cluster
+                if self.CUML:
+                    try:
+                        from cuml import cluster
+                    except:
+                        logger.warn("CUML libraries not found. Scikit-learn will be used instead.")
+                        
+            except:
+                logger.warn("CuPy libraries not found. Falling back to CPU.")
+                self.GPU = False
+ 
+        try: self.xp
+        except: self.xp = np
 
-            else:
-                from sklearn import cluster
-                self.cluster_algo = cluster
-
-        else:
-            self.xp = np
-
-            from sklearn import cluster
-            self.cluster_algo = cluster
+        try: cluster
+        except: from sklearn import cluster
+        self.cluster_algo = cluster
 
         if random_seed is not None:
             os.environ["PYTHONHASHSEED"] = str(random_seed)
@@ -112,7 +112,7 @@ class SOMNet:
 
         self.metric = metric
 
-        if topology == "hexagonal":
+        if topology.lower() == "hexagonal":
             self.polygons = Hexagons
             logger.info("Hexagonal topology.")
         else:
@@ -121,17 +121,15 @@ class SOMNet:
 
         self.distance_xp  = Distance(self.xp)
         self.distance_cpu = Distance(np)
-        
-        self.neighborhoods = Neighborhoods(self.xp)
 
-        self.neighborhood_fun = neighborhood_fun
+        self.neighborhood_fun = neighborhood_fun.lower()        
+        self.neighborhoods = Neighborhoods(self.xp)
 
         self.convergence = []
 
         self.net_height = net_height
         self.net_width  = net_width
         self._set_weights(load_file, init)
-
 
     def _set_weights(self, load_file, init):
         """Set initial map weights values, either by loading them from file or with random/PCA.
@@ -157,9 +155,9 @@ class SOMNet:
             if init == "PCA":
                 logger.info("The weights will be initialized with PCA.")
                 if self.xp.__name__ == "cupy":
-                    init_vec = SOMNet.pca(self.data.get(), n_eigv=2)
+                    init_vec = self.pca(self.data.get(), n_eigv=2)
                 else:
-                    init_vec = SOMNet.pca(self.data, n_eigv=2)
+                    init_vec = self.pca(self.data, n_eigv=2)
             
             elif init == "random":
                 logger.info("The weights will be initialized randomly.")
@@ -189,13 +187,11 @@ class SOMNet:
             self.net_width  = int(weights_array[0][1])
             self.PBC        = bool(weights_array[0][2])
 
-        # init_vec = self.xp.array(init_vec)
-
         for x in range(self.net_width):
             for y in range(self.net_height):
 
                 if weights_array is not None:
-                    this_weight = weights_array[count_wei]
+                    this_weight = weights_array[count_weight]
                     count_weight += 1
  
                 self.node_list.append(SOMNode(x, y, self.data.shape[1], 
@@ -206,11 +202,11 @@ class SOMNet:
                                               weights_array=this_weight))
 
     @staticmethod
-    def pca(A, n_eigv):
-        """Generates PCA components to initialize network weights.
+    def pca(matrix, n_eigv):
+        """Get principal components to initialize network weights.
 
         Args:
-            A (array): N-dimensional dataset.
+            matrix (array): N-dimensional dataset.
             n_eigv (int): number of components to keep. 
                      
         Returns:            
@@ -218,13 +214,12 @@ class SOMNet:
                 representing the directions of maximum variance in the data.
         """
                
-        M = np.mean(A.T, axis=1)
-        C = A - M
-        V = np.cov(C.T)
+        mean_mat = np.mean(matrix.T, axis=1)
+        center_mat = matrix - mean_mat
+        cov_mat = np.cov(center_mat.T)
 
-        return np.linalg.eig(V)[-1].T[:n_eigv]
+        return np.linalg.eig(cov_mat)[-1].T[:n_eigv]
 
-    # ToDo: to be cleaned
     def _get_n_process(self):
         """ Count number of GPU or CPU processors. """
 
@@ -238,17 +233,10 @@ class SOMNet:
                 logger.error("Something went wrong when trying to count the number\n"+ \
                               "of GPU processors from CuPy.")
                 return -1
-                
-            #the following block will never be executed, since both try and and except return something
-            # try:
-            #     return int(subprocess.check_output("nvidia-settings -q CUDACores -t", shell=True))
-            # except:
-            #     print("Could not infer #cuda_cores")
-            #     return 0
+
         else:
             try:
-                # Why * 500?
-                return multiprocessing.cpu_count()*500
+                return multiprocessing.cpu_count()
             except:
                 logger.error("Something went wrong when trying to count the number\n"+ \
                               "of CPU processors.")
@@ -268,8 +256,7 @@ class SOMNet:
         """
         
         if epochs < data.shape[0]:
-            logger.warning("Epochs for online training are less than the entry datapoints.")
-            
+            logger.warning("Epochs for online training are less than the entry datapoints.") 
 
         dps = np.arange(0, data.shape[0], 1)
         if epochs <= data.shape[0]:
@@ -450,8 +437,13 @@ class SOMNet:
             elif self.neighborhood_fun == "mexican":
                 neighborhood_caller = self.neighborhoods.prepare_neig_func(self.neighborhoods.mexican_hat, _xx, _yy, 0.5, False)
 
-            else:
+            elif self.neighborhood_fun == "gaussian":
                 neighborhood_caller = self.neighborhoods.prepare_neig_func(self.neighborhoods.gaussian, _xx, _yy, 0.5, False)
+            
+            else:
+                logger.error("This shouldn't happen!\n"+ \
+                             "If you are seeing this message, please contact the developers.")
+                sys.exit(1)
 
             for n_iter in range(self.epochs):
 
@@ -468,7 +460,6 @@ class SOMNet:
                     logger.debug("\rTraining SOM... {:d}%".format(int(n_iter*100.0/self.epochs)))
                         
                 # Run through mini batches to ease the memory burden.
-
                 try: 
                     # Reuse already allocated memory
                     numerator.fill(0)
@@ -492,7 +483,7 @@ class SOMNet:
                     raveled_idxs = dists.argmin(axis=1)
                     wins = (unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
 
-                    # ToDo: Add PBC here
+                    # TODO: Add PBC here
                     g_gpu = neighborhood_caller(wins, self.sigma)*self.learning_rate
                     
                     sum_g_gpu = self.xp.sum(g_gpu, axis=0)
@@ -506,7 +497,7 @@ class SOMNet:
                 new_weights = self.xp.where(denominator != 0, numerator / denominator, all_weights)
 
                 if early_stop is not None:
-                    # ToDo: These are pretty ruough convergence tests, add more
+                    # TODO: These are pretty ruough convergence tests, add more
                     
                     if early_stop == "mapdiff":      
                         # Checks if the map weights are not moving. 
@@ -592,7 +583,7 @@ class SOMNet:
     def cluster(self, coor, project=True, algorithm="DBSCAN", file_name="./som_clusters.npy", **kwargs):
     
         """Project data onto the map and find clusters with scikit-learn clustering algorithms.
-        ToDo: for the moment PBC will be ignored.
+        TODO: for the moment PBC will be ignored.
 
         Args:
             coor (array): An array containing datapoints to be mapped or
@@ -613,7 +604,7 @@ class SOMNet:
         bmu_coor = self.project_onto_map(coor) if project else coor
 
         if self.PBC:
-            # ToDo: implement PBC, but basically providing the PBC-adjusted distance metric to 
+            # TODO: implement PBC, but basically providing the PBC-adjusted distance metric to 
             # the clustering algorithms
             logger.warning("PBC are not implemented with clustering yet and will be ignored for now.")
 

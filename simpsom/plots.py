@@ -220,7 +220,7 @@ def scatter_on_map(datagroups, centers, polygons_class,
                 linewidth=1, label='{:d}'.format(i))
 
     plt.legend(bbox_to_anchor=(-.025,1), fontsize=kwargs["fontsize"]*.85, 
-            frameon=False, title='Groups', ncol=1,
+            frameon=False, title='Groups', ncol=int(len(datagroups)/10.0)+1,
             title_fontsize=kwargs["fontsize"])
 
     if not file_name.endswith((".png",".jpg",".pdf")):
