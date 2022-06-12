@@ -126,7 +126,13 @@ class SOMNet:
 
         self.net_height = net_height
         self.net_width  = net_width
-        self._set_weights(load_file, init)
+
+        self.init = init
+        if isinstance(self.init, str):
+            self.init = self.init.lower()
+        else:
+            self.init = self.xp.array(self.init)
+        self._set_weights(load_file)
 
     def _get(self, data):
         """ Moves data from GPU to CPU.
@@ -142,19 +148,18 @@ class SOMNet:
         if self.xp.__name__ == "cupy":
             if isinstance(data, list):
                 return [d.get() for d in data]
+            elif isinstance(data, np.ndarray):
+                return data
             return data.get()
         
         return data
 
-    def _set_weights(self, load_file, init):
+    def _set_weights(self, load_file=None):
         """ Set initial map weights values, either by loading them from file or with random/PCA.
 
         Args:
             load_file (str): Name of file to load containing information 
                 to initialize the network weights.
-            init (str or list[array, ..]): Nodes initialization method, to be chosen between "random"
-                or "PCA" (default "PCA"). Alternatively a couple of vectors can be provided
-                whose values will be spanned uniformly.
         """
 
         init_vec = None
@@ -167,11 +172,11 @@ class SOMNet:
 
         if load_file is None:
 
-            if init == "PCA":
+            if isinstance(self.init, str) and self.init == "pca":
                 logger.info("The weights will be initialized with PCA.")
                 init_vec = self.pca(self.data, n_eigv=2)
-            
-            elif init == "random":
+           
+            elif isinstance(self.init, str) and self.init == "random":
                 logger.info("The weights will be initialized randomly.")
                 for i in range(self.data.shape[1]):
                     init_vec = [self.xp.min(self.data, axis=0),
@@ -179,7 +184,7 @@ class SOMNet:
             
             else:
                 logger.info("Custom weights provided.")
-                init_vec = init
+                init_vec = self.init
 
         else:   
             # TODO: add format checks
@@ -224,11 +229,7 @@ class SOMNet:
         center_mat = matrix - mean_mat
         cov_mat = self.xp.cov(center_mat.T)
 
-        eigenvals = self.xp.linalg.eigh(cov_mat)[-1].T[:n_eigv]
-
-        if self.xp.__name__ == 'cupy':
-            return eigenvals[0]
-        return eigenvals
+        return self.xp.linalg.eigh(cov_mat)[-1].T[::-1][:n_eigv]
 
     def _get_n_process(self):
         """ Count number of GPU or CPU processors. """
@@ -323,7 +324,7 @@ class SOMNet:
             bmu (SOMNode): The best matching unit node index.   
         """
         
-        dists = self.distance.pairdist(self.xp.array(vecs, dtype=self.xp.float32),
+        dists = self.distance.pairdist(vecs,
                                        self.xp.array([n.weights for n in self.nodes_list]),
                                        metric=self.metric)
 
@@ -550,7 +551,7 @@ class SOMNet:
         for node in self.nodes_list:
             neighbors = self.xp.array([node2.weights for node2 in self.nodes_list
                                                    if node != node2 and node.get_node_distance(node2) <= 1.001], dtype=self.xp.float32)
-            node._set_difference(self.distance.pairdist(node.weights.reshape(1, node.weights.shape[0]), neighbors, metric="euclidean").mean())
+            node._set_difference(self.distance.pairdist(self.xp.array(node.weights.reshape(1, node.weights.shape[0])), neighbors, metric="euclidean").mean())
         logger.info('Weights difference among neighboring nodes calculated.')
 
     def project_onto_map(self, array, 
@@ -605,6 +606,8 @@ class SOMNet:
         """
 
         bmu_coor = self.project_onto_map(coor) if project else coor
+        if self.xp.__name__=="cupy" and self.cluster_algo.__name__.startswith('sklearn'):
+            bmu_coor = self._get(bmu_coor)
 
         if self.PBC:
             # TODO: implement PBC, but basically providing the PBC-adjusted distance metric to 
@@ -617,7 +620,7 @@ class SOMNet:
             modules = [module[0] for module in inspect.getmembers(self.cluster_algo, inspect.isclass)]
 
             if algorithm not in modules:
-                logger.error("ERROR: The desired algorithm is not among the algorithms provided by the scikit library,\n"+ \
+                logger.error("The desired algorithm is not among the algorithms provided by the scikit library,\n"+ \
                     "please provide one of the algorithms provided by the scikit library:\n"+ \
                     "|".join(modules))
                 return None, None
@@ -626,9 +629,10 @@ class SOMNet:
 
         else:
             clu_algo = algorithm
+       
         
             if not callable(getattr(clu_algo, "fit", None)):
-                logger.error("ERROR: There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
+                logger.error("There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
                     "class or use one of the algorithms provided by the scikit library,\n"+ \
                     "Custom classes must have a 'fit' method.")
                 return None, None
@@ -638,7 +642,7 @@ class SOMNet:
         try:
             clu_labs = clu_algo.fit(bmu_coor).labels_
         except:
-            logger.error("ERROR: There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
+            logger.error("There was a problem with the clustering, make sure to provide a scikit-like clustering\n"+ \
                     "class or use one of the algorithms provided by the scikit library,\n"+ \
                     "Custom classes must have a 'fit' method.")
             return None
@@ -650,7 +654,7 @@ class SOMNet:
                         os.path.join(self.output_path, file_name))
             np.save(os.path.join(self.output_path, file_name), self._get(clu_labs))   
 
-        return self.xp.array(clu_labs), bmu_coor
+        return clu_labs, bmu_coor
 
     def plot_map_by_feature(self, feature, show=False, print_out=True,
                              **kwargs):
@@ -743,7 +747,7 @@ class SOMNet:
             
         else:
 
-            conv_values = self.xp.nan_to_num(self.convergence) 
+            conv_values = np.nan_to_num(self.convergence) 
 
             if "title" not in kwargs.keys():
                 kwargs["title"] = "Convergence"
