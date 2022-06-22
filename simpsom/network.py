@@ -83,10 +83,10 @@ class SOMNet:
                     try:
                         from cuml import cluster
                     except:
-                        logger.warn("CUML libraries not found. Scikit-learn will be used instead.")
+                        logger.warning("CUML libraries not found. Scikit-learn will be used instead.")
                         
             except:
-                logger.warn("CuPy libraries not found. Falling back to CPU.")
+                logger.warning("CuPy libraries not found. Falling back to CPU.")
                 self.GPU = False
  
         try: self.xp
@@ -438,7 +438,7 @@ class SOMNet:
             if self.neighborhood_fun == "bubble":
                 neighborhood_caller = self.neighborhoods.prepare_neig_func(self.neighborhoods.bubble, _neigx, _neigy)
 
-            elif self.neighborhood_fun == "mexican":
+            elif self.neighborhood_fun in ["mexican", "mexican_hat"]:
                 neighborhood_caller = self.neighborhoods.prepare_neig_func(self.neighborhoods.mexican_hat, _xx, _yy, 0.5, False)
 
             elif self.neighborhood_fun == "gaussian":

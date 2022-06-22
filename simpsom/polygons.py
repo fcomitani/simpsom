@@ -78,7 +78,7 @@ class Polygon():
         ypoints = [x[1]  for x in centers]
         patches = []
 
-        cmap = plt.get_cmap("viridis").copy()
+        cmap = plt.get_cmap("viridis")
         cmap.set_bad(color="#ffffff", alpha=1.)
         edgecolor = None
 
