@@ -50,8 +50,7 @@ class SOMNet:
             neighborhood_fun (str): neighbours drop-off function for training, choose among gaussian,
                 mexican_hat and bubble (default "gaussian").
             init (str or list[array, ...]): Nodes initialization method, choose between random
-                or PCA (default "random"). Alternatively a couple of vectors can be provided
-                whose values will be spanned uniformly.
+                or PCA (default "random"). 
             PBC (boolean): Activate/deactivate periodic boundary conditions,
                 warning: only quality threshold clustering algorithm works with PBC (default False).
             GPU (boolean): Activate/deactivate GPU run with RAPIDS (requires CUDA, default False).
@@ -68,7 +67,7 @@ class SOMNet:
         if not debug:
             logger.remove()
             logger.add(sys.stderr, level="INFO")
-        logger.add(os.path.join(self.output_path,"som_{time}.log"), level="DEBUG")
+        # logger.add(os.path.join(self.output_path,"som_{time}.log"), level="DEBUG")
 
         self.GPU  = bool(GPU)
         self.CUML = bool(CUML)
@@ -106,7 +105,7 @@ class SOMNet:
             logger.info("Periodic Boundary Conditions active.")
 
         self.nodes_list = []
-        self.data = self.xp.array(data).astype(self.xp.float32)
+        self.data = self.xp.array(data, dtype=np.float32)
 
         self.metric = metric
 
@@ -163,7 +162,6 @@ class SOMNet:
         """
 
         init_vec = None
-        init_bounds = None
         weights_array = None
         this_weight = None
 
@@ -173,18 +171,21 @@ class SOMNet:
         if load_file is None:
 
             if isinstance(self.init, str) and self.init == "pca":
+                logger.warning("Please be sure that the data have been standardized before using PCA.")
                 logger.info("The weights will be initialized with PCA.")
-                init_vec = self.pca(self.data, n_eigv=2)
-           
-            elif isinstance(self.init, str) and self.init == "random":
-                logger.info("The weights will be initialized randomly.")
-                for i in range(self.data.shape[1]):
-                    init_vec = [self.xp.min(self.data, axis=0),
-                                self.xp.max(self.data, axis=0)]
-            
+
+                if self.GPU:
+                    matrix = self.data.get()
+                    init_vec = self.pca(matrix, n_pca=2)
+                    init_vec = self.xp.array(init_vec)
+                else:
+                    matrix = self.data
+                    init_vec = self.pca(matrix, n_pca=2)
+
             else:
-                logger.info("Custom weights provided.")
-                init_vec = self.init
+                logger.info("The weights will be initialized randomly.")
+                init_vec = [self.xp.min(self.data, axis=0),
+                            self.xp.max(self.data, axis=0)]
 
         else:   
             # TODO: add format checks
@@ -209,11 +210,10 @@ class SOMNet:
                                               self.net_height, self.net_width, 
                                               self.PBC, self.polygons,
                                               self.xp,
-                                              weight_bounds=init_bounds, 
                                               init_vec=init_vec, 
                                               weights_array=this_weight))
 
-    def pca(self, matrix, n_eigv):
+    def pca(self, matrix, n_pca):
         """Get principal components to initialize network weights.
 
         Args:
@@ -225,11 +225,19 @@ class SOMNet:
                 representing the directions of maximum variance in the data.
         """
                
-        mean_mat = self.xp.mean(matrix.T, axis=1)
-        center_mat = matrix - mean_mat
-        cov_mat = self.xp.cov(center_mat.T)
+        # mean_mat = self.xp.mean(matrix.T, axis=1)
+        # center_mat = matrix - mean_mat
+        # cov_mat = self.xp.cov(center_mat.T).astype(self.xp.float32)
 
-        return self.xp.linalg.eigh(cov_mat)[-1].T[::-1][:n_eigv]
+        # PCA = self.xp.linalg.eigh(cov_mat)[-1].T[::-1][:n_eigv]
+
+        mean_vector = np.mean(matrix.T, axis=1)
+        center_mat  = matrix - mean_vector
+        cov_mat     = np.cov(center_mat.T).astype(self.xp.float32)
+        
+        PCA = np.linalg.eig(cov_mat)[-1].T[:n_pca]
+
+        return PCA
 
     def _get_n_process(self):
         """ Count number of GPU or CPU processors. """
@@ -378,7 +386,7 @@ class SOMNet:
             _n_parallel = self._get_n_process()
         else:
             _n_parallel = batch_size
-        
+
         if train_algo == "online":
             """ Online training.
                 Bootstrap: one datapoint is extracted randomly with replacement at each epoch 
@@ -396,7 +404,7 @@ class SOMNet:
                 self._update_learning_rate(n_iter)
                 
                 datapoint_ix = datapoints_ix.pop()
-                input_vec = self.data[datapoint_ix, :].reshape(1,self.data.shape[1])
+                input_vec = self.data[datapoint_ix, :].reshape(1, self.data.shape[1])
                 
                 bmu = self.nodes_list[int(self.find_bmu_ix(input_vec)[0])]
 
@@ -422,14 +430,14 @@ class SOMNet:
             # and parallelization at the cost of memory.
             # The object-oriented structure is kept to simplify code reading. 
 
-            all_weights = self.xp.array([n.weights for n in self.nodes_list], dtype=self.xp.float32)
+            all_weights = self.xp.array([n.weights for n in self.nodes_list])
             all_weights = all_weights.reshape(self.net_width, self.net_height, self.data.shape[1])
             early_stop_counter = 0
 
             numerator   = self.xp.zeros(all_weights.shape, dtype=self.xp.float32)
-            denominator = self.xp.zeros((all_weights.shape[0], all_weights.shape[1], 1),dtype=self.xp.float32)
+            denominator = self.xp.zeros((all_weights.shape[0], all_weights.shape[1], 1), dtype=self.xp.float32)
 
-            unravel_precomputed = self.xp.unravel_index(self.xp.arange(self.net_width*self.net_height, dtype=self.xp.int64),
+            unravel_precomputed = self.xp.unravel_index(self.xp.arange(self.net_width*self.net_height),
                                                         (self.net_width, self.net_height))
             _neigx = self.xp.arange(self.net_width)
             _neigy = self.xp.arange(self.net_height)
@@ -453,6 +461,7 @@ class SOMNet:
 
                 sq_weights = (self.xp.power(all_weights.reshape(-1, all_weights.shape[2]),2).sum(axis=1, keepdims=True))
 
+                
                 if early_stop_counter == early_stop_patience:
                     logger.info("\rEarly stop tolerance reached at epoch {:d}, stopping training.".format(n_iter-1))
                     break
@@ -470,8 +479,8 @@ class SOMNet:
                     denominator.fill(0)
                 except AttributeError: 
                     # I haven"t allocated it yet
-                    numerator   = self.xp.zeros(all_weights.shape, dtype=self.xp.float32)
-                    denominator = self.xp.zeros((all_weights.shape[0], all_weights.shape[1], 1),dtype=self.xp.float32)
+                    numerator   = self.xp.zeros(all_weights.shape)
+                    denominator = self.xp.zeros((all_weights.shape[0], all_weights.shape[1], 1))
 
                 for i in range(0, len(self.data), _n_parallel):
                     start = i
@@ -495,8 +504,7 @@ class SOMNet:
                     gT_dot_x_flat_gpu = self.xp.dot(g_flat_gpu.T, batchdata)
 
                     numerator   += gT_dot_x_flat_gpu.reshape(numerator.shape)
-                    denominator += sum_g_gpu[:,:,self.xp.newaxis]
-                    
+                    denominator += sum_g_gpu[:,:,self.xp.newaxis]                    
             
                 new_weights = self.xp.where(denominator != 0, numerator / denominator, all_weights)
 
@@ -524,7 +532,7 @@ class SOMNet:
 
                 all_weights = new_weights
 
-            # Revert back to object oriented            
+            # Revert back to object oriented
             all_weights = all_weights.reshape(self.net_width*self.net_height, self.data.shape[1])
 
             for n_iter, node in enumerate(self.nodes_list):
@@ -550,7 +558,7 @@ class SOMNet:
 
         for node in self.nodes_list:
             neighbors = self.xp.array([node2.weights for node2 in self.nodes_list
-                                                   if node != node2 and node.get_node_distance(node2) <= 1.001], dtype=self.xp.float32)
+                                                   if node != node2 and node.get_node_distance(node2) <= 1.001])
             node._set_difference(self.distance.pairdist(self.xp.array(node.weights.reshape(1, node.weights.shape[0])), neighbors, metric="euclidean").mean())
         logger.info('Weights difference among neighboring nodes calculated.')
 
@@ -570,7 +578,7 @@ class SOMNet:
         """
 
         if not isinstance(array, self.xp.ndarray):
-            array = self.xp.array(array).astype(self.xp.float64)
+            array = self.xp.array(array)
 
         bmu_list, cls = [], []
         bmu_list = [self.nodes_list[int(mu)].pos for mu in self.find_bmu_ix(array)]
@@ -582,7 +590,7 @@ class SOMNet:
                         os.path.join(self.output_path, file_name))
             np.save(os.path.join(self.output_path, file_name), self._get(bmu_list))   
 
-        return self.xp.array(bmu_list, dtype=self.xp.float32)   
+        return self.xp.array(bmu_list)   
 
     def cluster(self, coor, project=True, algorithm="DBSCAN", file_name="./som_clusters.npy", **kwargs):
     
@@ -861,8 +869,7 @@ class SOMNode:
     """ Single Kohonen SOM node class. """
     
     def __init__(self, x, y, num_weights, net_height, net_width, 
-                PBC, polygons, xp=np, 
-                weight_bounds=None, init_vec=None, weights_array=None):
+                PBC, polygons, xp=np, init_vec=None, weights_array=None):
     
         """Initialize the SOM node.
 
@@ -896,18 +903,12 @@ class SOMNode:
         self.net_height = net_height
         self.net_width  = net_width
 
-        if weights_array is not None:            
+        if weights_array is not None:
             self.weights = weights_array
 
         elif init_vec is not None:
             # Sample uniformly in the space spanned by the custom vectors.
-            self.weights = ((x-self.net_width/2)*2.0/self.net_width*init_vec[0] + 
-                            (y-self.net_height/2)*2.0/self.net_height*init_vec[1])
-
-        elif weight_bounds is not None:
-            #Sample Select randomly in the space spanned by the data. 
-            for i in range(num_weights):
-                self.weights.append(self.xprandom.random()*(weight_bounds[1][i]-weight_bounds[0][i])+weight_bounds[0][i])
+            self.weights = (init_vec[1] - init_vec[0])*self.xp.array(np.random.rand(len(init_vec[0])).astype(np.float32)) + init_vec[0]
        
         else: 
             logger.error("Error in the network weights initialization, make sure to provide random initalization boundaries,\n"+ \
@@ -953,7 +954,7 @@ class SOMNode:
     def _set_difference(self, diff_value):
         """ Set the neighbouring nodes weights difference."""
 
-        self.difference = self.xp.float(diff_value)
+        self.difference = diff_value
 
 
 if __name__ == "__main__":

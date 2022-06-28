@@ -1,6 +1,5 @@
 """
 Neighborhood functions.
-
 F Comitani, SG Riva, A Tangherloni 
 """
 
@@ -31,8 +30,8 @@ class Neighborhoods:
         cx = xx.T[c][:, self.xp.newaxis, self.xp.newaxis]
         cy = yy.T[c][:, self.xp.newaxis, self.xp.newaxis]
 
-        ax = self.xp.exp(-self.xp.power(nx-cx, 2, dtype=self.xp.float32)/d)
-        ay = self.xp.exp(-self.xp.power(ny-cy, 2, dtype=self.xp.float32)/d)
+        ax = self.xp.exp(-self.xp.power(nx-cx, 2)/d)
+        ay = self.xp.exp(-self.xp.power(ny-cy, 2)/d)
 
         if compact_support:
             ax *= self.xp.logical_and(nx > cx-sigma, nx < cx+sigma)
@@ -54,8 +53,8 @@ class Neighborhoods:
         cx = xx.T[c][:, self.xp.newaxis, self.xp.newaxis]
         cy = yy.T[c][:, self.xp.newaxis, self.xp.newaxis]
 
-        px = self.xp.power(nx-cx, 2, dtype=self.xp.float32)
-        py = self.xp.power(ny-cy, 2, dtype=self.xp.float32)
+        px = self.xp.power(nx-cx, 2)
+        py = self.xp.power(ny-cy, 2)
 
         if compact_support:
             px *= self.xp.logical_and(nx > cx-sigma, nx < cx+sigma)
@@ -79,4 +78,4 @@ class Neighborhoods:
                             nx < cx+sigma)
         ay = self.xp.logical_and(ny > cy-sigma,
                             ny < cy+sigma)
-        return (ax[:,:,self.xp.newaxis]*ay[:,self.xp.newaxis,:]).astype(self.xp.float32)
+        return (ax[:,:,self.xp.newaxis]*ay[:,self.xp.newaxis,:])

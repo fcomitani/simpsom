@@ -76,7 +76,7 @@ class Distance:
             d = self.xp.linalg.norm(
                 x[:,self.xp.newaxis,self.xp.newaxis,:]-w[self.xp.newaxis,:,:,:], 
                 ord=1,
-                axis=3,
+                axis=3
             )
             return d.reshape(x.shape[0], w.shape[0]*w.shape[1])
         
@@ -112,8 +112,8 @@ class Distance:
             squares_b = self.xp.sum(self.xp.power(b, 2), axis=1, keepdims=True)
             return self.xp.sqrt(squares_a + squares_b.T - 2*a.dot(b.T))      
         elif metric=="cosine":
-            return 1 - self.xp.dot(a/self.xp.linalg.norm(a,axis=1)[:,None],
-                           (b/self.xp.linalg.norm(b,axis=1)[:,None]).T)
+            return 1 - self.xp.dot(a/self.xp.linalg.norm(a, axis=1)[:,None],
+                           (b/self.xp.linalg.norm(b, axis=1)[:,None]).T)
         elif metric=="manhattan": 
             funz = lambda x,y: self.xp.sum(self.xp.abs(x.T - y), axis=-1)
             return self.xp.stack([funz(a[i], b) for i in range(a.shape[0])])

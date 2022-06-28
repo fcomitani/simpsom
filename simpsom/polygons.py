@@ -158,7 +158,7 @@ class Hexagons(Polygon):
         
         if coor[1]%2: newx += 0.5
 
-        return np.array((newx, newy))
+        return np.array((newx, newy), dtype=np.float32)
     
     @staticmethod
     def _tile(coor, color, edgecolor=None):
