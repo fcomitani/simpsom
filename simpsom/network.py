@@ -954,7 +954,7 @@ class SOMNode:
     def _set_difference(self, diff_value):
         """ Set the neighbouring nodes weights difference."""
 
-        self.difference = self.xp.float32(diff_value)
+        self.difference = self.xp.float(diff_value)
 
 
 if __name__ == "__main__":
