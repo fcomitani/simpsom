@@ -36,8 +36,6 @@ class Distance:
 
         x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
 
-        # Any reason why we are reshaping it?
-        #ToDo: try and remove
         w_flat = w.reshape(-1, w.shape[2])
         w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
 
@@ -61,8 +59,6 @@ class Distance:
 
         x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
 
-        # Any reason why we are reshaping it?
-        #ToDo: try and remove
         w_flat = w.reshape(-1, w.shape[2])
         w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
 

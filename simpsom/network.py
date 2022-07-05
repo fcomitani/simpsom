@@ -8,7 +8,7 @@ F Comitani, SG Riva, A Tangherloni
 # TODO:
 # - pytest
 # - README
-# - Docs: API + tutorial
+# - Docs
 # - PyPI
 # - add PBC to clustering and batch
 
@@ -436,13 +436,13 @@ class SOMNet:
             _xx, _yy = self.xp.meshgrid(_neigx, _neigy)
             
             if self.neighborhood_fun == "bubble":
-                neighborhood_caller = self.neighborhoods.prepare_neig_func(self.neighborhoods.bubble, _neigx, _neigy)
+                neighborhood_caller = partial(self.neighborhoods.bubble, neigx = _neigx, neighy = _neigy)
 
             elif self.neighborhood_fun in ["mexican", "mexican_hat"]:
-                neighborhood_caller = self.neighborhoods.prepare_neig_func(self.neighborhoods.mexican_hat, _xx, _yy, 0.5, False)
+                neighborhood_caller = partial(self.neighborhoods.mexican_hat, xx = _xx, yy = _yy)
 
             elif self.neighborhood_fun == "gaussian":
-                neighborhood_caller = self.neighborhoods.prepare_neig_func(self.neighborhoods.gaussian, _xx, _yy, 0.5, False)
+                neighborhood_caller = partial(self.neighborhoods.gaussian, xx = _xx, yy = _yy)
             
             else:
                 logger.error("This shouldn't happen!\n"+ \
@@ -489,7 +489,7 @@ class SOMNet:
                     wins = (unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
 
                     # TODO: Add PBC here
-                    g_gpu = neighborhood_caller(wins, self.sigma)*self.learning_rate
+                    g_gpu = neighborhood_caller(wins, sigma=self.sigma)*self.learning_rate
                     
                     sum_g_gpu = self.xp.sum(g_gpu, axis=0)
                     g_flat_gpu = g_gpu.reshape(g_gpu.shape[0], -1)
@@ -795,7 +795,6 @@ class SOMNet:
         bmu_coor = self._get(bmu_coor)
 
         if jitter:
-            logger.error(bmu_coor)
             bmu_coor = np.array(bmu_coor).astype(float)
             bmu_coor += np.random.uniform(low=-.15, high=.15, size=(bmu_coor.shape[0],2))
 
