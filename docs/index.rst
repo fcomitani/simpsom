@@ -1,7 +1,22 @@
-Welcome to SimpSOM's API documentation!
+.. image:: figs/logo_rc.png
+	:width: 300px
+
+|
+Welcome to simpsom's documentation!
 ===================================
 
-Simple Self-Organizing Maps (SimpSOM) is a lightweight and easy-to-read implementation of Kohonen Self-Organizing Maps (SOM) for Python 3 for dimensionality reduction.
+...
+
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Getting Started
+
+   self
+   installation.rst
+   releases.rst
+   faq.rst
 
 .. toctree::
    :maxdepth: 1
@@ -10,3 +25,9 @@ Simple Self-Organizing Maps (SimpSOM) is a lightweight and easy-to-read implemen
 
    api.rst
 
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Tutorial
+
+   tutorial_MNIST.rst

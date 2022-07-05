@@ -6,11 +6,11 @@ F Comitani, SG Riva, A Tangherloni
 """
 
 # TODO:
-# - unittest
+# - pytest
 # - README
 # - Docs: API + tutorial
 # - PyPI
-# - add PBC to clustering
+# - add PBC to clustering and batch
 
 from __future__ import print_function
 
@@ -218,26 +218,19 @@ class SOMNet:
 
         Args:
             matrix (array): N-dimensional dataset.
-            n_eigv (int): number of components to keep. 
+            n_pca (int): number of components to keep. 
                      
         Returns:            
-            vectors (array): Principal axes in feature space, 
+            (array): Principal axes in feature space, 
                 representing the directions of maximum variance in the data.
         """
-               
-        # mean_mat = self.xp.mean(matrix.T, axis=1)
-        # center_mat = matrix - mean_mat
-        # cov_mat = self.xp.cov(center_mat.T).astype(self.xp.float32)
-
-        # PCA = self.xp.linalg.eigh(cov_mat)[-1].T[::-1][:n_eigv]
 
         mean_vector = np.mean(matrix.T, axis=1)
         center_mat  = matrix - mean_vector
         cov_mat     = np.cov(center_mat.T).astype(self.xp.float32)
         
-        PCA = np.linalg.eig(cov_mat)[-1].T[:n_pca]
+        return np.linalg.eig(cov_mat)[-1].T[:n_pca]
 
-        return PCA
 
     def _get_n_process(self):
         """ Count number of GPU or CPU processors. """
@@ -262,7 +255,6 @@ class SOMNet:
                 return -1
                 
         
-    # not sure about the following, why not simply sample with replcement if 
     def _randomize_dataset(self, data, epochs):   
         """Generates a random list of datapoints indices for online training.
 
@@ -339,7 +331,7 @@ class SOMNet:
         return self.xp.argmin(dists,axis=1)
     
     # TODO: Consider changing epoch in online training to be equivalent to 1 full run
-    # of the dataset rather than a single data poing
+    # of the dataset rather than a single data point
     def train(self, train_algo="batch", epochs=-1, start_learning_rate=0.01, early_stop=None, 
               early_stop_patience=3, early_stop_tolerance=1e-4, batch_size=-1):
         """Train the SOM.
@@ -803,6 +795,8 @@ class SOMNet:
         bmu_coor = self._get(bmu_coor)
 
         if jitter:
+            logger.error(bmu_coor)
+            bmu_coor = np.array(bmu_coor).astype(float)
             bmu_coor += np.random.uniform(low=-.15, high=.15, size=(bmu_coor.shape[0],2))
 
         _, _ = scatter_on_map([bmu_coor], 

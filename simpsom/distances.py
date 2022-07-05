@@ -3,7 +3,6 @@ Distance functions.
 
 F Comitani, SG Riva, A Tangherloni 
 """
-#ToDo: add docstring.
 
 import sys
 from loguru import logger
@@ -12,46 +11,80 @@ class Distance:
     """ Container class for distance functions. """
 
     def __init__(self, xp=None):
+        """ Instantiate the Distance class.
+
+        Args:
+            xp (numpy or cupy): the numeric labrary to use
+                to calculate distances.
+        """
+
         self.xp = xp
 
-    def euclidean_distance(self, x, w, w_flat_sq=None):
-        """Calculate L2 distance
-        NB: result shape is (N,X*Y)
+    def euclidean_distance(self, x, w):
+        """Calculate the L2 distance between two arrays.
+
+        Note: result shape is (N,X*Y)
+
+        Args:
+            x (array): first array.
+            w (array): second array.
+
+        Returns:
+            (float): the euclidean distance between two
+                provided arrays
         """
 
         x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
 
+        # Any reason why we are reshaping it?
+        #ToDo: try and remove
         w_flat = w.reshape(-1, w.shape[2])
-        if w_flat_sq is None:
-            w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
-        cross_term = self.xp.dot(x, w_flat.T)
-        
-        result = -2 * cross_term + w_flat_sq.T + x_sq
+        w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
+
+        result = x_sq + w_flat_sq.T - 2 * self.xp.dot(x, w_flat.T)
 
         return self.xp.nan_to_num(self.xp.sqrt(result))
 
-    def cosine_distance(self, x, w, w_flat_sq=None):
-        """Calculate cosine distance
-        NB: result shape is (N,X*Y)
-        """
+    def cosine_distance(self, x, w):
+        """Calculate the cosine distance between two arrays.
 
-        w_flat = w.reshape(-1, w.shape[2])
-        if w_flat_sq is None:
-            w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
+        Note: result shape is (N,X*Y)
+
+        Args:
+            x (array): first array.
+            w (array): second array.
+
+        Returns:
+            (float): the euclidean distance between two
+                provided arrays
+        """
 
         x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
 
-        num = self.xp.dot(x, w_flat.T)
-        denum = self.xp.sqrt(x_sq * w_flat_sq.T)
-        similarity = self.xp.nan_to_num(num/denum)
+        # Any reason why we are reshaping it?
+        #ToDo: try and remove
+        w_flat = w.reshape(-1, w.shape[2])
+        w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
+
+        similarity = self.xp.nan_to_num(
+                self.xp.dot(x, w_flat.T)/self.xp.sqrt(x_sq * w_flat_sq.T))
 
         return 1 - similarity
 
     def manhattan_distance(self, x, w):
-        """Calculate Manhattan distance
-        It is very slow (~10x) compared to euclidean distance
-        TODO: improve performance. Maybe a custom kernel is necessary
-        NB: result shape is (N,X*Y)
+        """Calculate Manhattan distance between two arrays.
+
+        Warning: Very slow (~10x euclidean distance) 
+            custom kernel may be necessary
+        Note: result shape is (N,X*Y)
+
+        Args:
+            x (array): first array.
+            w (array): second array.
+
+        Returns:
+            (float): the manhattan distance between two
+                provided arrays
         """
 
         if self.xp.__name__ == "cupy":
@@ -71,21 +104,37 @@ class Distance:
                 axis=3
             )
             
-            return d.reshape(x.shape[0], w.shape[0]*w.shape[1])
         else:
             d = self.xp.linalg.norm(
                 x[:,self.xp.newaxis,self.xp.newaxis,:]-w[self.xp.newaxis,:,:,:], 
                 ord=1,
                 axis=3
             )
-            return d.reshape(x.shape[0], w.shape[0]*w.shape[1])
+        
+        return d.reshape(x.shape[0], w.shape[0]*w.shape[1])
         
     def batchpairdist(self, x, w, metric, sq=None):
+        """ Calculates distances betweens points in batches. Two array-like objects
+        must be provided, distances will be calculated between all points in the 
+        first array and all those in the second array.
+
+        Args:
+            a (array): first array.
+            b (array): second array.
+            metric (string): distance metric. 
+                Accepted metrics are euclidean, manhattan, and cosine (default "euclidean").
+            sq()
+
+        Returns:
+            d (array or list): the calculated distances. 
+        """
                 
         if metric=="euclidean":
-            return self.euclidean_distance(x, w, w_flat_sq=sq)
+            return self.euclidean_distance(x, w)
+
         elif metric=="cosine":
-            return self.cosine_distance(x, w, w_flat_sq=sq)
+            return self.cosine_distance(x, w)
+
         elif metric=="manhattan":
             return self.manhattan_distance(x, w)
         
@@ -94,26 +143,29 @@ class Distance:
         sys.exit(1)
 
     def pairdist(self, a, b, metric):
-        """Calculating distances betweens points.
+        """ Calculates distances betweens points. Two array-like objects
+        must be provided, distances will be calculated between all points in the 
+        first array and all those in the second array.
 
         Args:
-            a (array): .
-            b (array): .
+            a (array): first array.
+            b (array): second array.
             metric (string): distance metric. 
                 Accepted metrics are euclidean, manhattan, and cosine (default "euclidean").
 
         Returns:
-            d (narray or list): distances. 
-
+            d (array or list): the calculated distances. 
         """
 
         if metric=="euclidean":
             squares_a = self.xp.sum(self.xp.power(a, 2), axis=1, keepdims=True)
             squares_b = self.xp.sum(self.xp.power(b, 2), axis=1, keepdims=True)
-            return self.xp.sqrt(squares_a + squares_b.T - 2*a.dot(b.T))      
+            return self.xp.sqrt(squares_a + squares_b.T - 2 * a.dot(b.T))      
+
         elif metric=="cosine":
             return 1 - self.xp.dot(a/self.xp.linalg.norm(a, axis=1)[:,None],
                            (b/self.xp.linalg.norm(b, axis=1)[:,None]).T)
+
         elif metric=="manhattan": 
             funz = lambda x,y: self.xp.sum(self.xp.abs(x.T - y), axis=-1)
             return self.xp.stack([funz(a[i], b) for i in range(a.shape[0])])
