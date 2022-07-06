@@ -37,6 +37,7 @@ class Neighborhoods:
         cx = xx.T[center][:, self.xp.newaxis, self.xp.newaxis]
         cy = yy.T[center][:, self.xp.newaxis, self.xp.newaxis]
 
+        #PBC here
         px = self.xp.exp(-self.xp.power(nx-cx, 2)/d)
         py = self.xp.exp(-self.xp.power(ny-cy, 2)/d)
 
@@ -65,6 +66,7 @@ class Neighborhoods:
         cx = xx.T[center][:, self.xp.newaxis, self.xp.newaxis]
         cy = yy.T[center][:, self.xp.newaxis, self.xp.newaxis]
 
+        #PBC here
         px = self.xp.power(nx-cx, 2)
         py = self.xp.power(ny-cy, 2)
 
@@ -93,6 +95,7 @@ class Neighborhoods:
         cx = center[0][:,self.xp.newaxis]
         cy = center[1][:,self.xp.newaxis]
 
+        #PBC here
         ax = self.xp.logical_and(nx > cx-sigma,
                             nx < cx+sigma)
         ay = self.xp.logical_and(ny > cy-sigma,

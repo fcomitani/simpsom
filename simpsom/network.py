@@ -6,11 +6,14 @@ F Comitani, SG Riva, A Tangherloni
 """
 
 # TODO:
+
 # - pytest
-# - README
 # - Docs
 # - PyPI
+
 # - add PBC to clustering and batch
+# - fix inconsistency in epochs between batch and online
+# - discrepancy between online and batch
 
 from __future__ import print_function
 
@@ -166,7 +169,7 @@ class SOMNet:
         this_weight = None
 
         # When loaded from file, element 0 contains information on the network shape
-        count_weight = 1
+        count_weight = 3
 
         if load_file is None:
 
@@ -188,16 +191,15 @@ class SOMNet:
                             self.xp.max(self.data, axis=0)]
 
         else:   
-            # TODO: add format checks
             logger.info("The weights will be loaded from file.\n"+ \
                 "The map shape will be overwritten and no weights"+ \
                 "initialization will be applied.")
             if not load_file.endswith(".npy"):
                 load_file += ".npy" 
-            weights_array = np.load(load_file)
+            weights_array = np.load(load_file, allow_pickle=True)
             self.net_height = int(weights_array[0][0])
-            self.net_width  = int(weights_array[0][1])
-            self.PBC        = bool(weights_array[0][2])
+            self.net_width  = int(weights_array[1][0])
+            self.PBC        = bool(weights_array[2][0])
 
         for x in range(self.net_width):
             for y in range(self.net_height):
@@ -277,23 +279,24 @@ class SOMNet:
                                  for it in np.arange(iterations)] 
                 for ix in shuffled]
     
-    def save_map(self, file_name="./trained_som.npy"):
+    def save_map(self, file_name="trained_som.npy"):
         """Saves the network dimensions, the pbc and nodes weights to a file.
 
         Args:
             file_name (str): Name of the file where the data will be saved.
         """
         
-        weights_array = [self.xp.zeros(len(self.nodes_list[0].weights))]
-        weights_array[0][0], weights_array[0][1], weights_array[0][2] = self.net_height, self.net_width, int(self.PBC)
-        for node in self.nodes_list:
-             weights_array.append(node.weights)
+        #ToDo: find a better format
+        weights_array = [[float(self.net_height)]*self.nodes_list[0].weights.shape[0], 
+                         [float(self.net_width)]*self.nodes_list[0].weights.shape[0],
+                         [float(self.PBC)]*self.nodes_list[0].weights.shape[0]] + \
+                        [self._get(node.weights) for node in self.nodes_list]
 
         if not file_name.endswith((".npy")):
             file_name+=".npy"
         logger.info("Map shape and weights will be saved to:\n"+ \
                     os.path.join(self.output_path, file_name))
-        np.save(os.path.join(self.output_path,file_name), self._get(weights_array))   
+        np.save(os.path.join(self.output_path,file_name), np.array(weights_array))
 
     def _update_sigma(self, n_iter):    
         """Update the gaussian sigma.
@@ -605,7 +608,8 @@ class SOMNet:
             
         """
 
-        bmu_coor = self.project_onto_map(coor) if project else coor
+        bmu_coor = self.project_onto_map(coor, file_name="som_projected_"+algorithm+".npy") \
+                   if project else coor
         if self.xp.__name__=="cupy" and self.cluster_algo.__name__.startswith('sklearn'):
             bmu_coor = self._get(bmu_coor)
 
@@ -674,16 +678,19 @@ class SOMNet:
                     ticks will be 15% smaller.
         """
 
+        if "file_name" not in kwargs.keys():
+            kwargs["file_name"] = \
+                os.path.join(self.output_path, "./som_feature_{}.png".format(str(feature)))
+
         _, _ = plot_map([[node.pos[0],node.pos[1]] for node in self.nodes_list], 
                 [node.weights[feature] for node in self.nodes_list], 
                 self.polygons,
-                show=show, print_out=print_out, 
-                file_name=os.path.join(self.output_path, "./som_feature_{}.png".format(str(feature))),
+                show=show, print_out=print_out,
                 **kwargs) 
 
         if print_out:
             logger.info("Feature map will be saved to:\n"+ \
-                        os.path.join(self.output_path, "./som_feature_{}.png".format(str(feature))))
+                        kwargs["file_name"])
 
     def plot_map_by_difference(self, show=False, print_out=True,
                              **kwargs):
@@ -704,6 +711,9 @@ class SOMNet:
                     ticks will be 15% smaller.
         """
         
+        if "file_name" not in kwargs.keys():
+            kwargs["file_name"] = os.path.join(self.output_path, "./som_difference.png")
+
         if self.nodes_list[0].difference is None:
             self.get_nodes_difference()
 
@@ -713,13 +723,12 @@ class SOMNet:
         _, _ = plot_map([[node.pos[0],node.pos[1]] for node in self.nodes_list], 
                 [node.difference for node in self.nodes_list], 
                 self.polygons,
-                show=show, print_out=print_out, 
-                file_name=os.path.join(self.output_path, "./som_difference.png"),
+                show=show, print_out=print_out,
                 **kwargs) 
 
         if print_out:
             logger.info("Node difference map will be saved to:\n"+ \
-                        os.path.join(self.output_path, "./som_difference.png"))
+                        kwargs["file_name"])
 
     def plot_convergence(self, show=False, print_out=True,
                              **kwargs):
@@ -747,6 +756,9 @@ class SOMNet:
             
         else:
 
+            if "file_name" not in kwargs.keys():
+                kwargs["file_name"] = os.path.join(self.output_path, "./som_convergence.png")
+
             conv_values = np.nan_to_num(self.convergence) 
 
             if "title" not in kwargs.keys():
@@ -757,13 +769,12 @@ class SOMNet:
                 kwargs["ylabel"] = "Score"
 
             _, _ = line_plot(conv_values, 
-                    show=show, print_out=print_out, 
-                    file_name=os.path.join(self.output_path, "./som_convergence.png"),
+                    show=show, print_out=print_out,
                     **kwargs)
 
         if print_out:
             logger.info("Convergence results will be saved to:\n"+ \
-                        os.path.join(self.output_path, "./som_convergence.png"))
+                        kwargs["file_name"])
 
     def plot_projected_points(self, coor, color_val=None,
                              project=True, jitter=True, 
@@ -791,6 +802,9 @@ class SOMNet:
                     ticks will be 15% smaller.
         """
         
+        if "file_name" not in kwargs.keys():
+            kwargs["file_name"] = os.path.join(self.output_path, "./som_projected.png")
+
         bmu_coor = self.project_onto_map(coor) if project else coor
         bmu_coor = self._get(bmu_coor)
 
@@ -803,12 +817,11 @@ class SOMNet:
                        self.polygons,
                        color_val=color_val, 
                        show=show, print_out=print_out,
-                       file_name=os.path.join(self.output_path, "./som_projected.png"),
                        **kwargs)
 
         if print_out:
             logger.info("Projected data scatter plot will be saved to:\n"+ \
-                        os.path.join(self.output_path, "./som_projected.png"))
+                        kwargs["file_name"])
 
     def plot_clusters(self, coor, clusters,
                              color_val=None,
@@ -839,6 +852,9 @@ class SOMNet:
 
         """
         
+        if "file_name" not in kwargs.keys():
+            kwargs["file_name"] = os.path.join(self.output_path, "./som_clusters.png")
+
         bmu_coor = self.project_onto_map(coor) if project else coor
         bmu_coor = self._get(bmu_coor)
 
@@ -850,12 +866,11 @@ class SOMNet:
                        self.polygons,
                        color_val=color_val, 
                        show=show, print_out=print_out,
-                       file_name=os.path.join(self.output_path, "./som_clusters.png"),
                        **kwargs)
 
         if print_out:
             logger.info("Clustering plot will be saved to:\n"+ \
-                        os.path.join(self.output_path, "./som_clustering.png"))
+                        kwargs["file_name"])
 
         
 class SOMNode:
