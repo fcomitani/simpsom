@@ -1,3 +1,9 @@
+"""
+Pytests.
+
+F Comitani, SG Riva, A Tangherloni 
+"""
+
 import os
 import shutil
 
@@ -55,7 +61,9 @@ class TestNetwork:
     (False, 10, 'PCA', 'manhattan', 'hexagonal', 'gaussian', 'online', 10, None, False, False),
     (True, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'online', 10, None, False, False),
     (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 10, None, False, False),
-    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'mexican', 'batch', 10, None, False, False),
+    (False, 10, 'PCA', 'cosine', 'hexagonal', 'gaussian', 'batch', 10, None, False, False),
+    (False, 10, 'PCA', 'manhattan', 'hexagonal', 'gaussian', 'batch', 10, None, False, False),
+    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'mexican_hat', 'batch', 10, None, False, False),
     (False, 10, 'PCA', 'euclidean', 'hexagonal', 'bubble', 'batch', 10, None, False, False),
     (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 100, 'mapdiff', False, False),
     (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 100, 'bmudiff', False, False),
@@ -83,6 +91,8 @@ class TestNetwork:
 
         net.save_map("trained_som_{:d}.npy".format(hashed_name))
         assert(os.path.isfile(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name))))
+        shutil.copyfile(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)), 
+                        os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(hashed_name)))
         assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)), allow_pickle=True),
                            np.load(os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(hashed_name)), allow_pickle=True), decimal=4)
 

@@ -6,10 +6,10 @@ F Comitani, SG Riva, A Tangherloni
 """
 
 # TODO:
-
-# - pytest
 # - Docs
 # - PyPI
+# - Coverage
+# - Github actions
 
 # - add PBC to clustering and batch
 # - fix inconsistency in epochs between batch and online

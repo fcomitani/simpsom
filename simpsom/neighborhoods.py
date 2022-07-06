@@ -44,11 +44,9 @@ class Neighborhoods:
         return (px*py).transpose((0,2,1))
 
 
-    def mexican_hat(self, center, std_coeff, xx, yy):
+    def mexican_hat(self, center, sigma, xx, yy):
         """Mexican hat centered in c on any topology.
         
-        TODO: remove compact_support and sigma
-
         Args:
             center (int): index of the center point along the xx yy grid.
             sigma (float): standard deviation coefficient.
