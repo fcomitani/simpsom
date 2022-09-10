@@ -23,15 +23,13 @@ class Distance:
     def euclidean_distance(self, x, w):
         """Calculate the L2 distance between two arrays.
 
-        Note: result shape is (N,X*Y)
-
         Args:
             x (array): first array.
             w (array): second array.
 
         Returns:
             (float): the euclidean distance between two
-                provided arrays
+                provided arrays 
         """
 
         x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
@@ -45,8 +43,6 @@ class Distance:
 
     def cosine_distance(self, x, w):
         """Calculate the cosine distance between two arrays.
-
-        Note: result shape is (N,X*Y)
 
         Args:
             x (array): first array.
@@ -69,18 +65,14 @@ class Distance:
 
     def manhattan_distance(self, x, w):
         """Calculate Manhattan distance between two arrays.
-
-        Warning: Very slow (~10x euclidean distance) 
-            custom kernel may be necessary
-        Note: result shape is (N,X*Y)
-
+        
         Args:
             x (array): first array.
             w (array): second array.
 
         Returns:
-            (float): the manhattan distance between two
-                provided arrays
+            (float): the manhattan distance 
+                between two provided arrays.
         """
 
         if self.xp.__name__ == "cupy":

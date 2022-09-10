@@ -101,12 +101,14 @@ class Polygon():
         return ax
 
     @staticmethod
-    def distance_pbc(nodes, net_shape, distance_func, xp=np):
+    def distance_pbc(node_a, node_b, net_shape, distance_func, xp=np):
         """ Manage distances with PBC based on the tiling.
 
         Args:
-            nodes (tuple[numpy array, numpy array]): the nodes 
-                whose distance will be calculated.
+            node_a (np.ndarray): the first node 
+                from which the distance will be calculated.
+            node_b (np.ndarray): the second node 
+                from which the distance will be calculated.
             net_shape (tuple[float, float]): the sizes of
                 the network.
             distance_func (function): the function
@@ -120,15 +122,15 @@ class Polygon():
 
         net_shape = xp.array((net_shape[0],net_shape[1]))
 
-        return  xp.min(xp.array((distance_func(nodes[0],nodes[1]),
-                     distance_func(nodes[0],nodes[1]+net_shape*xp.array((1,0))),
-                     distance_func(nodes[0],nodes[1]-net_shape*xp.array((1,0))),
-                     distance_func(nodes[0],nodes[1]+net_shape*xp.array((0,1))),
-                     distance_func(nodes[0],nodes[1]-net_shape*xp.array((0,1))),
-                     distance_func(nodes[0],nodes[1]+net_shape),
-                     distance_func(nodes[0],nodes[1]-net_shape),
-                     distance_func(nodes[0],nodes[1]+net_shape*xp.array((-1,1))),
-                     distance_func(nodes[0],nodes[1]-net_shape*xp.array((-1,1))))))
+        return  xp.min(xp.array((distance_func(node_a,node_b),
+                     distance_func(node_a,node_b+net_shape*xp.array((1,0))),
+                     distance_func(node_a,node_b-net_shape*xp.array((1,0))),
+                     distance_func(node_a,node_b+net_shape*xp.array((0,1))),
+                     distance_func(node_a,node_b-net_shape*xp.array((0,1))),
+                     distance_func(node_a,node_b+net_shape),
+                     distance_func(node_a,node_b-net_shape),
+                     distance_func(node_a,node_b+net_shape*xp.array((-1,1))),
+                     distance_func(node_a,node_b-net_shape*xp.array((-1,1))))))
 
 
 class Squares(Polygon):
@@ -181,12 +183,14 @@ class Hexagons(Polygon):
                               edgecolor=edgecolor)
 
     @staticmethod
-    def distance_pbc(nodes, net_shape, distance_func, xp=np):
+    def distance_pbc(node_a, node_b, net_shape, distance_func, xp=np):
         """ Manage distances with PBC based on the tiling.
 
         Args:
-            nodes (tuple[numpy array, numpy array]): the nodes 
-                whose distance will be calculated.
+            node_a (np.ndarray): the first node 
+                from which the distance will be calculated.
+            node_b (np.ndarray): the second node 
+                from which the distance will be calculated.
             net_shape (tuple[float, float]): the sizes of
                 the network.
             distance_func (function): the function
@@ -197,17 +201,17 @@ class Hexagons(Polygon):
         Returns:
             (float): the distance adjusted by PBC.
         """
-
+        
         offset = 0 if net_shape[1]%2 == 0 else 0.5
         offset = xp.array((offset,0))
         net_shape = xp.array((net_shape[0], net_shape[1]*2/np.sqrt(3)*3/4))
 
-        return  xp.min(xp.array((distance_func(nodes[0],nodes[1]),
-                     distance_func(nodes[0],nodes[1]+net_shape*xp.array((1,0))),
-                     distance_func(nodes[0],nodes[1]-net_shape*xp.array((1,0))),
-                     distance_func(nodes[0],nodes[1]+net_shape*xp.array((0,1))+offset),
-                     distance_func(nodes[0],nodes[1]-net_shape*xp.array((0,1))-offset),
-                     distance_func(nodes[0],nodes[1]+net_shape+offset),
-                     distance_func(nodes[0],nodes[1]-net_shape-offset),
-                     distance_func(nodes[0],nodes[1]+net_shape*xp.array((-1,1))+offset),
-                     distance_func(nodes[0],nodes[1]-net_shape*xp.array((-1,1))-offset))))
+        return  xp.min(xp.array((distance_func(node_a,node_b),
+                     distance_func(node_a,node_b+net_shape*xp.array((1,0))),
+                     distance_func(node_a,node_b-net_shape*xp.array((1,0))),
+                     distance_func(node_a,node_b+net_shape*xp.array((0,1))+offset),
+                     distance_func(node_a,node_b-net_shape*xp.array((0,1))-offset),
+                     distance_func(node_a,node_b+net_shape+offset),
+                     distance_func(node_a,node_b-net_shape-offset),
+                     distance_func(node_a,node_b+net_shape*xp.array((-1,1))+offset),
+                     distance_func(node_a,node_b-net_shape*xp.array((-1,1))-offset))))
