@@ -1,16 +1,14 @@
-"""
-Distance functions.
-
-F Comitani, SG Riva, A Tangherloni 
-"""
+from types import ModuleType
 
 import sys
 from loguru import logger
 
+import numpy as np
+
 class Distance:
     """ Container class for distance functions. """
 
-    def __init__(self, xp=None):
+    def __init__(self, xp: ModuleType = None) -> None:
         """ Instantiate the Distance class.
 
         Args:
@@ -20,7 +18,7 @@ class Distance:
 
         self.xp = xp
 
-    def euclidean_distance(self, x, w):
+    def euclidean_distance(self, x: np.ndarray, w: np.ndarray) -> float:
         """Calculate the L2 distance between two arrays.
 
         Args:
@@ -41,7 +39,7 @@ class Distance:
 
         return self.xp.nan_to_num(self.xp.sqrt(result))
 
-    def cosine_distance(self, x, w):
+    def cosine_distance(self, x: np.ndarray, w: np.ndarray) -> float:
         """Calculate the cosine distance between two arrays.
 
         Args:
@@ -63,9 +61,9 @@ class Distance:
 
         return 1 - similarity
 
-    def manhattan_distance(self, x, w):
+    def manhattan_distance(self, x: np.ndarray, w: np.ndarray) -> float:
         """Calculate Manhattan distance between two arrays.
-        
+
         Args:
             x (array): first array.
             w (array): second array.
@@ -101,7 +99,7 @@ class Distance:
         
         return d.reshape(x.shape[0], w.shape[0]*w.shape[1])
         
-    def batchpairdist(self, x, w, metric, sq=None):
+    def batchpairdist(self, x: np.ndarray, w: np.ndarray, metric: str) -> np.ndarray:
         """ Calculates distances betweens points in batches. Two array-like objects
         must be provided, distances will be calculated between all points in the 
         first array and all those in the second array.
@@ -111,8 +109,6 @@ class Distance:
             b (array): second array.
             metric (string): distance metric. 
                 Accepted metrics are euclidean, manhattan, and cosine (default "euclidean").
-            sq()
-
         Returns:
             d (array or list): the calculated distances. 
         """
@@ -130,7 +126,7 @@ class Distance:
                      "\"euclidean\", \"cosine\" and \"manhattan\"")
         sys.exit(1)
 
-    def pairdist(self, a, b, metric):
+    def pairdist(self, a: np.ndarray, b: np.ndarray, metric: str) -> np.ndarray:
         """ Calculates distances betweens points. Two array-like objects
         must be provided, distances will be calculated between all points in the 
         first array and all those in the second array.

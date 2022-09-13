@@ -1,13 +1,10 @@
-"""
-Neighborhood functions.
-
-F Comitani, SG Riva, A Tangherloni 
-"""
+from types import ModuleType
+import numpy as np
 
 class Neighborhoods:
     """ Container class with functions to calculate neihgborhoods. """
 
-    def __init__(self, xp=None):
+    def __init__(self, xp: ModuleType = None) -> None:
         """ Instantiate the Neighborhoods class.
 
         Args:
@@ -17,9 +14,9 @@ class Neighborhoods:
 
         self.xp = xp
 
-    def gaussian(self, center, sigma, xx, yy):
+    def gaussian(self, center: int, sigma: float, xx: np.ndarray, yy: np.ndarray) -> np.ndarray:
         """Returns a Gaussian centered in c on any 2d topology.
-        
+
         Args:
             center (int): index of the center point along the xx yy grid.
             sigma (float): standard deviation coefficient.
@@ -32,21 +29,20 @@ class Neighborhoods:
 
         d = 2*sigma**2
 
-        nx = xx[self.xp.newaxis,:,:]
-        ny = yy[self.xp.newaxis,:,:]
+        nx = xx[self.xp.newaxis, :, :]
+        ny = yy[self.xp.newaxis, :, :]
         cx = xx.T[center][:, self.xp.newaxis, self.xp.newaxis]
         cy = yy.T[center][:, self.xp.newaxis, self.xp.newaxis]
 
-        #PBC here
+        # PBC here
         px = self.xp.exp(-self.xp.power(nx-cx, 2)/d)
         py = self.xp.exp(-self.xp.power(ny-cy, 2)/d)
 
-        return (px*py).transpose((0,2,1))
+        return (px*py).transpose((0, 2, 1))
 
-
-    def mexican_hat(self, center, sigma, xx, yy):
+    def mexican_hat(self, center: int, sigma: float, xx: np.ndarray, yy: np.ndarray) -> np.ndarray:
         """Mexican hat centered in c on any topology.
-        
+
         Args:
             center (int): index of the center point along the xx yy grid.
             sigma (float): standard deviation coefficient.
@@ -59,23 +55,23 @@ class Neighborhoods:
 
         d = 2*sigma**2
 
-        nx = xx[self.xp.newaxis,:,:]
-        ny = yy[self.xp.newaxis,:,:]
+        nx = xx[self.xp.newaxis, :, :]
+        ny = yy[self.xp.newaxis, :, :]
         cx = xx.T[center][:, self.xp.newaxis, self.xp.newaxis]
         cy = yy.T[center][:, self.xp.newaxis, self.xp.newaxis]
 
-        #PBC here
+        # PBC here
         px = self.xp.power(nx-cx, 2)
         py = self.xp.power(ny-cy, 2)
 
         p = px + py
-        
-        return (self.xp.exp(-p/d)*(1-2/d*p)).transpose((0,2,1))
 
-    def bubble(self, center, sigma, neigx, neigy):
+        return (self.xp.exp(-p/d)*(1-2/d*p)).transpose((0, 2, 1))
+
+    def bubble(self, center: int, sigma: float, neigx: np.ndarray, neigy: np.ndarray) -> np.ndarray:
         """Constant function centered in c with spread sigma,
         which should be an odd value.
-        
+
         TODO: remove compact_support
 
         Args: 
@@ -87,16 +83,16 @@ class Neighborhoods:
         Returns:
             (array): the resulting neighborhood matrix.
         """
-        
-        nx = neigx[self.xp.newaxis,:]
-        ny = neigy[self.xp.newaxis,:]
-        cx = center[0][:,self.xp.newaxis]
-        cy = center[1][:,self.xp.newaxis]
 
-        #PBC here
+        nx = neigx[self.xp.newaxis, :]
+        ny = neigy[self.xp.newaxis, :]
+        cx = center[0][:, self.xp.newaxis]
+        cy = center[1][:, self.xp.newaxis]
+
+        # PBC here
         ax = self.xp.logical_and(nx > cx-sigma,
-                            nx < cx+sigma)
+                                 nx < cx+sigma)
         ay = self.xp.logical_and(ny > cy-sigma,
-                            ny < cy+sigma)
+                                 ny < cy+sigma)
 
-        return (ax[:,:,self.xp.newaxis]*ay[:,self.xp.newaxis,:])
+        return (ax[:, :, self.xp.newaxis]*ay[:, self.xp.newaxis, :])

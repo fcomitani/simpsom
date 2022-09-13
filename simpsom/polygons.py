@@ -1,15 +1,12 @@
-"""
-Set of classes for custom tiling.
-
-F Comitani, SG Riva, A Tangherloni
-"""
-
-from loguru import logger
-import numpy as np
+from typing import Tuple, Callable, Collection
+from types import ModuleType
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import RegularPolygon
+import numpy as np
+from loguru import logger
 from matplotlib.collections import PatchCollection
+from matplotlib.figure import Figure
+from matplotlib.patches import RegularPolygon
 
 
 class Polygon():
@@ -17,19 +14,18 @@ class Polygon():
 
     topology = None
 
-
-    def get_topology(self):
+    def get_topology(self) -> None:
         """ Get information on the set topology. """
 
         return self.topology
 
     @staticmethod
-    def to_tiles(coor):
+    def to_tiles(coor: Tuple[float]) -> np.ndarray:
         """ Convert 2D cartesian coordinates to tiling coordinates.
 
         Args:
             coor (tuple[float,..]): the Cartesian coordinates.
-            
+
         Returns:
             array: a 2d array containing the coordinates in the new space.
         """
@@ -37,7 +33,8 @@ class Polygon():
         return np.array(coor)
 
     @staticmethod
-    def _tile(coor, color, edgecolor=None):
+    def _tile(coor: Tuple[float], color: Tuple[float],
+              edgecolor: Tuple[float] = None) -> type(RegularPolygon):
         """ Set the tile shape for plotting.
 
         Args:
@@ -49,15 +46,16 @@ class Polygon():
             (matplotlib patch object): the tile to add to the plot.
         """
 
-        return RegularPolygon(coor, 
-                              numVertices=4, 
-                              radius=.95/np.sqrt(2), 
-                              orientation=np.radians(45), 
+        return RegularPolygon(coor,
+                              numVertices=4,
+                              radius=.95/np.sqrt(2),
+                              orientation=np.radians(45),
                               facecolor=color,
                               edgecolor=edgecolor)
 
     @classmethod
-    def draw_map(cls, fig, centers, feature):
+    def draw_map(cls, fig: Figure, centers: Collection[float],
+                 feature: Collection[float]) -> plt.Axes:
         """Draw a grid based on the selected tiling, nodes positions and color the tiles
         according to a given feature.
 
@@ -67,15 +65,15 @@ class Polygon():
                 to be plotted in the Hexagonal tiling space.
             feature (list, float): array contaning informations on the weigths of each cell, 
                 to be plotted as colors.
-            
+
         Returns:
             ax (matplotlib axis object): the axis on which the hexagonal grid has been plotted.         
         """
 
         ax = fig.add_subplot(111, aspect="equal")
 
-        xpoints = [x[0]  for x in centers]
-        ypoints = [x[1]  for x in centers]
+        xpoints = [x[0] for x in centers]
+        ypoints = [x[1] for x in centers]
         patches = []
 
         cmap = plt.get_cmap("viridis")
@@ -85,23 +83,24 @@ class Polygon():
         if np.isnan(feature).all():
             edgecolor = "#555555"
 
-        for x,y,f in zip(xpoints, ypoints, feature):
-            patches.append(cls._tile((x,y),
+        for x, y, f in zip(xpoints, ypoints, feature):
+            patches.append(cls._tile((x, y),
                            color=cmap(f),
                            edgecolor=edgecolor)
-                          ) 
+                           )
 
         pc = PatchCollection(patches,  match_original=True)
         pc.set_array(np.array(feature))
         ax.add_collection(pc)
-          
+
         ax.axis("off")
         ax.autoscale_view()
-        
+
         return ax
 
     @staticmethod
-    def distance_pbc(node_a, node_b, net_shape, distance_func, xp=np):
+    def distance_pbc(node_a: np.ndarray, node_b: np.ndarray, net_shape: Tuple[float],
+                     distance_func: Callable, xp: ModuleType = np) -> float:
         """ Manage distances with PBC based on the tiling.
 
         Args:
@@ -120,17 +119,22 @@ class Polygon():
             (float): the distance adjusted by PBC.
         """
 
-        net_shape = xp.array((net_shape[0],net_shape[1]))
+        net_shape = xp.array((net_shape[0], net_shape[1]))
 
-        return  xp.min(xp.array((distance_func(node_a,node_b),
-                     distance_func(node_a,node_b+net_shape*xp.array((1,0))),
-                     distance_func(node_a,node_b-net_shape*xp.array((1,0))),
-                     distance_func(node_a,node_b+net_shape*xp.array((0,1))),
-                     distance_func(node_a,node_b-net_shape*xp.array((0,1))),
-                     distance_func(node_a,node_b+net_shape),
-                     distance_func(node_a,node_b-net_shape),
-                     distance_func(node_a,node_b+net_shape*xp.array((-1,1))),
-                     distance_func(node_a,node_b-net_shape*xp.array((-1,1))))))
+        return xp.min(xp.array((distance_func(node_a, node_b),
+                                distance_func(node_a, node_b +
+                                              net_shape*xp.array((1, 0))),
+                                distance_func(node_a, node_b -
+                                              net_shape*xp.array((1, 0))),
+                                distance_func(node_a, node_b +
+                                              net_shape*xp.array((0, 1))),
+                                distance_func(node_a, node_b -
+                                              net_shape*xp.array((0, 1))),
+                                distance_func(node_a, node_b+net_shape),
+                                distance_func(node_a, node_b-net_shape),
+                                distance_func(node_a, node_b +
+                                              net_shape*xp.array((-1, 1))),
+                                distance_func(node_a, node_b-net_shape*xp.array((-1, 1))))))
 
 
 class Squares(Polygon):
@@ -145,25 +149,27 @@ class Hexagons(Polygon):
     topology = "hexagonal"
 
     @staticmethod
-    def to_tiles(coor):
+    def to_tiles(coor: Tuple[float]) -> np.ndarray:
         """Convert 2D cartesian coordinates to tiling coordinates.
 
         Args:
             coor (tuple[float,..]): the Cartesian coordinates.
-            
+
         Returns:
             array: a 2d array containing the coordinates in the new space.
         """
 
         newy = coor[1]*2/np.sqrt(3)*3/4
         newx = coor[0]
-        
-        if coor[1]%2: newx += 0.5
+
+        if coor[1] % 2:
+            newx += 0.5
 
         return np.array((newx, newy), dtype=np.float32)
-    
+
     @staticmethod
-    def _tile(coor, color, edgecolor=None):
+    def _tile(coor: Tuple[float], color: Tuple[float],
+              edgecolor: Tuple[float] = None) -> type(RegularPolygon):
         """ Set the hexagonal tile for plotting.
 
         Args:
@@ -175,15 +181,16 @@ class Hexagons(Polygon):
             (matplotlib patch object): the tile to add to the plot.
         """
 
-        return RegularPolygon(coor, 
-                              numVertices=6, 
-                              radius=.95/np.sqrt(3), 
-                              orientation=np.radians(0), 
+        return RegularPolygon(coor,
+                              numVertices=6,
+                              radius=.95/np.sqrt(3),
+                              orientation=np.radians(0),
                               facecolor=color,
                               edgecolor=edgecolor)
 
     @staticmethod
-    def distance_pbc(node_a, node_b, net_shape, distance_func, xp=np):
+    def distance_pbc(node_a: np.ndarray, node_b: np.ndarray, net_shape: Tuple[float],
+                     distance_func: Callable, xp: ModuleType = np) -> float:
         """ Manage distances with PBC based on the tiling.
 
         Args:
@@ -201,17 +208,22 @@ class Hexagons(Polygon):
         Returns:
             (float): the distance adjusted by PBC.
         """
-        
-        offset = 0 if net_shape[1]%2 == 0 else 0.5
-        offset = xp.array((offset,0))
+
+        offset = 0 if net_shape[1] % 2 == 0 else 0.5
+        offset = xp.array((offset, 0))
         net_shape = xp.array((net_shape[0], net_shape[1]*2/np.sqrt(3)*3/4))
 
-        return  xp.min(xp.array((distance_func(node_a,node_b),
-                     distance_func(node_a,node_b+net_shape*xp.array((1,0))),
-                     distance_func(node_a,node_b-net_shape*xp.array((1,0))),
-                     distance_func(node_a,node_b+net_shape*xp.array((0,1))+offset),
-                     distance_func(node_a,node_b-net_shape*xp.array((0,1))-offset),
-                     distance_func(node_a,node_b+net_shape+offset),
-                     distance_func(node_a,node_b-net_shape-offset),
-                     distance_func(node_a,node_b+net_shape*xp.array((-1,1))+offset),
-                     distance_func(node_a,node_b-net_shape*xp.array((-1,1))-offset))))
+        return xp.min(xp.array((distance_func(node_a, node_b),
+                                distance_func(node_a, node_b +
+                                              net_shape*xp.array((1, 0))),
+                                distance_func(node_a, node_b -
+                                              net_shape*xp.array((1, 0))),
+                                distance_func(
+                                    node_a, node_b+net_shape*xp.array((0, 1))+offset),
+                                distance_func(
+                                    node_a, node_b-net_shape*xp.array((0, 1))-offset),
+                                distance_func(node_a, node_b+net_shape+offset),
+                                distance_func(node_a, node_b-net_shape-offset),
+                                distance_func(
+                                    node_a, node_b+net_shape*xp.array((-1, 1))+offset),
+                                distance_func(node_a, node_b-net_shape*xp.array((-1, 1))-offset))))

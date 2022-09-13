@@ -1,9 +1,3 @@
-"""
-Pytests.
-
-F Comitani, SG Riva, A Tangherloni 
-"""
-
 import os
 import shutil
 
