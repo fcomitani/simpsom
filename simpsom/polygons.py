@@ -1,4 +1,4 @@
-from typing import Tuple, Callable, Collection
+from typing import Union, Tuple, Callable, Collection
 from types import ModuleType
 
 import matplotlib.pyplot as plt
@@ -7,6 +7,7 @@ from loguru import logger
 from matplotlib.collections import PatchCollection
 from matplotlib.figure import Figure
 from matplotlib.patches import RegularPolygon
+from matplotlib.colors import ListedColormap
 
 
 class Polygon():
@@ -55,7 +56,7 @@ class Polygon():
 
     @classmethod
     def draw_map(cls, fig: Figure, centers: Collection[float],
-                 feature: Collection[float]) -> plt.Axes:
+                 feature: Collection[float], cmap: Union[ListedColormap, None] = None) -> plt.Axes:
         """Draw a grid based on the selected tiling, nodes positions and color the tiles
         according to a given feature.
 
@@ -65,6 +66,7 @@ class Polygon():
                 to be plotted in the Hexagonal tiling space.
             feature (list, float): array contaning informations on the weigths of each cell, 
                 to be plotted as colors.
+            cmap (ListedColormap): a custom color map.
 
         Returns:
             ax (matplotlib axis object): the axis on which the hexagonal grid has been plotted.         
@@ -76,7 +78,7 @@ class Polygon():
         ypoints = [x[1] for x in centers]
         patches = []
 
-        cmap = plt.get_cmap("viridis")
+        cmap = plt.get_cmap("viridis") if cmap is None else cmap
         cmap.set_bad(color="#ffffff", alpha=1.)
         edgecolor = None
 
@@ -89,7 +91,7 @@ class Polygon():
                            edgecolor=edgecolor)
                            )
 
-        pc = PatchCollection(patches,  match_original=True)
+        pc = PatchCollection(patches,  match_original=True, cmap=cmap)
         pc.set_array(np.array(feature))
         ax.add_collection(pc)
 

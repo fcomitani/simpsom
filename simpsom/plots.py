@@ -34,7 +34,8 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
             - cbar_label (str): colorbar label,
             - fontsize (int): font size of label, 
                 the title will be 15% larger,
-                ticks will be 15% smaller.
+                ticks will be 15% smaller,
+            - cmap (ListedColormap): a custom colormap.
 
     Returns:
         fig (figure object): the produced figure object.
@@ -51,8 +52,8 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
         kwargs["fontsize"] = 12
 
     fig = plt.figure(figsize=(kwargs["figsize"][0], kwargs["figsize"][1]))
-
-    ax = polygons_class.draw_map(fig, centers, feature)
+    ax = polygons_class.draw_map(fig, centers, feature,
+                                 cmap=kwargs['cmap'] if 'cmap' in kwargs else None)
     ax.set_title(kwargs["title"], size=kwargs["fontsize"]*1.15)
 
     divider = make_axes_locatable(ax)
@@ -194,6 +195,7 @@ def scatter_on_map(datagroups: Collection[np.ndarray], centers: Collection[np.nd
             - fontsize (int): font size of label, 
                 the title will be 15% larger,
                 ticks will be 15% smaller.
+            - cmap (ListedColormap): a custom colormap.
 
     Returns:
         fig (figure object): the produced figure object.

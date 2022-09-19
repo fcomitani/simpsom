@@ -34,24 +34,24 @@ class SOMNet:
             net_height (int): Number of nodes along the first dimension.
             net_width (int): Numer of nodes along the second dimension.
             data (array): N-dimensional dataset.
-            load_file (str): Name of file to load containing information 
+            load_file (str): Name of file to load containing information
                 to initialize the network weights.
             metric (string): distance metric for the identification of best matching
                 units. Accepted metrics are euclidean, manhattan, and cosine (default "euclidean").
-            topology (str): topology of the map tiling. 
+            topology (str): topology of the map tiling.
                 Accepted shapes are hexagonal, and square (default "hexagonal").
             neighborhood_fun (str): neighbours drop-off function for training, choose among gaussian,
                 mexican_hat and bubble (default "gaussian").
             init (str or list[array, ...]): Nodes initialization method, choose between random
-                or PCA (default "random"). 
+                or PCA (default "random").
             PBC (boolean): Activate/deactivate periodic boundary conditions,
                 warning: only quality threshold clustering algorithm works with PBC (default False).
             GPU (boolean): Activate/deactivate GPU run with RAPIDS (requires CUDA, default False).
             CUML (boolean): Use CUML for clustering. If deactivate, use scikit-learn instead
                 (requires CUDA, default False).
-            random_seed (int): Seed for the random numbers generator (default None).   
+            random_seed (int): Seed for the random numbers generator (default None).
             debug (bool): Set logging level printed to screen as debug.
-            out_path (str): Path to the folder where all data and plots will be saved 
+            out_path (str): Path to the folder where all data and plots will be saved
                 (default, current folder).
         """
 
@@ -156,7 +156,7 @@ class SOMNet:
         """ Set initial map weights values, either by loading them from file or with random/PCA.
 
         Args:
-            load_file (str): Name of file to load containing information 
+            load_file (str): Name of file to load containing information
                 to initialize the network weights.
         """
 
@@ -217,10 +217,10 @@ class SOMNet:
 
         Args:
             matrix (array): N-dimensional dataset.
-            n_pca (int): number of components to keep. 
+            n_pca (int): number of components to keep.
 
-        Returns:            
-            (array): Principal axes in feature space, 
+        Returns:
+            (array): Principal axes in feature space,
                 representing the directions of maximum variance in the data.
         """
 
@@ -231,7 +231,7 @@ class SOMNet:
         return np.linalg.eig(cov_mat)[-1].T[:n_pca]
 
     def _get_n_process(self) -> int:
-        """ Count number of GPU or CPU processors. 
+        """ Count number of GPU or CPU processors.
 
         Returns:
             (int): the number of processors.
@@ -261,7 +261,7 @@ class SOMNet:
 
         Args:
             data (array or list): N-dimensional dataset.
-            epochs (int): Number of training iterations. 
+            epochs (int): Number of training iterations.
 
         Returns:
             entries (array): array with randomized indices
@@ -303,8 +303,8 @@ class SOMNet:
     def _update_sigma(self, n_iter: int) -> None:
         """Update the gaussian sigma.
 
-        Args:           
-            n_iter (int): Iteration number.   
+        Args:
+            n_iter (int): Iteration number.
         """
 
         self.sigma = self.start_sigma * self.xp.exp(-n_iter/self.tau)
@@ -312,8 +312,8 @@ class SOMNet:
     def _update_learning_rate(self, n_iter: int) -> None:
         """Update the learning rate.
 
-        Args:           
-            n_iter (int): Iteration number.   
+        Args:
+            n_iter (int): Iteration number.
         """
 
         self.learning_rate = self.start_learning_rate * \
@@ -322,12 +322,12 @@ class SOMNet:
     def find_bmu_ix(self, vecs: np.array) -> 'SOMNode':
         """Find the index of the best matching unit (BMU) for a given list of vectors.
 
-        Args:           
+        Args:
             vec (array or list[lists, ..]): vectors whose distance from the network
                 nodes will be calculated.
 
-        Returns:            
-            bmu (SOMNode): The best matching unit node index.   
+        Returns:
+            bmu (SOMNode): The best matching unit node index.
         """
 
         dists = self.distance.pairdist(vecs,
@@ -345,29 +345,28 @@ class SOMNet:
         """Train the SOM.
 
         Args:
-            train_algo (str): training algorithm, choose between "online" or "batch" 
+            train_algo (str): training algorithm, choose between "online" or "batch"
                 (default "online"). Beware that the online algorithm will run one datapoint
                 per epoch, while the batch algorithm runs all points at one for each epoch.
             epochs (int): Number of training iterations. If not selected (or -1)
-                automatically set epochs as 10 times the number of datapoints. 
+                automatically set epochs as 10 times the number of datapoints.
                 Warning: for online training each epoch corresponds to 1 sample in the
                 input dataset, for batch training it corresponds to one full dataset
                 training.
             start_learning_rate (float): Initial learning rate, used only in online
                 learning.
             early_stop (str): Early stopping method, for now only "mapdiff" (checks if the
-                weights of nodes don"t change) and "bmudiff" (checks if the assigned bmu to each sample
-                don"t change) are available. If None, don"t use early stopping (default None).
-            early_stop_patience (int): Number of iterations without improvement before stopping the 
+                weights of nodes don"t change) is available. If None, don"t use early stopping (default None).
+            early_stop_patience (int): Number of iterations without improvement before stopping the
                 training, only available for batch training (default 3).
             early_stop_tolerance (float): Improvement tolerance, if the map does not improve beyond
                 this threshold, the early stopping counter will be activated (it needs to be set
                 appropriately depending on the used distance metric). Ignored if early stopping
                 is off (default 1e-4).
-            batch_size (int): Split the dataset in batches of this size when calculating the 
-                new weights, works only when train_algo is "batch" and helps keeping down the 
+            batch_size (int): Split the dataset in batches of this size when calculating the
+                new weights, works only when train_algo is "batch" and helps keeping down the
                 memory requirements when working with large datasets, if -1 run the whole dataset
-                at once. 
+                at once.
         """
 
         logger.info("The map will be trained with the " +
@@ -378,18 +377,21 @@ class SOMNet:
         self.data = self.xp.array(self.data)
 
         if epochs == -1:
-            epochs = self.data.shape[0]*10
+            if train_algo == 'online':
+                epochs = self.data.shape[0]*10
+            else:
+                epochs = 10
 
         self.epochs = epochs
         self.tau = self.epochs/self.xp.log(self.start_sigma)
 
-        if early_stop not in ["mapdiff", "bmudiff", None]:
+        if early_stop not in ["mapdiff", None]:
             logger.warning("Convergence method not recognized, early stopping will be deactivated. " +
-                           "Choose between \"mapdiff\" and \"bmudiff\". Please note \"bmudiff\" is only available" +
-                           "for batch training it will be ignored in online training.")
+                           "Currently only \"mapdiff\" is available.")
             early_stop = None
+        
         early_stopper = EarlyStop(tolerance=early_stop_tolerance,
-                                  patience=early_stop_patience)
+                                patience=early_stop_patience)
 
         if batch_size == -1 or batch_size > self.data.shape[0]:
             _n_parallel = self._get_n_process()
@@ -398,7 +400,7 @@ class SOMNet:
 
         if train_algo == "online":
             """ Online training.
-            Bootstrap: one datapoint is extracted randomly with replacement at each epoch 
+            Bootstrap: one datapoint is extracted randomly with replacement at each epoch
             and used to update the weights.
             """
 
@@ -407,6 +409,8 @@ class SOMNet:
             for n_iter in range(self.epochs):
 
                 if early_stopper.stop_training:
+                    logger.info(
+                        "\rEarly stop tolerance reached at epoch {:d}, training will be stopped.".format(n_iter-1))
                     self.convergence = early_stopper.convergence
                     break
 
@@ -427,13 +431,13 @@ class SOMNet:
                     node._update_weights(
                         input_vec[0], self.sigma, self.learning_rate, bmu)
 
-                if early_stop is not None:
+                if n_iter % self.data.shape[0] == 0 and early_stop is not None:
                     early_stopper.check_convergence(
                         early_stopper.calc_loss(self))
 
         elif train_algo == "batch":
             """ Batch training.
-            All datapoints are used at once for each epoch, 
+            All datapoints are used at once for each epoch,
             the weights are updated with the sum of contributions from all these points.
             No learning rate needed.
 
@@ -487,7 +491,7 @@ class SOMNet:
 
                 if early_stopper.stop_training:
                     logger.info(
-                        "\rEarly stop tolerance reached at epoch {:d}, stopping training.".format(n_iter-1))
+                        "\rEarly stop tolerance reached at epoch {:d}, training will be stopped.".format(n_iter-1))
                     self.convergence = early_stopper.convergence
                     break
 
@@ -495,8 +499,8 @@ class SOMNet:
                 self._update_learning_rate(n_iter)
 
                 if n_iter % 10 == 0:
-                    logger.debug("\rTraining SOM... {:d}%".format(
-                        int(n_iter*100.0/self.epochs)))
+                    logger.debug("Training SOM... {:.2f}%".format(
+                        n_iter*100.0/self.epochs))
 
                 # Run through mini batches to ease the memory burden.
                 try:
@@ -539,16 +543,14 @@ class SOMNet:
                 new_weights = self.xp.where(
                     denominator != 0, numerator / denominator, all_weights)
 
-                if early_stop == "mapdiff":
-                    loss = self.distance.pairdist(new_weights.reshape(self.net_width*self.net_height, self.data.shape[1]),
-                                                  all_weights.reshape(
-                        self.net_width*self.net_height, self.data.shape[1]),
-                        metric=self.metric).mean()
-                elif early_stop == "bmudiff":
-                    loss = self.xp.min(dists, axis=1).mean()
-
                 if early_stop is not None:
-                    early_stopper.check_convergence(loss)
+                    early_stopper.check_convergence(
+                        self.xp.diagonal(self.distance.pairdist(
+                            new_weights.reshape(
+                                self.net_width*self.net_height, self.data.shape[1]), 
+                            all_weights.reshape(
+                                self.net_width*self.net_height, self.data.shape[1]), 
+                            metric=self.metric)).mean())
 
                 all_weights = new_weights
 
@@ -568,9 +570,7 @@ class SOMNet:
             for node in self.nodes_list:
                 node.weights = node.weights.get()
         if early_stop is not None:
-            if self.GPU:
-                for n_iter, arr in enumerate(self.convergence):
-                    self.convergence[n_iter] = arr.get()
+            self.convergence = [arr.get() for arr in early_stopper.convergence] if self.GPU else early_stopper.convergence
 
     def get_nodes_difference(self) -> None:
         """ Extracts the neighbouring nodes difference in weights and assigns it
@@ -586,7 +586,7 @@ class SOMNet:
 
     def project_onto_map(self, array: np.ndarray,
                          file_name: str = "./som_projected.npy") -> list:
-        """Project the datapoints of a given array to the 2D space of the 
+        """Project the datapoints of a given array to the 2D space of the
         SOM by calculating the bmus.
 
         Args:
@@ -595,7 +595,7 @@ class SOMNet:
                 if not None.
 
         Returns:
-            (list): bmu x,y position for each input array datapoint. 
+            (list): bmu x,y position for each input array datapoint.
         """
 
         if not isinstance(array, self.xp.ndarray):
@@ -690,7 +690,7 @@ class SOMNet:
 
     def plot_map_by_feature(self, feature: int, show: bool = False, print_out: bool = True,
                             **kwargs: Tuple[int]) -> None:
-        """ Wrapper function to plot a trained 2D SOM map 
+        """ Wrapper function to plot a trained 2D SOM map
         color-coded according to a given feature.
 
         Args:
@@ -701,15 +701,15 @@ class SOMNet:
                 - figsize (tuple(int, int)): the figure size,
                 - title (str): figure title,
                 - cbar_label (str): colorbar label,
-                - labelsize (int): font size of label, 
+                - labelsize (int): font size of label,
                     the title will be 15% larger,
-                    ticks will be 15% smaller.
+                    ticks will be 15% smaller,
+                - cmap (ListedColormap) a custom cmap.
         """
 
         if "file_name" not in kwargs.keys():
-            kwargs["file_name"] = \
-                os.path.join(self.output_path,
-                             "./som_feature_{}.png".format(str(feature)))
+            kwargs["file_name"] = os.path.join(self.output_path,
+                                               "./som_feature_{}.png".format(str(feature)))
 
         _, _ = plot_map([[node.pos[0], node.pos[1]] for node in self.nodes_list],
                         [node.weights[feature] for node in self.nodes_list],
@@ -723,7 +723,7 @@ class SOMNet:
 
     def plot_map_by_difference(self, show: bool = False, print_out: bool = True,
                                **kwargs: Tuple[int]) -> None:
-        """ Wrapper function to plot a trained 2D SOM map 
+        """ Wrapper function to plot a trained 2D SOM map
         color-coded according neighbours weights difference.
         It will automatically calculate the difference values
         if not already computed.
@@ -735,9 +735,10 @@ class SOMNet:
                 - figsize (tuple(int, int)): the figure size,
                 - title (str): figure title,
                 - cbar_label (str): colorbar label,
-                - labelsize (int): font size of label, 
+                - labelsize (int): font size of label,
                     the title will be 15% larger,
-                    ticks will be 15% smaller.
+                    ticks will be 15% smaller,
+                - cmap (ListedColormap) a custom cmap.
         """
 
         if "file_name" not in kwargs.keys():
@@ -762,7 +763,7 @@ class SOMNet:
 
     def plot_convergence(self, show: bool = False, print_out: bool = True,
                          **kwargs: Tuple[int]) -> None:
-        """ Plot the the map training progress according to the 
+        """ Plot the the map training progress according to the
         chosen convergence criterion, when train_algo is batch.
 
         Args:
@@ -775,7 +776,7 @@ class SOMNet:
                 - ylabel (str): y-axis label,
                 - logx (bool): if True set x-axis to logarithmic scale,
                 - logy (bool): if True set y-axis to logarithmic scale,
-                - fontsize (int): font size of label, 
+                - fontsize (int): font size of label,
                     the title will be 15% larger,
                     ticks will be 15% smaller.
         """
@@ -803,9 +804,9 @@ class SOMNet:
                              show=show, print_out=print_out,
                              **kwargs)
 
-        if print_out:
-            logger.info("Convergence results will be saved to:\n" +
-                        kwargs["file_name"])
+            if print_out:
+                logger.info("Convergence results will be saved to:\n" +
+                            kwargs["file_name"])
 
     def plot_projected_points(self, coor: np.ndarray, color_val: Union[np.ndarray, None] = None,
                               project: bool = True, jitter: bool = True,
@@ -827,9 +828,10 @@ class SOMNet:
                 - figsize (tuple(int, int)): the figure size,
                 - title (str): figure title,
                 - cbar_label (str): colorbar label,
-                - labelsize (int): font size of label, 
+                - labelsize (int): font size of label,
                     the title will be 15% larger,
-                    ticks will be 15% smaller.
+                    ticks will be 15% smaller,
+                - cmap (ListedColormap) a custom cmap.
         """
 
         if "file_name" not in kwargs.keys():
@@ -846,7 +848,7 @@ class SOMNet:
 
         _, _ = scatter_on_map([bmu_coor],
                               [[node.pos[0], node.pos[1]]
-                                  for node in self.nodes_list],
+                              for node in self.nodes_list],
                               self.polygons,
                               color_val=color_val,
                               show=show, print_out=print_out,
@@ -878,10 +880,10 @@ class SOMNet:
                 - figsize (tuple(int, int)): the figure size,
                 - title (str): figure title,
                 - cbar_label (str): colorbar label,
-                - labelsize (int): font size of label, 
+                - labelsize (int): font size of label,
                     the title will be 15% larger,
-                    ticks will be 15% smaller.
-
+                    ticks will be 15% smaller,
+                - cmap (ListedColormap) a custom cmap.
         """
 
         if "file_name" not in kwargs.keys():
@@ -897,7 +899,7 @@ class SOMNet:
 
         _, _ = scatter_on_map([bmu_coor[clusters == clu] for clu in set(clusters)],
                               [[node.pos[0], node.pos[1]]
-                                  for node in self.nodes_list],
+                              for node in self.nodes_list],
                               self.polygons,
                               color_val=color_val,
                               show=show, print_out=print_out,
@@ -927,7 +929,7 @@ class SOMNode:
             polygons (Polygon obj): a polygon object with information on the map topology.
             xp (numpy or cupy): the numeric library to be used.
             weight_bounds(array): boundary values for the random initialization
-                of the weights. Must be in the format [min_val, max_val]. 
+                of the weights. Must be in the format [min_val, max_val].
                 They are overwritten by "init_vec".
             init_vec (array): Array containing the two custom vectors (e.g. PCA)
                 for the weights initalization.
