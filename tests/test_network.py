@@ -23,6 +23,8 @@ class Parameters:
 
 class TestNetwork:
 
+    BUILD_TRUTH = False
+
     @classmethod
     def setup_method(cls, capsys):
         
@@ -39,6 +41,12 @@ class TestNetwork:
        shutil.rmtree(Parameters.output_path)
 
     @staticmethod
+    def cleanup():
+
+        for filename in os.listdir(Parameters.output_path):
+            os.remove(os.path.join(Parameters.output_path, filename))
+
+    @staticmethod
     @pytest.fixture()
     def load_dataset():
 
@@ -48,32 +56,35 @@ class TestNetwork:
     @pytest.mark.parametrize("PBC,size,init,\
                               metric,topology,neighborhood_fun,\
                               train_algo,epochs,early_stop,\
-                              plotall,load", [
-    (False, 10, 'random', 'euclidean', 'hexagonal', 'gaussian', 'online', 10, None, False, False),
-    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'online', 10, None, False, True),
-    (False, 10, 'PCA', 'cosine', 'hexagonal', 'gaussian', 'online', 10, None, False, False),
-    (False, 10, 'PCA', 'manhattan', 'hexagonal', 'gaussian', 'online', 10, None, False, False),
-    (True, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'online', 10, None, False, False),
-    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 10, None, False, False),
-    (False, 10, 'PCA', 'cosine', 'hexagonal', 'gaussian', 'batch', 10, None, False, False),
-    (False, 10, 'PCA', 'manhattan', 'hexagonal', 'gaussian', 'batch', 10, None, False, False),
-    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'mexican_hat', 'batch', 10, None, False, False),
-    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'bubble', 'batch', 10, None, False, False),
-    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 100, 'mapdiff', False, False),
-    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 100, 'bmudiff', False, False),
-    (False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'online', 10, None, False, False),
-    (False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'batch', 10, 'mapdiff', True, False)
+                              clustering,plotall,load", [
+    (False, 10, 'random', 'euclidean', 'hexagonal', 'gaussian', 'online', 10, None,  None, False, False),
+    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'online', 10, None,  None, False, True),
+    (False, 10, 'PCA', 'cosine', 'hexagonal', 'gaussian', 'online', 10, None,  None, False, False),
+    (False, 10, 'PCA', 'manhattan', 'hexagonal', 'gaussian', 'online', 10, None,  None, False, False),
+    (True, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'online', 10, None,  None, False, False),
+    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 10, None,  None, False, False),
+    (False, 10, 'PCA', 'cosine', 'hexagonal', 'gaussian', 'batch', 10, None,  None, False, False),
+    (False, 10, 'PCA', 'manhattan', 'hexagonal', 'gaussian', 'batch', 10, None,  None, False, False),
+    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'mexican_hat', 'batch', 10, None,  None, False, False),
+    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'bubble', 'batch', 10, None,  None, False, False),
+    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 100, 'mapdiff',  None, False, False),
+    (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 100, 'bmudiff',  None, False, False),
+    (False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'online', 10, None,  None, False, False),
+    (False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'batch', 10, 'mapdiff', 'AgglomerativeClustering', True, False),
+    (False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'batch', 10, 'mapdiff', 'DBSCAN', True, False),
+    (False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'batch', 10, 'mapdiff', 'KMeans', True, False),
+    (True, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 10, None,  None, False, False)
     ])
     @pytest.mark.parametrize("GPU", Parameters.GPU)
     def test_som(self, load_dataset, PBC, size, init,
                  metric, topology, neighborhood_fun,
                  train_algo, epochs, early_stop,
-                 plotall, load, GPU):
+                 clustering, plotall, load, GPU):
 
         data = load_dataset
         hashed_name = int.from_bytes((str(PBC)+str(init)+
                str(metric)+str(topology)+str(neighborhood_fun)+\
-               str(train_algo)+str(epochs)+str(early_stop)).encode(), 'little')
+               str(train_algo)+str(epochs)+str(early_stop)+str(clustering)).encode(), 'little')
         
         net = sps.SOMNet(size, size, data, 
                          topology=topology, PBC=PBC, 
@@ -85,8 +96,11 @@ class TestNetwork:
 
         net.save_map("trained_som_{:d}.npy".format(hashed_name))
         assert(os.path.isfile(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name))))
-        shutil.copyfile(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)), 
-                        os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(hashed_name)))
+
+        if self.BUILD_TRUTH:
+            shutil.copyfile(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)), 
+                            os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(hashed_name)))
+
         assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)), allow_pickle=True),
                            np.load(os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(hashed_name)), allow_pickle=True), decimal=4)
 
@@ -124,50 +138,28 @@ class TestNetwork:
                                         file_name=os.path.join(Parameters.output_path, "som_projected_2.png"))
             assert(os.path.isfile(os.path.join(Parameters.output_path, "som_projected_2.png")))
 
-            labs, points = net.cluster(data, algorithm='AgglomerativeClustering', file_name="som_clusters_AC.npy")
-            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_projected_AgglomerativeClustering.npy")))
-            assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "som_projected_AgglomerativeClustering.npy"), allow_pickle=True),
-                               np.load(os.path.join(Parameters.truth_path, "som_projected_AgglomerativeClustering.npy"), allow_pickle=True), decimal=4)
+            labs, points = net.cluster(data, algorithm=clustering, file_name="som_clusters_{:d}.npy".format(hashed_name))
+            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_clusters_{:d}.npy".format(hashed_name))))
+            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_projected_"+clustering+".npy")))
 
-            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_clusters_AC.npy")))
-            assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "som_clusters_AC.npy"), allow_pickle=True),
-                               np.load(os.path.join(Parameters.truth_path, "som_clusters_AC.npy"), allow_pickle=True), decimal=4)
+            if self.BUILD_TRUTH:
+                shutil.copyfile(os.path.join(Parameters.output_path, "som_clusters_{:d}.npy".format(hashed_name)), 
+                                os.path.join(Parameters.truth_path, "som_clusters_{:d}.npy".format(hashed_name)))
 
-            net.plot_clusters(data, labs, project=True, show=False, print_out=True,
-                              file_name=os.path.join(Parameters.output_path, "som_clusters_AC.png"))
-            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_clusters_AC.png")))
+                shutil.copyfile(os.path.join(Parameters.output_path, "som_projected_"+clustering+".npy"), 
+                                os.path.join(Parameters.truth_path, "som_projected_{:d}.npy".format(hashed_name)))
 
-            labs, points = net.cluster(data, algorithm='DBSCAN', file_name="som_clusters_DB.npy")
-            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_projected_DBSCAN.npy")))
-            assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "som_projected_DBSCAN.npy"), allow_pickle=True),
-                               np.load(os.path.join(Parameters.truth_path, "som_projected_DBSCAN.npy"), allow_pickle=True), decimal=4)
+            assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "som_clusters_{:d}.npy".format(hashed_name)), allow_pickle=True),
+                               np.load(os.path.join(Parameters.truth_path, "som_clusters_{:d}.npy".format(hashed_name)), allow_pickle=True), decimal=4)
 
-            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_clusters_DB.npy")))
-            assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "som_clusters_DB.npy"), allow_pickle=True),
-                               np.load(os.path.join(Parameters.truth_path, "som_clusters_DB.npy"), allow_pickle=True), decimal=4)
+            assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "som_projected_"+clustering+".npy"), allow_pickle=True),
+                               np.load(os.path.join(Parameters.truth_path, "som_projected_{:d}.npy".format(hashed_name)), allow_pickle=True), decimal=4)
 
             net.plot_clusters(data, labs, project=True, show=False, print_out=True,
-                              file_name=os.path.join(Parameters.output_path, "som_clusters_DB.png"))
-            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_clusters_DB.png")))
+                              file_name=os.path.join(Parameters.output_path, "som_clusters.png"))
+            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_clusters.png")))
 
-            labs, points = net.cluster(data, algorithm='KMeans', file_name="som_clusters_KM.npy", random_state=32)
-            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_projected_KMeans.npy")))
-            assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "som_projected_KMeans.npy"), allow_pickle=True),
-                               np.load(os.path.join(Parameters.truth_path, "som_projected_KMeans.npy"), allow_pickle=True), decimal=4)
-
-            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_clusters_KM.npy")))
-            assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "som_clusters_KM.npy"), allow_pickle=True),
-                               np.load(os.path.join(Parameters.truth_path, "som_clusters_KM.npy"), allow_pickle=True), decimal=4)
-
-            net.plot_clusters(data, labs, project=True, show=False, print_out=True,
-                              file_name=os.path.join(Parameters.output_path, "som_clusters_KM.png"))
-            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_clusters_KM.png")))
-
-
-            net.plot_convergence(fsize=(5, 5), logax=False, show=False, print_out=True)
-            assert(os.path.isfile(os.path.join(Parameters.output_path, "som_convergence.png")))
-
-
+        self.cleanup()
 
 if __name__ == '__main__':
     pass
