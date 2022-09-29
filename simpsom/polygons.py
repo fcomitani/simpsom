@@ -62,14 +62,14 @@ class Polygon():
 
         Args:
             fig (matplotlib figure object): the figure on which the hexagonal grid will be plotted.
-            centers (list, float): array containing couples of coordinates for each cell 
+            centers (list, float): array containing couples of coordinates for each cell
                 to be plotted in the Hexagonal tiling space.
-            feature (list, float): array contaning informations on the weigths of each cell, 
+            feature (list, float): array contaning informations on the weigths of each cell,
                 to be plotted as colors.
             cmap (ListedColormap): a custom color map.
 
         Returns:
-            ax (matplotlib axis object): the axis on which the hexagonal grid has been plotted.         
+            ax (matplotlib axis object): the axis on which the hexagonal grid has been plotted.
         """
 
         ax = fig.add_subplot(111, aspect="equal")
@@ -106,9 +106,9 @@ class Polygon():
         """ Manage distances with PBC based on the tiling.
 
         Args:
-            node_a (np.ndarray): the first node 
+            node_a (np.ndarray): the first node
                 from which the distance will be calculated.
-            node_b (np.ndarray): the second node 
+            node_b (np.ndarray): the second node
                 from which the distance will be calculated.
             net_shape (tuple[float, float]): the sizes of
                 the network.
@@ -138,17 +138,58 @@ class Polygon():
                                               net_shape*xp.array((-1, 1))),
                                 distance_func(node_a, node_b-net_shape*xp.array((-1, 1))))))
 
+    @staticmethod
+    def neighborhood_pbc(center_node: Tuple[np.ndarray], nodes: Tuple[np.ndarray],
+                           net_shape: Tuple[float], distance_func: Callable,
+                           direction: 'str' = 'min',
+                           xp: ModuleType = np) -> np.ndarray:
+        """ Manage neighborhood with PBC based on the tiling, adapted for
+        batch training neighborhood functions. Works along a single
+        provided axis and calculates the distance of a single node (center_node) from
+        all other nodes in the network (nodes)
+
+        Args:
+            center_node (Tuple[np.ndarray]): position (index) of the first node along
+                the provided axis. Shaped as (net_shape[1], 1, 1), for each axis.
+            nodes (Tuple[np.ndarray]): the position of all nodes
+                long a given axis as a matrix.
+                Shaped as (1, net_shape[1], net_shape[0]), for each axis.
+            net_shape (tuple[float, float]): the sizes of
+                the network.
+            direction (str): if to use min or max to calculate 
+                the neighborhood function.
+            distance_func (function): the function
+                to calculate distance between nodes.
+            
+            xp (numpy or cupy): the numeric library
+                to handle arrays.
+
+        Returns:
+            (np.ndarray): the distance from all nodes adjusted by PBC.
+        """
+
+        net_shape = (np.full(nodes[0].shape, fill_value=net_shape[0]),
+                     np.full(nodes[1].shape, fill_value=net_shape[1]))
+
+        return xp.max(xp.array((distance_func(center_node[0], nodes[0]),
+                                distance_func(center_node[0], nodes[0]+net_shape[0]),
+                                distance_func(center_node[0], nodes[0]-net_shape[0]))), axis=0), \
+               xp.max(xp.array((distance_func(center_node[1], nodes[1]),
+                                distance_func(center_node[1], nodes[1]+net_shape[1]),
+                                distance_func(center_node[1], nodes[1]-net_shape[1]))), axis=0)
+
+
 
 class Squares(Polygon):
     """ Class to define a square tiling. """
 
-    topology = "square"
+    topology="square"
 
 
 class Hexagons(Polygon):
     """ Class to define a hexagonal tiling. """
 
-    topology = "hexagonal"
+    topology="hexagonal"
 
     @staticmethod
     def to_tiles(coor: Tuple[float]) -> np.ndarray:
@@ -161,8 +202,8 @@ class Hexagons(Polygon):
             array: a 2d array containing the coordinates in the new space.
         """
 
-        newy = coor[1]*2/np.sqrt(3)*3/4
-        newx = coor[0]
+        newy=coor[1]*2/np.sqrt(3)*3/4
+        newx=coor[0]
 
         if coor[1] % 2:
             newx += 0.5
@@ -171,7 +212,7 @@ class Hexagons(Polygon):
 
     @staticmethod
     def _tile(coor: Tuple[float], color: Tuple[float],
-              edgecolor: Tuple[float] = None) -> type(RegularPolygon):
+              edgecolor: Tuple[float]=None) -> type(RegularPolygon):
         """ Set the hexagonal tile for plotting.
 
         Args:
@@ -192,13 +233,13 @@ class Hexagons(Polygon):
 
     @staticmethod
     def distance_pbc(node_a: np.ndarray, node_b: np.ndarray, net_shape: Tuple[float],
-                     distance_func: Callable, xp: ModuleType = np) -> float:
+                     distance_func: Callable, xp: ModuleType=np) -> float:
         """ Manage distances with PBC based on the tiling.
 
         Args:
-            node_a (np.ndarray): the first node 
+            node_a (np.ndarray): the first node
                 from which the distance will be calculated.
-            node_b (np.ndarray): the second node 
+            node_b (np.ndarray): the second node
                 from which the distance will be calculated.
             net_shape (tuple[float, float]): the sizes of
                 the network.
@@ -211,9 +252,9 @@ class Hexagons(Polygon):
             (float): the distance adjusted by PBC.
         """
 
-        offset = 0 if net_shape[1] % 2 == 0 else 0.5
-        offset = xp.array((offset, 0))
-        net_shape = xp.array((net_shape[0], net_shape[1]*2/np.sqrt(3)*3/4))
+        offset=0 if net_shape[1] % 2 == 0 else 0.5
+        offset=xp.array((offset, 0))
+        net_shape=xp.array((net_shape[0], net_shape[1]*2/np.sqrt(3)*3/4))
 
         return xp.min(xp.array((distance_func(node_a, node_b),
                                 distance_func(node_a, node_b +
@@ -229,3 +270,45 @@ class Hexagons(Polygon):
                                 distance_func(
                                     node_a, node_b+net_shape*xp.array((-1, 1))+offset),
                                 distance_func(node_a, node_b-net_shape*xp.array((-1, 1))-offset))))
+
+    @staticmethod
+    def neighborhood_pbc(center_node: Tuple[np.ndarray], nodes: Tuple[np.ndarray],
+                           net_shape: Tuple[float], distance_func: Callable,
+                           xp: ModuleType=np) -> np.ndarray:
+        """ Manage neighborhood with PBC based on the tiling, adapted for
+        batch training neighborhood functions. Works along a single
+        provided axis and calculates the distance of a single node (center_node) from
+        all other nodes in the network (nodes)
+
+        Args:
+            center_node (Tuple[np.ndarray]): position (index) of the first node along
+                the provided axis. Shaped as (net_shape[1], 1, 1), for each axis.
+            nodes (Tuple[np.ndarray]): the position of all nodes
+                long a given axis as a matrix.
+                Shaped as (1, net_shape[1], net_shape[0]), for each axis.
+            net_shape (tuple[float, float]): the sizes of
+                the network.
+            distance_func (function): the function
+                to calculate distance between nodes.
+            xp (numpy or cupy): the numeric library
+                to handle arrays.
+
+        Returns:
+            (np.ndarray): the distance from all nodes adjusted by PBC.
+        """
+
+        offset = np.full(nodes[0].shape, fill_value=0)
+        if net_shape[1] % 2 != 0:
+            offset[np.abs(center_node[1]-nodes[1])>net_shape[1]/2] = 0.5
+
+        net_shape=(np.full(nodes[0].shape, fill_value=net_shape[0]),
+                   np.full(nodes[1].shape, fill_value=net_shape[1]*2/np.sqrt(3)*3/4))
+
+        return xp.max(xp.array((distance_func(center_node[0], nodes[0]),
+                                distance_func(
+                                    center_node[0], nodes[0]+net_shape[0]+offset),
+                                distance_func(center_node[0], nodes[0]-net_shape[0]-offset))), axis=0), \
+               xp.max(xp.array((distance_func(center_node[1], nodes[1]),
+                                distance_func(
+                                    center_node[1], nodes[1]+net_shape[1]),
+                                distance_func(center_node[1], nodes[1]-net_shape[1]))), axis=0)

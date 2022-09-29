@@ -118,6 +118,10 @@ class SOMNet:
         self.distance = Distance(self.xp)
 
         self.neighborhood_fun = neighborhood_fun.lower()
+        if self.neighborhood_fun not in ['gaussian', 'mexican_hat', 'bubble']:
+            logger.error("{} neighborhood function not recognized.".format(self.neighborhood_fun) +
+                         "Choose among 'gaussian', 'mexican_hat' or 'bubble'.")
+            raise ValueError
         self.neighborhoods = Neighborhoods(self.xp)
 
         self.convergence = []
@@ -389,9 +393,14 @@ class SOMNet:
             logger.warning("Convergence method not recognized, early stopping will be deactivated. " +
                            "Currently only \"mapdiff\" is available.")
             early_stop = None
-        
+
+        if early_stop is not None:
+            logger.info("Early stop active.")
+            logger.warning("Early stop is an experimental feature, "+
+                           "make sure to know what you are doing!")
+                           
         early_stopper = EarlyStop(tolerance=early_stop_tolerance,
-                                patience=early_stop_patience)
+                                  patience=early_stop_patience)
 
         if batch_size == -1 or batch_size > self.data.shape[0]:
             _n_parallel = self._get_n_process()
@@ -444,12 +453,6 @@ class SOMNet:
             Kinouchi, M. et al. "Quick Learning for Batch-Learning Self-Organizing Map" (2002).
             """
 
-            # Note: PBC currently not implemented for batch algo
-            if self.PBC:
-                logger.warning(
-                    "PBC currently unavailable for batch training and will be turned off.")
-                self.PBC = False
-
             # Storing the distances and weight matrices defeats the purpose of having
             # nodes as instances of a class, but it helps with the optimization
             # and parallelization at the cost of memory.
@@ -458,7 +461,6 @@ class SOMNet:
             all_weights = self.xp.array([n.weights for n in self.nodes_list])
             all_weights = all_weights.reshape(
                 self.net_width, self.net_height, self.data.shape[1])
-            early_stop_counter = 0
 
             numerator = self.xp.zeros(all_weights.shape, dtype=self.xp.float32)
             denominator = self.xp.zeros(
@@ -466,26 +468,15 @@ class SOMNet:
 
             unravel_precomputed = self.xp.unravel_index(self.xp.arange(self.net_width*self.net_height),
                                                         (self.net_width, self.net_height))
-            _neigx = self.xp.arange(self.net_width)
-            _neigy = self.xp.arange(self.net_height)
-            _xx, _yy = self.xp.meshgrid(_neigx, _neigy)
 
-            if self.neighborhood_fun == "bubble":
-                neighborhood_caller = partial(
-                    self.neighborhoods.bubble, neigx=_neigx, neighy=_neigy)
+            _xx, _yy = self.xp.meshgrid(self.xp.arange(
+                self.net_width), self.xp.arange(self.net_height))
 
-            elif self.neighborhood_fun in ["mexican", "mexican_hat"]:
-                neighborhood_caller = partial(
-                    self.neighborhoods.mexican_hat, xx=_xx, yy=_yy)
-
-            elif self.neighborhood_fun == "gaussian":
-                neighborhood_caller = partial(
-                    self.neighborhoods.gaussian, xx=_xx, yy=_yy)
-
-            else:
-                logger.error("This shouldn't happen!\n" +
-                             "If you are seeing this message, please contact the developers.")
-                sys.exit(1)
+            neighborhood_caller = partial(
+                self.neighborhoods.neighborhood_caller, xx=_xx, yy=_yy,
+                neigh_func=self.neighborhood_fun, 
+                pbc_func=self.polygons.neighborhood_pbc if self.PBC \
+                                                          else None)
 
             for n_iter in range(self.epochs):
 
@@ -502,13 +493,10 @@ class SOMNet:
                     logger.debug("Training SOM... {:.2f}%".format(
                         n_iter*100.0/self.epochs))
 
-                # Run through mini batches to ease the memory burden.
                 try:
-                    # Reuse already allocated memory
                     numerator.fill(0)
                     denominator.fill(0)
                 except AttributeError:
-                    # I haven"t allocated it yet
                     numerator = self.xp.zeros(all_weights.shape)
                     denominator = self.xp.zeros(
                         (all_weights.shape[0], all_weights.shape[1], 1))
@@ -529,7 +517,6 @@ class SOMNet:
                     wins = (
                         unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
 
-                    # TODO: Add PBC here
                     g_gpu = neighborhood_caller(
                         wins, sigma=self.sigma)*self.learning_rate
 
@@ -544,22 +531,17 @@ class SOMNet:
                     denominator != 0, numerator / denominator, all_weights)
 
                 if early_stop is not None:
-                    early_stopper.check_convergence(
-                        self.xp.diagonal(self.distance.pairdist(
-                            new_weights.reshape(
-                                self.net_width*self.net_height, self.data.shape[1]), 
-                            all_weights.reshape(
-                                self.net_width*self.net_height, self.data.shape[1]), 
-                            metric=self.metric)).mean())
+                    loss = self.xp.abs(self.xp.subtract(new_weights, all_weights)).mean()
+                    print(loss)
+                    early_stopper.check_convergence(loss)
 
                 all_weights = new_weights
 
-            # Revert back to object oriented
+            # Revert to object oriented
             all_weights = all_weights.reshape(
                 self.net_width*self.net_height, self.data.shape[1])
-
-            for n_iter, node in enumerate(self.nodes_list):
-                node.weights = all_weights[n_iter]  # * self.learning_rate
+            for n_node, node in enumerate(self.nodes_list):
+                node.weights = all_weights[n_node]  # * self.learning_rate
 
         else:
             logger.error(
@@ -570,7 +552,8 @@ class SOMNet:
             for node in self.nodes_list:
                 node.weights = node.weights.get()
         if early_stop is not None:
-            self.convergence = [arr.get() for arr in early_stopper.convergence] if self.GPU else early_stopper.convergence
+            self.convergence = [arr.get(
+            ) for arr in early_stopper.convergence] if self.GPU else early_stopper.convergence
 
     def get_nodes_difference(self) -> None:
         """ Extracts the neighbouring nodes difference in weights and assigns it
