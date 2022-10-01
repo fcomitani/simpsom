@@ -560,12 +560,25 @@ class SOMNet:
         to each node object.
         """
 
-        for node in self.nodes_list:
-            neighbors = self.xp.array([node2.weights for node2 in self.nodes_list
-                                       if node != node2 and node.get_node_distance(node2) <= 1.001])
-            node._set_difference(self.distance.pairdist(self.xp.array(node.weights.reshape(
-                1, node.weights.shape[0])), neighbors, metric="euclidean").mean())
+        weights = self.xp.array([node.weights for node in self.nodes_list])
+        pos = self.xp.array([node.pos for node in self.nodes_list])
+        weights_dist = self.distance.pairdist(weights, weights, metric=self.metric)  
+        
+        #if self.PBC:
+        #    pos_dist = self.polygons.distance_pbc(pos, pos,
+        #        net_shape=(self.net_width,self.net_height),
+        #        distance_func=lambda x, y: self.distance.pairdist(x, y, metric='euclidean'),
+        #        xp=self.xp,        
+        #        axis=0)
+        #else:
+        pos_dist = self.distance.pairdist(pos, pos, metric='euclidean')
+
+        weights_dist[(pos_dist > 1.01) | (pos_dist == 0.)] = np.nan
+        [node._set_difference(value) 
+            for node, value in zip(self.nodes_list, self.xp.nanmean(weights_dist, axis=0))]
+
         logger.info('Weights difference among neighboring nodes calculated.')
+
 
     def project_onto_map(self, array: np.ndarray,
                          file_name: str = "./som_projected.npy") -> list:

@@ -53,7 +53,8 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
 
     fig = plt.figure(figsize=(kwargs["figsize"][0], kwargs["figsize"][1]))
     ax = polygons_class.draw_map(fig, centers, feature,
-                                 cmap=kwargs['cmap'] if 'cmap' in kwargs else None)
+                                 cmap=kwargs['cmap'] if 'cmap' in kwargs 
+                                                     else plt.get_cmap('viridis'))
     ax.set_title(kwargs["title"], size=kwargs["fontsize"]*1.15)
 
     divider = make_axes_locatable(ax)
