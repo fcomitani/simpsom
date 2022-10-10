@@ -25,7 +25,7 @@ You can easily load MNIST data from `keras`.
     (train_X, train_y), (test_X, test_y) = mnist.load_data()
 
 
-First we need to reformat the input by flattening the matrix to a monodimensional vector. 
+First, we need to reformat the input by flattening the matrix to a monodimensional vector. 
 We then set up the map, we will use a 50x50 hexagonal grid with PBC. The nodes will be initialized
 from the principal components space, the neighborhood function is set to Gaussian and
 we will use cosine as distance metric in the high-dimensional space.
@@ -71,7 +71,7 @@ similar weights. We can expect digits with similar shapes to be found within the
   :alt: SOM map colored by feature 100
 
 We can also inspect the values assumed by weights for specific features.
-In this case we can see how nodes in the basin to the bottom right (and bottom left by PBC)
+In this case, we can see how nodes in the basin to the bottom right (and bottom left by PBC)
 is characterized by high values of the 100th feature. In this case,
 images mapping to that area will have color in their 100th pixel.
 
@@ -93,11 +93,11 @@ We will only train 1000 points per digit.
   :width: 400
   :alt: Handwritten digits projected onto a trained SOM.
 
-We see how the different digits are for the most part well compartimentalized. 
+We see how the different digits are for the most part well compartmentalized. 
 
 We could also have a look at the closest matching unit to the average digit
 for each of these groups and see that indeed they fall into the expected basins
-and their shapes are a well representative average.
+and their shapes are a well-representative averages.
 
 .. code-block:: python
 

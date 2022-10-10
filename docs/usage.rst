@@ -21,7 +21,7 @@ Using `simpsom` is easy, after loading the library initialize a network object.
                     output_path="./")
 
 
-First you need to provide `length` and `height` of your network, in this case we 
+First, you need to provide `length` and `height` of your network, in this case we 
 will build a 20x20 grid. Your input `data` matrix must be in a `np.ndarray`-compatible format.
 
 Two tiling topologies are available in `simpsom`, a `square` grid or and `hexagonal` grid.
@@ -86,7 +86,7 @@ To recover the positions and weights of all nodes for example
     all_positions = [[node.pos[0], node.pos[1]] for node in self.nodes_list]
     all_weights = [node.weights[feature] for node in self.nodes_list]
 
-The `project_onto_map` method allows you to project data points onto a 2D trained map.
+The `project_onto_map` method allows you to project data points onto a 2D-trained map.
 
 .. code-block:: python
 
@@ -95,7 +95,7 @@ The `project_onto_map` method allows you to project data points onto a 2D traine
 Plotting
 ========
 
-`simpsom` comes with a number of plotting functionalities that allow you to inspect
+`simpsom` comes with several plotting functionalities that allow you to inspect
 the results of the training.
 
 .. code-block:: python
@@ -105,10 +105,10 @@ the results of the training.
 
 `plot_map_by_difference` allows you to visualize the trained map coloring each node
 by the average weights difference from its neighbors. Useful to identify map boundaries.
-The map can be saved to file by providing a path and filename to `print_out`,
+The map can be saved to a file by providing a path and filename to `print_out`,
 while the `show` flag is needed for interactive visualization.
 
-`plot_map_by_difference` will automatically calculate the nodes differences and save them
+`plot_map_by_difference` will automatically calculate the nodes' differences and save them
 to the `difference` attribute within each `SOMNode` object by calling the `net.self.get_nodes_difference()`
 method under the hood.
 
@@ -130,13 +130,13 @@ with the `project_onto_map` and `plot_projecte_points` functions.
             project=False, jitter=False, 
             show=True, print_out=False)
 
-The points can be projected on the fly without having to run `project_onto_map` prior to plotting 
+The points can be projected on the fly without having to run `project_onto_map` before plotting 
 by activating the `project` flag.
 `color_val` allows you to pass color values for the nodes in case you want to compare the projection
-with a specific weight value form the nodes. 
-`jitter` lets you add a random jitter to avoid overlapping points.
+with a specific weight value from the nodes. 
+`jitter` lets you add random jitter to avoid overlapping points.
 
-If early stopping was activated (not reccomended) a convergence plot can be
+If early stopping was activated (not recommended) a convergence plot can be
 produced with `plot_convergence`.
 
 .. code-block:: python
@@ -149,7 +149,7 @@ Clustering
 
 Clustering is one of the many uses of SOM.
 Once the points are projected onto the 2-dimensional SOM, they can be used with any clustering algorithm.
-`simpsom` provides a number of wrapper functions to directly run a clustering identification analysis
+`simpsom` provides a wrapper function to directly run a clustering identification analysis
 on the projected points.
 
 .. code-block:: python
@@ -161,10 +161,10 @@ and any further argument required by the algorithm (e.g. `n_clusters` for `'KMea
 By default the function will assume the data has been provided in its original dimensionality, but pre-projected
 data points can be also provided by deactivating the `project` flag.
 
-*Note:* for clustering algorithms that require a distance metric to be passed, it is reccomended you make sure
+*Note:* for clustering algorithms that require a distance metric to be passed, it is recommended you make sure
 to provide a PBC-compatible metric if PBC were activated during training.
 
-For example, this can be done through `partial` and by exploting the pbc-compatible distance wrapper
+For example, this can be done through `partial` and by exploiting the pbc-compatible distance wrapper
 provided with the chosen topology (`net.polygons.distance_pbc`) as in the following example.
 
 .. code-block:: python
