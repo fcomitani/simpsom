@@ -1,9 +1,12 @@
+.. _api:
+
+
 API
-===============
+===
 
 
 SOM Network
------------------
+-----------
 
 .. automodule:: simpsom.network
     :members:
@@ -12,7 +15,7 @@ SOM Network
     :show-inheritance:
 
 Distance functions
------------------
+------------------
 
 .. automodule:: simpsom.distances
     :members:
@@ -21,7 +24,7 @@ Distance functions
     :show-inheritance:
 
 Neighborhood functions
----------------------------
+----------------------
 
 .. automodule:: simpsom.neighborhoods
     :members:
@@ -30,7 +33,7 @@ Neighborhood functions
     :show-inheritance:
 
 Map tiling
-------------------------
+----------
 
 .. automodule:: simpsom.polygons
     :members:
@@ -39,7 +42,7 @@ Map tiling
     :show-inheritance:
 
 Plotting
---------------------------------
+--------
 
 .. automodule:: simpsom.plots
     :members:

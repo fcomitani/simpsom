@@ -39,7 +39,9 @@ setup(
 
     install_requires=['numpy>=1.19.5',
                       'scikit-learn>=0.22.2.post1',
-                      'matplotlib>=3.3.3'],
+                      'matplotlib>=3.3.3'
+                      'loguru',
+                      'pylettes'],
 
     extras_require={ 'gpu': ['cupy==8.60',
                              'cuml==0.18']},

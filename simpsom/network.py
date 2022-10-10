@@ -396,9 +396,9 @@ class SOMNet:
 
         if early_stop is not None:
             logger.info("Early stop active.")
-            logger.warning("Early stop is an experimental feature, "+
+            logger.warning("Early stop is an experimental feature, " +
                            "make sure to know what you are doing!")
-                           
+
         early_stopper = EarlyStop(tolerance=early_stop_tolerance,
                                   patience=early_stop_patience)
 
@@ -474,9 +474,9 @@ class SOMNet:
 
             neighborhood_caller = partial(
                 self.neighborhoods.neighborhood_caller, xx=_xx, yy=_yy,
-                neigh_func=self.neighborhood_fun, 
-                pbc_func=self.polygons.neighborhood_pbc if self.PBC \
-                                                          else None)
+                neigh_func=self.neighborhood_fun,
+                pbc_func=self.polygons.neighborhood_pbc if self.PBC
+                else None)
 
             for n_iter in range(self.epochs):
 
@@ -531,7 +531,8 @@ class SOMNet:
                     denominator != 0, numerator / denominator, all_weights)
 
                 if early_stop is not None:
-                    loss = self.xp.abs(self.xp.subtract(new_weights, all_weights)).mean()
+                    loss = self.xp.abs(self.xp.subtract(
+                        new_weights, all_weights)).mean()
                     print(loss)
                     early_stopper.check_convergence(loss)
 
@@ -562,23 +563,25 @@ class SOMNet:
 
         weights = self.xp.array([node.weights for node in self.nodes_list])
         pos = self.xp.array([node.pos for node in self.nodes_list])
-        weights_dist = self.distance.pairdist(weights, weights, metric=self.metric)  
-        
-        #if self.PBC:
+        weights_dist = self.distance.pairdist(
+            weights, weights, metric=self.metric)
+
+        # if self.PBC:
+        # TODO: a precision issue with the PBC nodes position creates an ugly line
+        # at the top and bottom of the map.
         #    pos_dist = self.polygons.distance_pbc(pos, pos,
         #        net_shape=(self.net_width,self.net_height),
         #        distance_func=lambda x, y: self.distance.pairdist(x, y, metric='euclidean'),
-        #        xp=self.xp,        
+        #        xp=self.xp,
         #        axis=0)
-        #else:
+        # else:
         pos_dist = self.distance.pairdist(pos, pos, metric='euclidean')
 
         weights_dist[(pos_dist > 1.01) | (pos_dist == 0.)] = np.nan
-        [node._set_difference(value) 
+        [node._set_difference(value)
             for node, value in zip(self.nodes_list, self.xp.nanmean(weights_dist, axis=0))]
 
         logger.info('Weights difference among neighboring nodes calculated.')
-
 
     def project_onto_map(self, array: np.ndarray,
                          file_name: str = "./som_projected.npy") -> list:
@@ -597,7 +600,6 @@ class SOMNet:
         if not isinstance(array, self.xp.ndarray):
             array = self.xp.array(array)
 
-        bmu_list, cls = [], []
         bmu_list = [
             self.nodes_list[int(mu)].pos for mu in self.find_bmu_ix(array)]
 
@@ -639,7 +641,7 @@ class SOMNet:
             # Implementing the distance_pbc as a wrapper automatically applied to the provided metric
             # is not possible as many sklearn clustering functions don't allow for custom metric.
             logger.warning("PBC are active. Make sure to provide a PBC-compatible custom metric if possible, " +
-                           "or use `polygon.distance_pbc`. See the documentation for more detail.")
+                           "or use `polygons.distance_pbc`. See the documentation for more detail.")
 
         if type(algorithm) is str:
 
@@ -693,14 +695,12 @@ class SOMNet:
             feature (int): The feature number to use as color map.
             show (bool): Choose to display the plot.
             print_out (bool): Choose to save the plot to a file.
-            kwargs (dict): Keyword arguments to format the plot:
-                - figsize (tuple(int, int)): the figure size,
-                - title (str): figure title,
-                - cbar_label (str): colorbar label,
-                - labelsize (int): font size of label,
-                    the title will be 15% larger,
-                    ticks will be 15% smaller,
-                - cmap (ListedColormap) a custom cmap.
+            kwargs (dict): Keyword arguments to format the plot, such as 
+                - figsize (tuple(int, int)), the figure size;
+                - title (str), figure title;
+                - cbar_label (str), colorbar label;
+                - labelsize (int), font size of label, the title 15% larger, ticks 15% smaller;
+                - cmap (ListedColormap), a custom cmap.
         """
 
         if "file_name" not in kwargs.keys():
@@ -727,14 +727,12 @@ class SOMNet:
         Args:
             show (bool): Choose to display the plot.
             print_out (bool): Choose to save the plot to a file.
-            kwargs (dict): Keyword arguments to format the plot:
-                - figsize (tuple(int, int)): the figure size,
-                - title (str): figure title,
-                - cbar_label (str): colorbar label,
-                - labelsize (int): font size of label,
-                    the title will be 15% larger,
-                    ticks will be 15% smaller,
-                - cmap (ListedColormap) a custom cmap.
+            kwargs (dict): Keyword arguments to format the plot, such as
+                - figsize (tuple(int, int)), the figure size;
+                - title (str), figure title;
+                - cbar_label (str), colorbar label;
+                - labelsize (int), font size of label, the title 15% larger, ticks 15% smaller;
+                - cmap (ListedColormap), a custom cmap.
         """
 
         if "file_name" not in kwargs.keys():
@@ -765,16 +763,14 @@ class SOMNet:
         Args:
             show (bool): Choose to display the plot.
             print_out (bool): Choose to save the plot to a file.
-            kwargs (dict): Keyword arguments to format the plot:
-                - figsize (tuple(int, int)): the figure size,
-                - title (str): figure title,
-                - xlabel (str): x-axis label,
-                - ylabel (str): y-axis label,
-                - logx (bool): if True set x-axis to logarithmic scale,
-                - logy (bool): if True set y-axis to logarithmic scale,
-                - fontsize (int): font size of label,
-                    the title will be 15% larger,
-                    ticks will be 15% smaller.
+            kwargs (dict): Keyword arguments to format the plot, such as
+                - figsize (tuple(int, int)), the figure size;
+                - title (str), figure title;
+                - xlabel (str), x-axis label;
+                - ylabel (str), y-axis label;
+                - logx (bool), if True set x-axis to logarithmic scale;
+                - logy (bool), if True set y-axis to logarithmic scale;
+                - labelsize (int), font size of label, the title 15% larger, ticks 15% smaller;
         """
 
         if len(self.convergence) == 0:
@@ -820,14 +816,12 @@ class SOMNet:
                 with overlapping points.
             show (bool): Choose to display the plot.
             print_out (bool): Choose to save the plot to a file.
-            kwargs (dict): Keyword arguments to format the plot:
-                - figsize (tuple(int, int)): the figure size,
-                - title (str): figure title,
-                - cbar_label (str): colorbar label,
-                - labelsize (int): font size of label,
-                    the title will be 15% larger,
-                    ticks will be 15% smaller,
-                - cmap (ListedColormap) a custom cmap.
+            kwargs (dict): Keyword arguments to format the plot, such as
+                - figsize (tuple(int, int)), the figure size;
+                - title (str), figure title;
+                - cbar_label (str), colorbar label;
+                - labelsize (int), font size of label, the title 15% larger, ticks 15% smaller;
+                - cmap (ListedColormap), a custom cmap.
         """
 
         if "file_name" not in kwargs.keys():
@@ -872,14 +866,12 @@ class SOMNet:
                 with overlapping points.
             show (bool): Choose to display the plot.
             print_out (bool): Choose to save the plot to a file.
-            kwargs (dict): Keyword arguments to format the plot:
-                - figsize (tuple(int, int)): the figure size,
-                - title (str): figure title,
-                - cbar_label (str): colorbar label,
-                - labelsize (int): font size of label,
-                    the title will be 15% larger,
-                    ticks will be 15% smaller,
-                - cmap (ListedColormap) a custom cmap.
+            kwargs (dict): Keyword arguments to format the plot, such as
+                - figsize (tuple(int, int)), the figure size;
+                - title (str), figure title;
+                - cbar_label (str), colorbar label;
+                - labelsize (int), font size of label, the title 15% larger, ticks 15% smaller;
+                - cmap (ListedColormap), a custom cmap.
         """
 
         if "file_name" not in kwargs.keys():
