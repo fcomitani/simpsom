@@ -1,6 +1,6 @@
 """
-SimpSOM (Simple Self-Organizing Maps) v2.0.0
-F. Comitani @2017-2021 
+SimpSOM (Simple Self-Organizing Maps) v2.0.2
+F. Comitani @2017-2022
  
 A lightweight python library for Kohonen Self-Organizing Maps (SOM).
 """

@@ -5,8 +5,11 @@ from os import path
 here    = path.abspath(path.dirname(__file__))
 version = open("simpsom/_version.py").readlines()[-1].split()[-1].strip("\"'")
 
-with open(path.join(here, 'long_desc.md'), encoding='utf-8') as f:
-    long_description = f.read()
+try:
+    import pypandoc
+    long_description = pypandoc.convert_file('long_desc.md', 'rst')
+except(IOError, ImportError):
+    long_description = open('README.md').read()
 
 setup(
 
