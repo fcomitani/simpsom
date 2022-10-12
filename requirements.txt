@@ -1,3 +1,5 @@
-Numpy
+numpy
 scikit-learn
-Matplotlib
+matplotlib
+loguru
+pylettes
