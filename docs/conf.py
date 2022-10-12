@@ -18,11 +18,11 @@ sys.path.insert(0, os.path.abspath('../simpsom/cluster'))
 # -- Project information -----------------------------------------------------
 
 project = 'SimpSOM'
-copyright = '2017-2021, Federico Comitani'
+copyright = '2017-2022, Federico Comitani'
 author = 'Federico Comitani'
 
 # The full version, including alpha/beta/rc tags
-release = '2.0.0'
+release = '2.0.2'
 version = '2.0'
 
 # -- General configuration ---------------------------------------------------

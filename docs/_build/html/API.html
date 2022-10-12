@@ -7,12 +7,14 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>API &mdash; SimpSOM 2.0.0 documentation</title>
+  <title>API &mdash; SimpSOM 2.0.2 documentation</title>
   
 
   
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
 
   
   
@@ -29,6 +31,7 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
@@ -87,7 +90,7 @@
               
             
             
-              <p class="caption"><span class="caption-text">API</span></p>
+              <p class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#module-simpsom.__init__">Testing</a></li>
@@ -167,12 +170,12 @@
 <h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="module-simpsom.__init__">
 <span id="testing"></span><h2>Testing<a class="headerlink" href="#module-simpsom.__init__" title="Permalink to this headline">¶</a></h2>
-<p>SimpSOM (Simple Self-Organizing Maps) v1.3.5
+<p>SimpSOM (Simple Self-Organizing Maps)
 F. Comitani &#64;2017-2021</p>
 <p>A lightweight python library for Kohonen Self-Organizing Maps (SOM).</p>
 <dl class="py function">
-<dt id="simpsom.__init__.run_colors_example">
-<code class="sig-prename descclassname"><span class="pre">simpsom.__init__.</span></code><code class="sig-name descname"><span class="pre">run_colors_example</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_algo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'batch'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">early_stop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">GPU</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.__init__.run_colors_example" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.__init__.run_colors_example">
+<span class="sig-prename descclassname"><span class="pre">simpsom.__init__.</span></span><span class="sig-name descname"><span class="pre">run_colors_example</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_algo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'batch'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">early_stop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">GPU</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.__init__.run_colors_example" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example of usage of SimpSOM: a number of vectors of length three
 (corresponding to the RGB values of a color) are used to briefly train a small network.
 Different example graphs are then printed from the trained network.</p>
@@ -199,8 +202,8 @@ don’t change) are available. If None, don’t use early stopping (default None
 F. Comitani &#64;2017-2021</p>
 <p>A lightweight python library for Kohonen Self-Organizing Maps (SOM).</p>
 <dl class="py class">
-<dt id="simpsom.network.SOMNet">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">simpsom.network.</span></code><code class="sig-name descname"><span class="pre">SOMNet</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">net_height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'euclidean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric_kwds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'PCA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">GPU</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">simpsom.network.</span></span><span class="sig-name descname"><span class="pre">SOMNet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">net_height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'euclidean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric_kwds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'PCA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">GPU</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Kohonen SOM Network class.</p>
 <p>Initialise the SOM network.</p>
@@ -227,8 +230,8 @@ warning: only quality threshold clustering algorithm works with PBC (default 0).
 </dd>
 </dl>
 <dl class="py method">
-<dt id="simpsom.network.SOMNet.__init__">
-<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">net_height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'euclidean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric_kwds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'PCA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">GPU</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.__init__" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">net_height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'euclidean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric_kwds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'PCA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">GPU</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialise the SOM network.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -255,8 +258,8 @@ warning: only quality threshold clustering algorithm works with PBC (default 0).
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNet.cluster">
-<code class="sig-name descname"><span class="pre">cluster</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clus_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'qthresh'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quant</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_cl</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dat'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.cluster" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.cluster">
+<span class="sig-name descname"><span class="pre">cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clus_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'qthresh'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quant</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_cl</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dat'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.cluster" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="simple">
 <dt>Clusters the data in a given array according to the SOM trained map.</dt><dd><p>The clusters can also be plotted.</p>
 </dd>
@@ -289,20 +292,20 @@ maximum distance of two points to be considered in the same cluster with DBSCAN.
 </dd></dl>
 
 <dl class="py attribute">
-<dt id="simpsom.network.SOMNet.color_ex">
-<code class="sig-name descname"><span class="pre">color_ex</span></code><a class="headerlink" href="#simpsom.network.SOMNet.color_ex" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.color_ex">
+<span class="sig-name descname"><span class="pre">color_ex</span></span><a class="headerlink" href="#simpsom.network.SOMNet.color_ex" title="Permalink to this definition">¶</a></dt>
 <dd><p>Switch to activate periodic boundary conditions.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt id="simpsom.network.SOMNet.convergence">
-<code class="sig-name descname"><span class="pre">convergence</span></code><a class="headerlink" href="#simpsom.network.SOMNet.convergence" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.convergence">
+<span class="sig-name descname"><span class="pre">convergence</span></span><a class="headerlink" href="#simpsom.network.SOMNet.convergence" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load the weights from file, generate them randomly or from PCA.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNet.diff_graph">
-<code class="sig-name descname"><span class="pre">diff_graph</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.diff_graph" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.diff_graph">
+<span class="sig-name descname"><span class="pre">diff_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.diff_graph" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plot a 2D map with nodes and weights difference among neighboring nodes.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -323,8 +326,8 @@ maximum distance of two points to be considered in the same cluster with DBSCAN.
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNet.find_bmu_ix">
-<code class="sig-name descname"><span class="pre">find_bmu_ix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vecs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.find_bmu_ix" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.find_bmu_ix">
+<span class="sig-name descname"><span class="pre">find_bmu_ix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vecs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.find_bmu_ix" title="Permalink to this definition">¶</a></dt>
 <dd><p>Find the index of the best matching unit (BMU) for a given list of vectors.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -341,14 +344,14 @@ nodes will be calculated.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt id="simpsom.network.SOMNet.interface">
-<code class="sig-name descname"><span class="pre">interface</span></code><a class="headerlink" href="#simpsom.network.SOMNet.interface" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.interface">
+<span class="sig-name descname"><span class="pre">interface</span></span><a class="headerlink" href="#simpsom.network.SOMNet.interface" title="Permalink to this definition">¶</a></dt>
 <dd><p>Switch to activate special workflow if running the colors example.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNet.nodes_graph">
-<code class="sig-name descname"><span class="pre">nodes_graph</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">colnum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.nodes_graph" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.nodes_graph">
+<span class="sig-name descname"><span class="pre">nodes_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">colnum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.nodes_graph" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plot a 2D map with hexagonal nodes and weights values</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -364,8 +367,8 @@ nodes will be calculated.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNet.plot_convergence">
-<code class="sig-name descname"><span class="pre">plot_convergence</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.plot_convergence" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.plot_convergence">
+<span class="sig-name descname"><span class="pre">plot_convergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.plot_convergence" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="simple">
 <dt>Plot the the map training progress according to the</dt><dd><p>chosen convergence criterion.</p>
 </dd>
@@ -383,8 +386,8 @@ nodes will be calculated.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNet.project">
-<code class="sig-name descname"><span class="pre">project</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colnum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.project" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.project">
+<span class="sig-name descname"><span class="pre">project</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colnum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.project" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="simple">
 <dt>Project the datapoints of a given array to the 2D space of the</dt><dd><p>SOM by calculating the bmus. If requested plot a 2D map with as
 implemented in nodes_graph and adds circles to the bmu
@@ -413,8 +416,8 @@ If not chosen, the difference map will be used instead.</p></li>
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNet.save">
-<code class="sig-name descname"><span class="pre">save</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fileName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'SOMNet_trained'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.save" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fileName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'SOMNet_trained'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.save" title="Permalink to this definition">¶</a></dt>
 <dd><p>Saves the network dimensions, the pbc and nodes weights to a file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -427,8 +430,8 @@ If not chosen, the difference map will be used instead.</p></li>
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNet.train">
-<code class="sig-name descname"><span class="pre">train</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_algo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'batch'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_learning_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">early_stop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">early_stop_patience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">early_stop_tolerance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.train" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_algo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'batch'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_learning_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">early_stop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">early_stop_patience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">early_stop_tolerance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.train" title="Permalink to this definition">¶</a></dt>
 <dd><p>Train the SOM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -459,8 +462,8 @@ at once.</p></li>
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNet.update_learning_rate">
-<code class="sig-name descname"><span class="pre">update_learning_rate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_iter</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.update_learning_rate" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.update_learning_rate">
+<span class="sig-name descname"><span class="pre">update_learning_rate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_iter</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.update_learning_rate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update the learning rate.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -470,8 +473,8 @@ at once.</p></li>
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNet.update_sigma">
-<code class="sig-name descname"><span class="pre">update_sigma</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_iter</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.update_sigma" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNet.update_sigma">
+<span class="sig-name descname"><span class="pre">update_sigma</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_iter</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNet.update_sigma" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update the gaussian sigma.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -483,8 +486,8 @@ at once.</p></li>
 </dd></dl>
 
 <dl class="py class">
-<dt id="simpsom.network.SOMNode">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">simpsom.network.</span></code><code class="sig-name descname"><span class="pre">SOMNode</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_weights</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interface</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wei_bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_vec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wei_array</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNode" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">simpsom.network.</span></span><span class="sig-name descname"><span class="pre">SOMNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_weights</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interface</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wei_bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_vec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wei_array</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNode" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Single Kohonen SOM Node class.</p>
 <p>Initialise the SOM node.</p>
@@ -509,8 +512,8 @@ to the node if loaded from a file.</p></li>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="simpsom.network.SOMNode.__init__">
-<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_weights</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interface</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wei_bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_vec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wei_array</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNode.__init__" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNode.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_weights</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interface</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wei_bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_vec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wei_array</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNode.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialise the SOM node.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -535,8 +538,8 @@ to the node if loaded from a file.</p></li>
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNode.get_distance">
-<code class="sig-name descname"><span class="pre">get_distance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNode.get_distance" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNode.get_distance">
+<span class="sig-name descname"><span class="pre">get_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNode.get_distance" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="simple">
 <dt>Calculate the distance between the weights vector of the node and a given vector.</dt><dd><p>DEPRECATED: this function will be removed in future versions, use SOMNet.get_bmu instead.</p>
 </dd>
@@ -555,8 +558,8 @@ to the node if loaded from a file.</p></li>
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNode.get_node_distance">
-<code class="sig-name descname"><span class="pre">get_node_distance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNode.get_node_distance" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNode.get_node_distance">
+<span class="sig-name descname"><span class="pre">get_node_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNode.get_node_distance" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the distance within the network between the node and another node.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -572,8 +575,8 @@ to the node if loaded from a file.</p></li>
 </dd></dl>
 
 <dl class="py method">
-<dt id="simpsom.network.SOMNode.update_weights">
-<code class="sig-name descname"><span class="pre">update_weights</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_vec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bmu</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNode.update_weights" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.network.SOMNode.update_weights">
+<span class="sig-name descname"><span class="pre">update_weights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_vec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bmu</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.network.SOMNode.update_weights" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update the node weights.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -597,8 +600,8 @@ to the node if loaded from a file.</p></li>
 <li><p>Comitani &#64;2017-2021</p></li>
 </ol>
 <dl class="py function">
-<dt id="simpsom.hexagons.coor_to_hex">
-<code class="sig-prename descclassname"><span class="pre">simpsom.hexagons.</span></code><code class="sig-name descname"><span class="pre">coor_to_hex</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.hexagons.coor_to_hex" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.hexagons.coor_to_hex">
+<span class="sig-prename descclassname"><span class="pre">simpsom.hexagons.</span></span><span class="sig-name descname"><span class="pre">coor_to_hex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.hexagons.coor_to_hex" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert Cartesian coordinates to hexagonal tiling coordinates.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -617,8 +620,8 @@ to the node if loaded from a file.</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt id="simpsom.hexagons.plot_hex">
-<code class="sig-prename descclassname"><span class="pre">simpsom.hexagons.</span></code><code class="sig-name descname"><span class="pre">plot_hex</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">centers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_ex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.hexagons.plot_hex" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simpsom.hexagons.plot_hex">
+<span class="sig-prename descclassname"><span class="pre">simpsom.hexagons.</span></span><span class="sig-name descname"><span class="pre">plot_hex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">centers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_ex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#simpsom.hexagons.plot_hex" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plot an hexagonal grid based on the nodes positions and color the tiles
 according to their weights.</p>
 <blockquote>
@@ -651,13 +654,13 @@ Genome Research, Vol. 9, No. 11, 1999, pp. 1106-1115.</p>
 <li><p>Comitani &#64;2017-2021</p></li>
 </ol>
 <dl class="py function">
-<dt id="cluster.quality_threshold.qt_test">
-<code class="sig-prename descclassname"><span class="pre">cluster.quality_threshold.</span></code><code class="sig-name descname"><span class="pre">qt_test</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.quality_threshold.qt_test" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.quality_threshold.qt_test">
+<span class="sig-prename descclassname"><span class="pre">cluster.quality_threshold.</span></span><span class="sig-name descname"><span class="pre">qt_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.quality_threshold.qt_test" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt id="cluster.quality_threshold.quality_threshold">
-<code class="sig-prename descclassname"><span class="pre">cluster.quality_threshold.</span></code><code class="sig-name descname"><span class="pre">quality_threshold</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.quality_threshold.quality_threshold" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.quality_threshold.quality_threshold">
+<span class="sig-prename descclassname"><span class="pre">cluster.quality_threshold.</span></span><span class="sig-name descname"><span class="pre">quality_threshold</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.quality_threshold.quality_threshold" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run the complete clustering algorithm in one go and returns the clustered indices as a list.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -686,8 +689,8 @@ SCIENCE, 1492, vol 322 (2014)</p>
 <li><p>Comitani &#64;2017-2021</p></li>
 </ol>
 <dl class="py class">
-<dt id="cluster.density_peak.Collection">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></code><code class="sig-name descname"><span class="pre">Collection</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coor_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gaussian'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Collection">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></span><span class="sig-name descname"><span class="pre">Collection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coor_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gaussian'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Class for a collection of point objects.</p>
 <p>Generate a collection of point objects from an array containing their coordinates.</p>
@@ -704,8 +707,8 @@ SCIENCE, 1492, vol 322 (2014)</p>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="cluster.density_peak.Collection.__init__">
-<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coor_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gaussian'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.__init__" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Collection.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coor_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gaussian'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate a collection of point objects from an array containing their coordinates.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -722,20 +725,20 @@ SCIENCE, 1492, vol 322 (2014)</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="cluster.density_peak.Collection.cluster_assign">
-<code class="sig-name descname"><span class="pre">cluster_assign</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.cluster_assign" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Collection.cluster_assign">
+<span class="sig-name descname"><span class="pre">cluster_assign</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.cluster_assign" title="Permalink to this definition">¶</a></dt>
 <dd><p>Assign a cluster to each point according according to its nearest neighbour with higher density.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="cluster.density_peak.Collection.core_assign">
-<code class="sig-name descname"><span class="pre">core_assign</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.core_assign" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Collection.core_assign">
+<span class="sig-name descname"><span class="pre">core_assign</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.core_assign" title="Permalink to this definition">¶</a></dt>
 <dd><p>Assign points as belonging to the core or the halo of a cluster.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="cluster.density_peak.Collection.decision_graph">
-<code class="sig-name descname"><span class="pre">decision_graph</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">printout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.decision_graph" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Collection.decision_graph">
+<span class="sig-name descname"><span class="pre">decision_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">printout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.decision_graph" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the decision graph, delta vs rho for the points belonging to the Collection
 and find the cluster centers.</p>
 <dl class="field-list simple">
@@ -749,8 +752,8 @@ and find the cluster centers.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="cluster.density_peak.Collection.get_clusterList">
-<code class="sig-name descname"><span class="pre">get_clusterList</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.get_clusterList" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Collection.get_clusterList">
+<span class="sig-name descname"><span class="pre">get_clusterList</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.get_clusterList" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the indeces of the clustered points as a list.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
@@ -763,26 +766,26 @@ and find the cluster centers.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt id="cluster.density_peak.Collection.refd">
-<code class="sig-name descname"><span class="pre">refd</span></code><a class="headerlink" href="#cluster.density_peak.Collection.refd" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Collection.refd">
+<span class="sig-name descname"><span class="pre">refd</span></span><a class="headerlink" href="#cluster.density_peak.Collection.refd" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make sure rhos are set before setting deltas</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="cluster.density_peak.Collection.set_deltas">
-<code class="sig-name descname"><span class="pre">set_deltas</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.set_deltas" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Collection.set_deltas">
+<span class="sig-name descname"><span class="pre">set_deltas</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.set_deltas" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the distance from higher density points for each point in the dataset.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="cluster.density_peak.Collection.set_dists">
-<code class="sig-name descname"><span class="pre">set_dists</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.set_dists" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Collection.set_dists">
+<span class="sig-name descname"><span class="pre">set_dists</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.set_dists" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the distance matrix for all points.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="cluster.density_peak.Collection.set_rhos">
-<code class="sig-name descname"><span class="pre">set_rhos</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'step'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.set_rhos" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Collection.set_rhos">
+<span class="sig-name descname"><span class="pre">set_rhos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'step'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Collection.set_rhos" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the density for each point in the dataset.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -794,8 +797,8 @@ and find the cluster centers.</p>
 </dd></dl>
 
 <dl class="py class">
-<dt id="cluster.density_peak.Point">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></code><code class="sig-name descname"><span class="pre">Point</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coordinates</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Point" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Point">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></span><span class="sig-name descname"><span class="pre">Point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coordinates</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Point" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Class for the points to cluster.</p>
 <p>Initialise the point.</p>
@@ -805,8 +808,8 @@ and find the cluster centers.</p>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="cluster.density_peak.Point.__init__">
-<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coordinates</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Point.__init__" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Point.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coordinates</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Point.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialise the point.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -816,8 +819,8 @@ and find the cluster centers.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="cluster.density_peak.Point.set_delta">
-<code class="sig-name descname"><span class="pre">set_delta</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coll</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Point.set_delta" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Point.set_delta">
+<span class="sig-name descname"><span class="pre">set_delta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coll</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Point.set_delta" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the distance of the point from higher density points and set the nearest neighbour. [Deprecated]</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -827,8 +830,8 @@ and find the cluster centers.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="cluster.density_peak.Point.set_dist">
-<code class="sig-name descname"><span class="pre">set_dist</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coll</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Point.set_dist" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Point.set_dist">
+<span class="sig-name descname"><span class="pre">set_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coll</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Point.set_dist" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the distances from all other points in a Collection. [Deprecated]</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -838,8 +841,8 @@ and find the cluster centers.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="cluster.density_peak.Point.set_rho">
-<code class="sig-name descname"><span class="pre">set_rho</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coll</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'step'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Point.set_rho" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.Point.set_rho">
+<span class="sig-name descname"><span class="pre">set_rho</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coll</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'step'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.Point.set_rho" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the density of the single point for a given dataset. [Deprecated]</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -854,8 +857,8 @@ and find the cluster centers.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="cluster.density_peak.density_peak">
-<code class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></code><code class="sig-name descname"><span class="pre">density_peak</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">printout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.density_peak" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.density_peak">
+<span class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></span><span class="sig-name descname"><span class="pre">density_peak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">printout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.density_peak" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run the complete clustering algorithm in one go and returns the clustered indices as a list.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -875,8 +878,8 @@ and find the cluster centers.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="cluster.density_peak.dist">
-<code class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></code><code class="sig-name descname"><span class="pre">dist</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'euclid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.dist" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.dist">
+<span class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></span><span class="sig-name descname"><span class="pre">dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'euclid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.dist" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the distance between two point objects in a N dimensional space according to a given metric.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -899,13 +902,13 @@ and find the cluster centers.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="cluster.density_peak.dp_test">
-<code class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></code><code class="sig-name descname"><span class="pre">dp_test</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.dp_test" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.dp_test">
+<span class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></span><span class="sig-name descname"><span class="pre">dp_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.dp_test" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt id="cluster.density_peak.gaussian">
-<code class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></code><code class="sig-name descname"><span class="pre">gaussian</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.gaussian" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.gaussian">
+<span class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></span><span class="sig-name descname"><span class="pre">gaussian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.gaussian" title="Permalink to this definition">¶</a></dt>
 <dd><p>Gaussian function of the distance between two points scaled with sigma.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -928,8 +931,8 @@ and find the cluster centers.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="cluster.density_peak.sigmoid">
-<code class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></code><code class="sig-name descname"><span class="pre">sigmoid</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.sigmoid" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.sigmoid">
+<span class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></span><span class="sig-name descname"><span class="pre">sigmoid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.sigmoid" title="Permalink to this definition">¶</a></dt>
 <dd><p>Logistic function of the distance between two points scaled with sigma.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -952,8 +955,8 @@ and find the cluster centers.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="cluster.density_peak.step">
-<code class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></code><code class="sig-name descname"><span class="pre">step</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.step" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="cluster.density_peak.step">
+<span class="sig-prename descclassname"><span class="pre">cluster.density_peak.</span></span><span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PBC</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cluster.density_peak.step" title="Permalink to this definition">¶</a></dt>
 <dd><p>Step function activated when the distance of two points is less than the cutoff.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -991,7 +994,7 @@ and find the cluster centers.</p>
 
   <div role="contentinfo">
     <p>
-        &#169; Copyright 2017-2021, Federico Comitani.
+        &#169; Copyright 2017-2022, Federico Comitani.
 
     </p>
   </div>
