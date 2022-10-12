@@ -32,9 +32,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
             - figsize (tuple(int, int)): the figure size,
             - title (str): figure title,
             - cbar_label (str): colorbar label,
-            - fontsize (int): font size of label, 
-                the title will be 15% larger,
-                ticks will be 15% smaller,
+            - fontsize (int): font size of label, title 15% larger, ticks 15% smaller,
             - cmap (ListedColormap): a custom colormap.
 
     Returns:
@@ -101,9 +99,7 @@ def line_plot(y_val: Union[np.ndarray, list], x_val: Union[np.ndarray, list] = N
             - ylabel (str): y-axis label,
             - logx (bool): if True set x-axis to logarithmic scale,
             - logy (bool): if True set y-axis to logarithmic scale,
-            - fontsize (int): font size of label, 
-                the title will be 15% larger,
-                ticks will be 15% smaller.
+            - fontsize (int): font size of label, title 15% larger, ticks 15% smaller.
 
     Returns:
         fig (figure object): the produced figure object.
@@ -193,9 +189,7 @@ def scatter_on_map(datagroups: Collection[np.ndarray], centers: Collection[np.nd
             - figsize (tuple(int, int)): the figure size,
             - title (str): figure title,
             - cbar_label (str): colorbar label,
-            - fontsize (int): font size of label, 
-                the title will be 15% larger,
-                ticks will be 15% smaller.
+            - fontsize (int): font size of label, title 15% larger, ticks 15% smaller,
             - cmap (ListedColormap): a custom colormap.
 
     Returns:
