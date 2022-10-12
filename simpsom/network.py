@@ -60,12 +60,10 @@ class SOMNet:
         if not debug:
             logger.remove()
             logger.add(sys.stderr, level="INFO")
-        # logger.add(os.path.join(self.output_path,"som_{time}.log"), level="DEBUG")
 
         self.GPU = bool(GPU)
         self.CUML = bool(CUML)
 
-        # TODO: clean
         if self.GPU:
             try:
                 import cupy
@@ -290,7 +288,6 @@ class SOMNet:
             file_name (str): Name of the file where the data will be saved.
         """
 
-        # ToDo: find a better format
         weights_array = [[float(self.net_height)]*self.nodes_list[0].weights.shape[0],
                          [float(self.net_width)] *
                          self.nodes_list[0].weights.shape[0],
