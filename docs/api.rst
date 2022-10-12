@@ -1,15 +1,9 @@
+.. _api:
+
+
 API
-===============
+===
 
-
-Testing
--------
-
-.. automodule:: simpsom.__init__
-    :members:
-    :undoc-members:
-    :private-members:
-    :show-inheritance:
 
 SOM Network
 -----------
@@ -20,27 +14,38 @@ SOM Network
     :private-members:
     :show-inheritance:
 
-Hexagonal Grid Plots
---------------------
+Distance functions
+------------------
 
-.. automodule:: simpsom.hexagons
+.. automodule:: simpsom.distances
     :members:
     :undoc-members:
     :private-members:
     :show-inheritance:
 
-Clustering
---------------------------------
+Neighborhood functions
+----------------------
 
-.. automodule:: cluster.quality_threshold
+.. automodule:: simpsom.neighborhoods
     :members:
     :undoc-members:
     :private-members:
     :show-inheritance:
 
-.. automodule:: cluster.density_peak
+Map tiling
+----------
+
+.. automodule:: simpsom.polygons
     :members:
     :undoc-members:
     :private-members:
     :show-inheritance:
 
+Plotting
+--------
+
+.. automodule:: simpsom.plots
+    :members:
+    :undoc-members:
+    :private-members:
+    :show-inheritance:

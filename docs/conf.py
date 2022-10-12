@@ -13,17 +13,16 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../simpsom'))
-sys.path.insert(0, os.path.abspath('../simpsom/cluster'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'SimpSOM'
-copyright = '2017-2022, Federico Comitani'
-author = 'Federico Comitani'
+project = 'simpsom'
+copyright = '2018-2022, Federico Comitani, Simone G. Riva and Andrea Tangherloni'
+author = 'Federico Comitani, Simone G. Riva and Andrea Tangherloni'
 
 # The full version, including alpha/beta/rc tags
-release = '2.0.2'
-version = '2.0'
+release = '3.0.0'
+version = '3.0'
 
 # -- General configuration ---------------------------------------------------
 
@@ -54,6 +53,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
+html_logo = 'figs/sps_logo_small.png'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
