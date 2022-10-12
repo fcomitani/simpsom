@@ -1,0 +1,5 @@
+numpy
+scikit-learn
+matplotlib
+loguru
+pylettes>=0.2.0
