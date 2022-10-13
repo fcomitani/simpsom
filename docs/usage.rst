@@ -170,7 +170,7 @@ provided with the chosen topology (`net.polygons.distance_pbc`) as in the follow
 .. code-block:: python
 
     labs, points = net.cluster(data, algorithm='DBSCAN', metric=partial(net.polygons.distance_pbc,
-                                                                net_shape=(net.net_width, net.net_height),
+                                                                net_shape=(net.width, net.height),
                                                                 distance_func=lambda x, y: net.xp.sqrt(net.xp.sum(net.xp.square(x-y))),
                                                                 xp=net.xp), eps=.1)
 

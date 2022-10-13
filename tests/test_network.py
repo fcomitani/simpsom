@@ -69,6 +69,8 @@ class TestNetwork:
          'gaussian', 'online', 10, None,  None, False, False),
         (True, 10, 'PCA', 'euclidean', 'hexagonal',
          'gaussian', 'online', 10, None,  None, False, False),
+        (True, 10, 'PCA', 'euclidean', 'square',
+         'gaussian', 'online', 10, None,  None, False, False),
         (False, 10, 'PCA', 'euclidean', 'hexagonal',
          'gaussian', 'batch', 10, None,  None, False, False),
         (False, 10, 'PCA', 'cosine', 'hexagonal',
@@ -92,6 +94,8 @@ class TestNetwork:
         (False, 10, 'PCA', 'euclidean', 'square', 'gaussian',
          'batch', 10, 'mapdiff', 'KMeans', True, False),
         (True, 10, 'PCA', 'euclidean', 'hexagonal',
+         'gaussian', 'batch', 10, None,  None, False, False),
+        (True, 10, 'PCA', 'euclidean', 'square',
          'gaussian', 'batch', 10, None,  None, False, False)
     ])
     @pytest.mark.parametrize("GPU", Parameters.GPU)
@@ -121,9 +125,10 @@ class TestNetwork:
             shutil.copyfile(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)),
                             os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(hashed_name)))
 
-        #TODO: temporary workaround for precision discrepancy between GPU and CPU in batch training with PBC
+        # TODO: temporary workaround for precision discrepancy between GPU and CPU in batch training with PBC
+        # and hexagonal topology
         decimal = 4
-        if GPU and PBC and train_algo == 'batch':
+        if GPU and PBC and train_algo == 'batch' and topology == 'hexagonal':
             decimal = 1
             
         assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)), allow_pickle=True),
@@ -139,8 +144,8 @@ class TestNetwork:
                                random_seed=32, GPU=GPU, debug=False,
                                output_path=Parameters.output_path)
 
-            weights_array = [[float(net_l.net_height)]*net_l.nodes_list[0].weights.shape[0],
-                             [float(net_l.net_width)] *
+            weights_array = [[float(net_l.height)]*net_l.nodes_list[0].weights.shape[0],
+                             [float(net_l.width)] *
                              net_l.nodes_list[0].weights.shape[0],
                              [float(net_l.PBC)]*net_l.nodes_list[0].weights.shape[0]] + \
                 [net_l._get(node.weights) for node in net_l.nodes_list]

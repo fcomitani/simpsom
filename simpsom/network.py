@@ -124,8 +124,8 @@ class SOMNet:
 
         self.convergence = []
 
-        self.net_height = net_height
-        self.net_width = net_width
+        self.height = net_height
+        self.width = net_width
 
         self.init = init
         if isinstance(self.init, str):
@@ -196,19 +196,19 @@ class SOMNet:
             if not load_file.endswith(".npy"):
                 load_file += ".npy"
             weights_array = np.load(load_file, allow_pickle=True)
-            self.net_height = int(weights_array[0][0])
-            self.net_width = int(weights_array[1][0])
+            self.height = int(weights_array[0][0])
+            self.width = int(weights_array[1][0])
             self.PBC = bool(weights_array[2][0])
 
-        for x in range(self.net_width):
-            for y in range(self.net_height):
+        for x in range(self.width):
+            for y in range(self.height):
 
                 if weights_array is not None:
                     this_weight = weights_array[count_weight]
                     count_weight += 1
 
                 self.nodes_list.append(SOMNode(x, y, self.data.shape[1],
-                                               self.net_height, self.net_width,
+                                               self.height, self.width,
                                                self.PBC, self.polygons,
                                                self.xp,
                                                init_vec=init_vec,
@@ -288,8 +288,8 @@ class SOMNet:
             file_name (str): Name of the file where the data will be saved.
         """
 
-        weights_array = [[float(self.net_height)]*self.nodes_list[0].weights.shape[0],
-                         [float(self.net_width)] *
+        weights_array = [[float(self.height)]*self.nodes_list[0].weights.shape[0],
+                         [float(self.width)] *
                          self.nodes_list[0].weights.shape[0],
                          [float(self.PBC)]*self.nodes_list[0].weights.shape[0]] + \
             [self._get(node.weights) for node in self.nodes_list]
@@ -372,7 +372,7 @@ class SOMNet:
 
         logger.info("The map will be trained with the " +
                     train_algo+" algorithm.")
-        self.start_sigma = max(self.net_height, self.net_width)/2
+        self.start_sigma = max(self.height, self.width)/2
         self.start_learning_rate = start_learning_rate
 
         self.data = self.xp.array(self.data)
@@ -457,17 +457,17 @@ class SOMNet:
 
             all_weights = self.xp.array([n.weights for n in self.nodes_list])
             all_weights = all_weights.reshape(
-                self.net_width, self.net_height, self.data.shape[1])
+                self.width, self.height, self.data.shape[1])
 
             numerator = self.xp.zeros(all_weights.shape, dtype=self.xp.float32)
             denominator = self.xp.zeros(
                 (all_weights.shape[0], all_weights.shape[1], 1), dtype=self.xp.float32)
 
-            unravel_precomputed = self.xp.unravel_index(self.xp.arange(self.net_width*self.net_height),
-                                                        (self.net_width, self.net_height))
+            unravel_precomputed = self.xp.unravel_index(self.xp.arange(self.width*self.height),
+                                                        (self.width, self.height))
 
             _xx, _yy = self.xp.meshgrid(self.xp.arange(
-                self.net_width), self.xp.arange(self.net_height))
+                self.width), self.xp.arange(self.height))
 
             neighborhood_caller = partial(
                 self.neighborhoods.neighborhood_caller, xx=_xx, yy=_yy,
@@ -530,16 +530,15 @@ class SOMNet:
                 if early_stop is not None:
                     loss = self.xp.abs(self.xp.subtract(
                         new_weights, all_weights)).mean()
-                    print(loss)
                     early_stopper.check_convergence(loss)
 
                 all_weights = new_weights
 
             # Revert to object oriented
             all_weights = all_weights.reshape(
-                self.net_width*self.net_height, self.data.shape[1])
+                self.width*self.height, self.data.shape[1])
             for n_node, node in enumerate(self.nodes_list):
-                node.weights = all_weights[n_node]  # * self.learning_rate
+                node.weights = all_weights[n_node]
 
         else:
             logger.error(
@@ -567,7 +566,7 @@ class SOMNet:
         # TODO: a precision issue with the PBC nodes position creates an ugly line
         # at the top and bottom of the map.
         #    pos_dist = self.polygons.distance_pbc(pos, pos,
-        #        net_shape=(self.net_width,self.net_height),
+        #        net_shape=(self.width,self.height),
         #        distance_func=lambda x, y: self.distance.pairdist(x, y, metric='euclidean'),
         #        xp=self.xp,
         #        axis=0)
@@ -931,8 +930,8 @@ class SOMNode:
         self.weights = []
         self.difference = None
 
-        self.net_height = net_height
-        self.net_width = net_width
+        self.height = net_height
+        self.width = net_width
 
         if weights_array is not None:
             self.weights = weights_array
@@ -961,7 +960,7 @@ class SOMNode:
 
         if self.PBC:
             return self.polygons.distance_pbc(self.pos, node.pos,
-                                              (self.net_width, self.net_height),
+                                              (self.width, self.height),
                                               lambda x, y: self.xp.sqrt(
                                                   self.xp.sum(self.xp.square(x-y))),
                                               xp=self.xp)
