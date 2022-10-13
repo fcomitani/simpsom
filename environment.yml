@@ -1,0 +1,12 @@
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8
+  - numpy>=1.19.5
+  - matplotlib>=3.3.3
+  - loguru>=0.6.0
+  - scikit-learn>=0.22.2.post1
+  - pip=22.2.2
+  - pip:
+    - pylettes>=0.2.0
