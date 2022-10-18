@@ -1,8 +1,6 @@
-from typing import Union, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from copy import deepcopy
 from loguru import logger
-
-import numpy as np
 
 if TYPE_CHECKING:
     from simpsom import SOMNet
@@ -58,13 +56,14 @@ class EarlyStop:
         if self.history is not None:
 
             if to_monitor == "mapdiff":
-                loss = net.xp.abs(net.xp.subtract(all_weights, self.history)).mean()
+                loss = net.xp.abs(net.xp.subtract(
+                    all_weights, self.history)).mean()
             else:
                 logger.error("Convergence method not recognized.")
                 raise ValueError
 
         self.history = deepcopy(all_weights)
-        
+
         return loss
 
     def check_convergence(self, loss: float) -> None:
@@ -79,8 +78,9 @@ class EarlyStop:
         if loss is not None:
             self.convergence.append(loss)
 
-        if len(self.convergence)>1 and abs(self.convergence[-2]-self.convergence[-1]) < self.tolerance:
-            self.counter += 1
+        if len(self.convergence) > 1 and \
+           abs(self.convergence[-2]-self.convergence[-1]) < self.tolerance:
+                self.counter += 1
         else:
             self.counter = 0
 

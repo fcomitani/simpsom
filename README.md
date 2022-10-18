@@ -83,6 +83,9 @@ Here are some of the research works that use SimpSOM:
 
 > Saunders, J. K., McIlvin, M. R., Dupont, C. L., Kaul, D., Moran, D. M., Horner, T., ... & Saito, M. A. (2022). Microbial functional diversity across biogeochemical provinces in the central Pacific Ocean. Proceedings of the National Academy of Sciences, 119(37), e2200014119.
 
+## Contributions
+
+Contributions are always welcome. If you would like to help us improve this library please fork the main branch and make sure pytest pass after your changes.
 
 ## Citation
 <!-- To update with JOSS -->

@@ -12,8 +12,8 @@ from sklearn.datasets import load_digits
 
 class Parameters:
 
-    output_path = os.path.join("newtork_test")
-    truth_path = os.path.join("ground_truth")
+    output_path = os.path.join("tests/newtork_test")
+    truth_path = os.path.join("tests/ground_truth")
 
     GPU = [False]
     try:
