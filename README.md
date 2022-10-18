@@ -12,7 +12,7 @@ Simple Self-Organizing Maps (SimpSOM) is a lightweight Python 3 library to train
 It offers an efficient way of training SOM in Python 
 while keeping its implementation simple and easy to read.
 
-Version 3 offers a refactoring focusing on performance.
+Version 3 brings a refactoring focusing on performance.
 
 ## Installation
 
