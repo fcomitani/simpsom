@@ -130,7 +130,8 @@ class TestNetwork:
         decimal = 4
         if GPU and PBC and train_algo == 'batch' and topology == 'hexagonal':
             decimal = 1
-            
+
+        print(np.max(np.load(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)), allow_pickle=True)-np.load(os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(hashed_name)), allow_pickle=True)))            
         assert_array_almost_equal(np.load(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)), allow_pickle=True),
                                   np.load(os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(hashed_name)), allow_pickle=True), 
                                   decimal=decimal)
