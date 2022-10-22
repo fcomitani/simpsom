@@ -989,7 +989,7 @@ class SOMNode:
             diff_value (float or int), the difference value to set.
         """
 
-        self.difference = self.xp.float(diff_value)
+        self.difference = float(diff_value)
 
 
 if __name__ == "__main__":

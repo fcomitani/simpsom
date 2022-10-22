@@ -151,8 +151,8 @@ class Distance:
                            (b/self.xp.linalg.norm(b, axis=1)[:,None]).T)
 
         elif metric=="manhattan": 
-            funz = lambda x,y: self.xp.sum(self.xp.abs(x.T - y), axis=-1)
-            return self.xp.stack([funz(a[i], b) for i in range(a.shape[0])])
+            func = lambda x,y: self.xp.sum(self.xp.abs(x.T - y), axis=-1)
+            return self.xp.stack([func(a[i], b) for i in range(a.shape[0])])
         
         logger.error("Available metrics are: "+ \
                      "\"euclidean\", \"cosine\" and \"manhattan\"")
