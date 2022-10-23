@@ -1,0 +1,19 @@
+coverage:
+  status:
+    patch: false
+
+  range: 70..100
+  round: down 
+  precision: 2
+
+ignore:
+  - docs
+  - tests
+  - simpsom/_version.py
+  - simpsom/__init__.py
+  - setup.py
+
+comment:
+  layout: reach, diff, files
+  behavior: default
+  require_changes: true
