@@ -1,5 +1,6 @@
-from typing import TYPE_CHECKING
 from copy import deepcopy
+from typing import TYPE_CHECKING
+
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -79,8 +80,8 @@ class EarlyStop:
             self.convergence.append(loss)
 
         if len(self.convergence) > 1 and \
-           abs(self.convergence[-2]-self.convergence[-1]) < self.tolerance:
-                self.counter += 1
+                abs(self.convergence[-2] - self.convergence[-1]) < self.tolerance:
+            self.counter += 1
         else:
             self.counter = 0
 

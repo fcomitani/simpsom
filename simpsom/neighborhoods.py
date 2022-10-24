@@ -1,8 +1,9 @@
 from types import ModuleType
 from typing import Union, Callable, Tuple
-import numpy as np
 
+import numpy as np
 from loguru import logger
+
 
 class Neighborhoods:
     """ Container class with functions to calculate neihgborhoods. """
@@ -18,7 +19,7 @@ class Neighborhoods:
         self.xp = xp
 
     def gaussian(self, c: np.ndarray, n: np.ndarray,
-            denominator: float) -> np.ndarray:
+                 denominator: float) -> np.ndarray:
         """ Gaussian neighborhood function.
 
         Args:
@@ -30,7 +31,7 @@ class Neighborhoods:
             (np.ndarray): a matrix of distances.  
         """
 
-        return self.xp.exp(-self.xp.power(n-c, 2)/denominator)
+        return self.xp.exp(-self.xp.power(n - c, 2) / denominator)
 
     def mexican_hat(self, c: np.ndarray, n: np.ndarray) -> np.ndarray:
         """Mexican hat neighborhood function.
@@ -43,10 +44,10 @@ class Neighborhoods:
             (np.ndarray): a matrix of distances.  
         """
 
-        return self.xp.power(n-c, 2)
+        return self.xp.power(n - c, 2)
 
     def bubble(self, c: np.ndarray, n: np.ndarray,
-            threshold: float) -> np.ndarray:
+               threshold: float) -> np.ndarray:
         """ Bubble neighborhood function.
 
         Args:
@@ -57,11 +58,11 @@ class Neighborhoods:
             (np.ndarray): a matrix of distances.  
         """
 
-        return self.xp.abs(n-c) < threshold
+        return self.xp.abs(n - c) < threshold
 
-    def neighborhood_caller(self, center: Tuple[np.ndarray], sigma: float, 
-            xx: np.ndarray, yy: np.ndarray, 
-            neigh_func: str, pbc_func: Union[Callable, None] = None) -> np.ndarray:
+    def neighborhood_caller(self, center: Tuple[np.ndarray], sigma: float,
+                            xx: np.ndarray, yy: np.ndarray,
+                            neigh_func: str, pbc_func: Union[Callable, None] = None) -> np.ndarray:
         """Returns a neighborhood selection on any 2d topology.
 
         Args:
@@ -78,7 +79,7 @@ class Neighborhoods:
             (array): the resulting neighborhood matrix.
         """
 
-        d = 2*sigma**2
+        d = 2 * sigma ** 2
 
         nx = xx[self.xp.newaxis, :, :]
         ny = yy[self.xp.newaxis, :, :]
@@ -95,7 +96,7 @@ class Neighborhoods:
             logger.error("{} neighborhood function not recognized.".format(neigh_func) +
                          "Choose among 'gaussian', 'mexican_hat' or 'bubble'.")
             raise ValueError
-        
+
         if pbc_func is not None:
             px, py = pbc_func((cx, cy), (nx, ny), (nx.shape[2], nx.shape[1]), shape_fun, self.xp)
         else:
@@ -104,7 +105,7 @@ class Neighborhoods:
 
         if neigh_func == 'mexican_hat':
             p = px + py
-            p = self.xp.exp(-p/d)*(1-2/d*p) 
+            p = self.xp.exp(-p / d) * (1 - 2 / d * p)
         else:
             p = px * py
 

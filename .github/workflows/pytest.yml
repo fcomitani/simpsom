@@ -1,6 +1,10 @@
-name: Run Pytest
+name: Pytest
 
-on: [push]
+on: 
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   build:

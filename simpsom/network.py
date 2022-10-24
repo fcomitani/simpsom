@@ -1,22 +1,18 @@
-from typing import Union, List, Tuple
-from types import ModuleType
-
-import sys
-import os
-import subprocess
 import multiprocessing
-
+import os
+import sys
 from functools import partial
+from types import ModuleType
+from typing import Union, List, Tuple
 
 import numpy as np
-
 from loguru import logger
 
 from simpsom.distances import Distance
-from simpsom.neighborhoods import Neighborhoods
-from simpsom.polygons import Squares, Hexagons, Polygon
-from simpsom.plots import plot_map, line_plot, scatter_on_map
 from simpsom.early_stop import EarlyStop
+from simpsom.neighborhoods import Neighborhoods
+from simpsom.plots import plot_map, line_plot, scatter_on_map
+from simpsom.polygons import Squares, Hexagons, Polygon
 
 
 class SOMNet:
@@ -274,7 +270,7 @@ class SOMNet:
                 "Epochs for online training are less than the input datapoints.")
             epochs = data.shape[0]
 
-        iterations = int(np.ceil(epochs/data.shape[0]))
+        iterations = int(np.ceil(epochs / data.shape[0]))
 
         return [ix
                 for shuffled in [np.random.permutation(data.shape[0])
@@ -288,11 +284,11 @@ class SOMNet:
             file_name (str): Name of the file where the data will be saved.
         """
 
-        weights_array = [[float(self.height)]*self.nodes_list[0].weights.shape[0],
+        weights_array = [[float(self.height)] * self.nodes_list[0].weights.shape[0],
                          [float(self.width)] *
                          self.nodes_list[0].weights.shape[0],
-                         [float(self.PBC)]*self.nodes_list[0].weights.shape[0]] + \
-            [self._get(node.weights) for node in self.nodes_list]
+                         [float(self.PBC)] * self.nodes_list[0].weights.shape[0]] + \
+                        [self._get(node.weights) for node in self.nodes_list]
 
         if not file_name.endswith((".npy")):
             file_name += ".npy"
@@ -308,7 +304,7 @@ class SOMNet:
             n_iter (int): Iteration number.
         """
 
-        self.sigma = self.start_sigma * self.xp.exp(-n_iter/self.tau)
+        self.sigma = self.start_sigma * self.xp.exp(-n_iter / self.tau)
 
     def _update_learning_rate(self, n_iter: int) -> None:
         """Update the learning rate.
@@ -318,7 +314,7 @@ class SOMNet:
         """
 
         self.learning_rate = self.start_learning_rate * \
-            self.xp.exp(n_iter/self.epochs)
+                             self.xp.exp(n_iter / self.epochs)
 
     def find_bmu_ix(self, vecs: np.array) -> 'SOMNode':
         """Find the index of the best matching unit (BMU) for a given list of vectors.
@@ -371,20 +367,20 @@ class SOMNet:
         """
 
         logger.info("The map will be trained with the " +
-                    train_algo+" algorithm.")
-        self.start_sigma = max(self.height, self.width)/2
+                    train_algo + " algorithm.")
+        self.start_sigma = max(self.height, self.width) / 2
         self.start_learning_rate = start_learning_rate
 
         self.data = self.xp.array(self.data)
 
         if epochs == -1:
             if train_algo == 'online':
-                epochs = self.data.shape[0]*10
+                epochs = self.data.shape[0] * 10
             else:
                 epochs = 10
 
         self.epochs = epochs
-        self.tau = self.epochs/self.xp.log(self.start_sigma)
+        self.tau = self.epochs / self.xp.log(self.start_sigma)
 
         if early_stop not in ["mapdiff", None]:
             logger.warning("Convergence method not recognized, early stopping will be deactivated. " +
@@ -416,13 +412,13 @@ class SOMNet:
 
                 if early_stopper.stop_training:
                     logger.info(
-                        "\rEarly stop tolerance reached at epoch {:d}, training will be stopped.".format(n_iter-1))
+                        "\rEarly stop tolerance reached at epoch {:d}, training will be stopped.".format(n_iter - 1))
                     self.convergence = early_stopper.convergence
                     break
 
                 if n_iter % 10 == 0:
                     logger.debug("\rTraining SOM... {:d}%".format(
-                        int(n_iter*100.0/self.epochs)))
+                        int(n_iter * 100.0 / self.epochs)))
 
                 self._update_sigma(n_iter)
                 self._update_learning_rate(n_iter)
@@ -463,7 +459,7 @@ class SOMNet:
             denominator = self.xp.zeros(
                 (all_weights.shape[0], all_weights.shape[1], 1), dtype=self.xp.float32)
 
-            unravel_precomputed = self.xp.unravel_index(self.xp.arange(self.width*self.height),
+            unravel_precomputed = self.xp.unravel_index(self.xp.arange(self.width * self.height),
                                                         (self.width, self.height))
 
             _xx, _yy = self.xp.meshgrid(self.xp.arange(
@@ -479,7 +475,7 @@ class SOMNet:
 
                 if early_stopper.stop_training:
                     logger.info(
-                        "\rEarly stop tolerance reached at epoch {:d}, training will be stopped.".format(n_iter-1))
+                        "\rEarly stop tolerance reached at epoch {:d}, training will be stopped.".format(n_iter - 1))
                     self.convergence = early_stopper.convergence
                     break
 
@@ -488,7 +484,7 @@ class SOMNet:
 
                 if n_iter % 10 == 0:
                     logger.debug("Training SOM... {:.2f}%".format(
-                        n_iter*100.0/self.epochs))
+                        n_iter * 100.0 / self.epochs))
 
                 try:
                     numerator.fill(0)
@@ -515,7 +511,7 @@ class SOMNet:
                         unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
 
                     g_gpu = neighborhood_caller(
-                        wins, sigma=self.sigma)*self.learning_rate
+                        wins, sigma=self.sigma) * self.learning_rate
 
                     sum_g_gpu = self.xp.sum(g_gpu, axis=0)
                     g_flat_gpu = g_gpu.reshape(g_gpu.shape[0], -1)
@@ -536,7 +532,7 @@ class SOMNet:
 
             # Revert to object oriented
             all_weights = all_weights.reshape(
-                self.width*self.height, self.data.shape[1])
+                self.width * self.height, self.data.shape[1])
             for n_node, node in enumerate(self.nodes_list):
                 node.weights = all_weights[n_node]
 
@@ -575,7 +571,7 @@ class SOMNet:
 
         weights_dist[(pos_dist > 1.01) | (pos_dist == 0.)] = np.nan
         [node._set_difference(value)
-            for node, value in zip(self.nodes_list, self.xp.nanmean(weights_dist, axis=0))]
+         for node, value in zip(self.nodes_list, self.xp.nanmean(weights_dist, axis=0))]
 
         logger.info('Weights difference among neighboring nodes calculated.')
 
@@ -605,7 +601,7 @@ class SOMNet:
             logger.info("Projected coordinates will be saved to:\n" +
                         os.path.join(self.output_path, file_name))
             np.save(os.path.join(self.output_path,
-                    file_name), self._get(bmu_list))
+                                 file_name), self._get(bmu_list))
 
         return self.xp.array(bmu_list)
 
@@ -628,7 +624,7 @@ class SOMNet:
             (list of int): A list containing the clusters of the input array datapoints.
         """
 
-        bmu_coor = self.project_onto_map(coor, file_name="som_projected_"+algorithm+".npy") \
+        bmu_coor = self.project_onto_map(coor, file_name="som_projected_" + algorithm + ".npy") \
             if project else coor
         if self.xp.__name__ == "cupy" and self.cluster_algo.__name__.startswith('sklearn'):
             bmu_coor = self._get(bmu_coor)
@@ -651,15 +647,16 @@ class SOMNet:
                              "|".join(modules))
                 return None, None
 
-            clu_algo = eval("self.cluster_algo."+algorithm)
+            clu_algo = eval("self.cluster_algo." + algorithm)
 
         else:
             clu_algo = algorithm
 
             if not callable(getattr(clu_algo, "fit", None)):
-                logger.error("There was a problem with the clustering, make sure to provide a scikit-like clustering\n" +
-                             "class or use one of the algorithms provided by the scikit library,\n" +
-                             "Custom classes must have a 'fit' method.")
+                logger.error(
+                    "There was a problem with the clustering, make sure to provide a scikit-like clustering\n" +
+                    "class or use one of the algorithms provided by the scikit library,\n" +
+                    "Custom classes must have a 'fit' method.")
                 return None, None
 
         clu_algo = clu_algo(**kwargs)
@@ -678,7 +675,7 @@ class SOMNet:
             logger.info("Clustering results will be saved to:\n" +
                         os.path.join(self.output_path, file_name))
             np.save(os.path.join(self.output_path,
-                    file_name), self._get(clu_labs))
+                                 file_name), self._get(clu_labs))
 
         return clu_labs, bmu_coor
 
@@ -834,7 +831,7 @@ class SOMNet:
 
         _, _ = scatter_on_map([bmu_coor],
                               [[node.pos[0], node.pos[1]]
-                              for node in self.nodes_list],
+                               for node in self.nodes_list],
                               self.polygons,
                               color_val=color_val,
                               show=show, print_out=print_out,
@@ -883,7 +880,7 @@ class SOMNet:
 
         _, _ = scatter_on_map([bmu_coor[clusters == clu] for clu in set(clusters)],
                               [[node.pos[0], node.pos[1]]
-                              for node in self.nodes_list],
+                               for node in self.nodes_list],
                               self.polygons,
                               color_val=color_val,
                               show=show, print_out=print_out,
@@ -938,12 +935,13 @@ class SOMNode:
 
         elif init_vec is not None:
             # Sample uniformly in the space spanned by the custom vectors.
-            self.weights = (init_vec[1] - init_vec[0])*self.xp.array(
+            self.weights = (init_vec[1] - init_vec[0]) * self.xp.array(
                 np.random.rand(len(init_vec[0])).astype(np.float32)) + init_vec[0]
 
         else:
-            logger.error("Error in the network weights initialization, make sure to provide random initalization boundaries,\n" +
-                         "custom vectors, or load the weights from file.")
+            logger.error(
+                "Error in the network weights initialization, make sure to provide random initalization boundaries,\n" +
+                "custom vectors, or load the weights from file.")
             sys.exit(1)
 
         self.weights = self.xp.array(self.weights)
@@ -962,7 +960,7 @@ class SOMNode:
             return self.polygons.distance_pbc(self.pos, node.pos,
                                               (self.width, self.height),
                                               lambda x, y: self.xp.sqrt(
-                                                  self.xp.sum(self.xp.square(x-y))),
+                                                  self.xp.sum(self.xp.square(x - y))),
                                               xp=self.xp)
         else:
             return self.xp.sqrt(self.xp.sum(self.xp.square(self.pos - node.pos)))
@@ -978,9 +976,9 @@ class SOMNode:
         """
 
         dist = self.get_node_distance(bmu)
-        gauss = self.xp.exp(-dist**2/(2*sigma**2))
+        gauss = self.xp.exp(-dist ** 2 / (2 * sigma ** 2))
 
-        self.weights -= gauss*learning_rate*(self.weights-input_vec)
+        self.weights -= gauss * learning_rate * (self.weights - input_vec)
 
     def _set_difference(self, diff_value: Union[float, int]) -> None:
         """ Set the neighbouring nodes weights difference.
@@ -993,5 +991,4 @@ class SOMNode:
 
 
 if __name__ == "__main__":
-
     pass
