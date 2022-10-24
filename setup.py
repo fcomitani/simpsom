@@ -42,7 +42,7 @@ setup(
 
     install_requires=['numpy>=1.23.4',
                       'scikit-learn>=1.1.2',
-                      'matplotlib>=3.3.3'
+                      'matplotlib>=3.3.3',
                       'loguru>=0.5.3',
                       'pylettes>=0.2.0'],
 
