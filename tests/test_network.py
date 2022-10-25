@@ -101,10 +101,12 @@ class TestNetwork:
                  clustering, plotall, load, GPU):
 
         data = load_dataset
+        system = platform.system()
+        system = 'Darwin' if system=='Windows' else system
         hashed_name = int.from_bytes((str(PBC) + str(init) +
                                       str(metric) + str(topology) + str(neighborhood_fun) +
                                       str(train_algo) + str(epochs) + str(early_stop) +
-                                      str(clustering) + platform.system()).encode(), 'little')
+                                      str(clustering) + system).encode(), 'little')
 
         net = sps.SOMNet(size, size, data,
                          topology=topology, PBC=PBC,
