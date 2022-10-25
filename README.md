@@ -6,7 +6,7 @@
 [![PyPI version](https://badge.fury.io/py/simpsom.svg)](https://badge.fury.io/py/simpsom)
 [![Documentation Status](https://readthedocs.org/projects/simpsom/badge/?version=latest)](https://simpsom.readthedocs.io/en/latest/?badge=latest)
 ![example workflow](https://github.com/fcomitani/simpsom/actions/workflows/pytest.yml/badge.svg)
-[![codecov](https://codecov.io/gh/fcomitani/simpsom/branch/master/graph/badge.svg?token=2OHOCO0O4I)](https://codecov.io/gh/fcomitani/simpsom)
+[![codecov](https://codecov.io/gh/fcomitani/simpsom/branch/main/graph/badge.svg?token=2OHOCO0O4I)](https://codecov.io/gh/fcomitani/simpsom)
 
 ## Version 3.0.0
 

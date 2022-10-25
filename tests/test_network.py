@@ -23,7 +23,7 @@ class Parameters:
 
 
 class TestNetwork:
-    BUILD_TRUTH = False
+    BUILD_TRUTH = True
 
     @classmethod
     def setup_method(cls, capsys):
@@ -81,6 +81,8 @@ class TestNetwork:
          'bubble', 'batch', 10, None, None, False, False),
         (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian',
          'batch', 100, 'mapdiff', None, False, False),
+        (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian',
+         'online', 100, 'mapdiff', None, False, False),
         (False, 10, 'PCA', 'euclidean', 'square', 'gaussian',
          'online', 10, None, None, False, False),
         (False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'batch',
@@ -215,6 +217,12 @@ class TestNetwork:
                               file_name=os.path.join(Parameters.output_path, "som_clusters.png"))
             assert (os.path.isfile(os.path.join(
                 Parameters.output_path, "som_clusters.png")))
+
+            if early_stop is not None:
+                net.plot_convergence(show=False, print_out=True,
+                                file_name=os.path.join(Parameters.output_path, "som_convergence.png"))
+                assert (os.path.isfile(os.path.join(
+                    Parameters.output_path, "som_convergence.png")))
 
         self.cleanup()
 
