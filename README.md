@@ -5,6 +5,8 @@
 [![DOI](https://zenodo.org/badge/91130860.svg)](https://zenodo.org/badge/latestdoi/91130860)
 [![PyPI version](https://badge.fury.io/py/simpsom.svg)](https://badge.fury.io/py/simpsom)
 [![Documentation Status](https://readthedocs.org/projects/simpsom/badge/?version=latest)](https://simpsom.readthedocs.io/en/latest/?badge=latest)
+![example workflow](https://github.com/fcomitani/simpsom/actions/workflows/pytest.yml/badge.svg)
+[![codecov](https://codecov.io/gh/fcomitani/simpsom/branch/main/graph/badge.svg?token=2OHOCO0O4I)](https://codecov.io/gh/fcomitani/simpsom)
 
 ## Version 3.0.0
 
@@ -83,6 +85,9 @@ Here are some of the research works that use SimpSOM:
 
 > Saunders, J. K., McIlvin, M. R., Dupont, C. L., Kaul, D., Moran, D. M., Horner, T., ... & Saito, M. A. (2022). Microbial functional diversity across biogeochemical provinces in the central Pacific Ocean. Proceedings of the National Academy of Sciences, 119(37), e2200014119.
 
+## Contributions
+
+Contributions are always welcome. If you would like to help us improve this library please fork the main branch and make sure pytest pass after your changes.
 
 ## Citation
 <!-- To update with JOSS -->

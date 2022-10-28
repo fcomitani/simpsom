@@ -40,10 +40,10 @@ setup(
 
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
 
-    install_requires=['numpy>=1.19.5',
-                      'scikit-learn>=0.22.2.post1',
-                      'matplotlib>=3.3.3'
-                      'loguru>=0.6.0',
+    install_requires=['numpy>=1.23.4',
+                      'scikit-learn>=1.1.2',
+                      'matplotlib>=3.3.3',
+                      'loguru>=0.5.3',
                       'pylettes>=0.2.0'],
 
     extras_require={ 'gpu': ['cupy==8.60',

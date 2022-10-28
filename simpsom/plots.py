@@ -1,11 +1,10 @@
 from typing import Union, Collection, Tuple
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.figure import Figure
-
 from pylettes import Distinct20
 
 from simpsom.polygons import Polygon
@@ -14,7 +13,7 @@ from simpsom.polygons import Polygon
 def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], polygons_class: Polygon,
              show: bool = True, print_out: bool = False,
              file_name: str = "./som_plot.png",
-             **kwargs: Tuple[int]) -> Tuple[Figure,  plt.Axes]:
+             **kwargs: Tuple[int]) -> Tuple[Figure, plt.Axes]:
     """Plot a 2D SOM
 
     Args:
@@ -51,9 +50,9 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
 
     fig = plt.figure(figsize=(kwargs["figsize"][0], kwargs["figsize"][1]))
     ax = polygons_class.draw_map(fig, centers, feature,
-                                 cmap=kwargs['cmap'] if 'cmap' in kwargs 
-                                                     else plt.get_cmap('viridis'))
-    ax.set_title(kwargs["title"], size=kwargs["fontsize"]*1.15)
+                                 cmap=kwargs['cmap'] if 'cmap' in kwargs
+                                 else plt.get_cmap('viridis'))
+    ax.set_title(kwargs["title"], size=kwargs["fontsize"] * 1.15)
 
     divider = make_axes_locatable(ax)
 
@@ -61,7 +60,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
         cax = divider.append_axes("right", size="5%", pad=0.0)
         cbar = plt.colorbar(ax.collections[0], cax=cax)
         cbar.set_label(kwargs["cbar_label"], size=kwargs["fontsize"])
-        cbar.ax.tick_params(labelsize=kwargs["fontsize"]*.85)
+        cbar.ax.tick_params(labelsize=kwargs["fontsize"] * .85)
         cbar.outline.set_visible(False)
 
     fig.tight_layout()
@@ -81,7 +80,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
 def line_plot(y_val: Union[np.ndarray, list], x_val: Union[np.ndarray, list] = None,
               show: bool = True, print_out: bool = False,
               file_name: str = "./line_plot.png",
-              **kwargs: Tuple[int]) -> Tuple[Figure,  plt.Axes]:
+              **kwargs: Tuple[int]) -> Tuple[Figure, plt.Axes]:
     """A simple line plot with maplotlib.
 
     Args: 
@@ -132,8 +131,8 @@ def line_plot(y_val: Union[np.ndarray, list], x_val: Union[np.ndarray, list] = N
 
     plt.plot(x_val, y_val, marker="o")
 
-    plt.xticks(fontsize=kwargs["fontsize"]*.85)
-    plt.yticks(fontsize=kwargs["fontsize"]*.85)
+    plt.xticks(fontsize=kwargs["fontsize"] * .85)
+    plt.yticks(fontsize=kwargs["fontsize"] * .85)
 
     if kwargs["logy"]:
         ax.set_yscale("log")
@@ -147,7 +146,7 @@ def line_plot(y_val: Union[np.ndarray, list], x_val: Union[np.ndarray, list] = N
     plt.xlabel(kwargs["xlabel"], fontsize=kwargs["fontsize"])
     plt.ylabel(kwargs["ylabel"], fontsize=kwargs["fontsize"])
 
-    plt.title(kwargs["title"], size=kwargs["fontsize"]*1.15)
+    plt.title(kwargs["title"], size=kwargs["fontsize"] * 1.15)
 
     ax.set_aspect("auto")
     fig.tight_layout()
@@ -168,7 +167,7 @@ def scatter_on_map(datagroups: Collection[np.ndarray], centers: Collection[np.nd
                    color_val: bool = None,
                    show: bool = True, print_out: bool = False,
                    file_name: str = "./som_scatter.png",
-                   **kwargs: Tuple[int]) -> Tuple[Figure,  plt.Axes]:
+                   **kwargs: Tuple[int]) -> Tuple[Figure, plt.Axes]:
     """Scatter plot with points projected onto a 2D SOM.
 
     Args:
@@ -217,8 +216,8 @@ def scatter_on_map(datagroups: Collection[np.ndarray], centers: Collection[np.nd
                    color=Distinct20()[i % 20], edgecolor="#ffffff",
                    linewidth=1, label='{:d}'.format(i))
 
-    plt.legend(bbox_to_anchor=(-.025, 1), fontsize=kwargs["fontsize"]*.85,
-               frameon=False, title='Groups', ncol=int(len(datagroups)/10.0)+1,
+    plt.legend(bbox_to_anchor=(-.025, 1), fontsize=kwargs["fontsize"] * .85,
+               frameon=False, title='Groups', ncol=int(len(datagroups) / 10.0) + 1,
                title_fontsize=kwargs["fontsize"])
 
     if not file_name.endswith((".png", ".jpg", ".pdf")):
