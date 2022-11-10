@@ -44,7 +44,7 @@ For a full list see `requirements.txt`
 
 ## Example of Usage
 
-Running `simposm` is easy. After setting up a network by providing size and tiling style,
+Running `simpsom` is easy. After setting up a network by providing size and tiling style,
 train it with the `train` method. 
 
     import simpsom as sps
