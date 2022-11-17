@@ -334,8 +334,6 @@ class SOMNet:
 
         return self.xp.argmin(dists, axis=1)
 
-    # TODO: Consider changing epoch in online training to be equivalent to 1 full run
-    # of the dataset rather than a single data point
     def train(self, train_algo: str = "batch", epochs: int = -1,
               start_learning_rate: float = 0.01, early_stop: str = None,
               early_stop_patience: int = 3, early_stop_tolerance: float = 1e-4, batch_size: int = -1) -> None:
@@ -679,13 +677,13 @@ class SOMNet:
 
         return clu_labs, bmu_coor
 
-    def plot_map_by_feature(self, feature: int, show: bool = False, print_out: bool = True,
+    def plot_map_by_feature(self, feature_ix: int, show: bool = False, print_out: bool = True,
                             **kwargs: Tuple[int]) -> None:
         """ Wrapper function to plot a trained 2D SOM map
         color-coded according to a given feature.
 
         Args:
-            feature (int): The feature number to use as color map.
+            feature_ix (int): The feature index number to use as color map.
             show (bool): Choose to display the plot.
             print_out (bool): Choose to save the plot to a file.
             kwargs (dict): Keyword arguments to format the plot, such as 
@@ -698,10 +696,10 @@ class SOMNet:
 
         if "file_name" not in kwargs.keys():
             kwargs["file_name"] = os.path.join(self.output_path,
-                                               "./som_feature_{}.png".format(str(feature)))
+                                               "./som_feature_{}.png".format(str(feature_ix)))
 
         _, _ = plot_map([[node.pos[0], node.pos[1]] for node in self.nodes_list],
-                        [node.weights[feature] for node in self.nodes_list],
+                        [node.weights[feature_ix] for node in self.nodes_list],
                         self.polygons,
                         show=show, print_out=print_out,
                         **kwargs)

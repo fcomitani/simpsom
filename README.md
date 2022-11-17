@@ -14,7 +14,7 @@ Simple Self-Organizing Maps (SimpSOM) is a lightweight Python 3 library to train
 It offers an efficient way of training SOM in Python 
 while keeping its implementation simple and easy to read.
 
-Version 3 offers a refactoring focusing on performance.
+Version 3 is a rewriting focusing on performance.
 
 ## Installation
 
@@ -44,7 +44,7 @@ For a full list see `requirements.txt`
 
 ## Example of Usage
 
-Running `simposm` is easy. After setting up a network by providing size and tiling style,
+Running `simpsom` is easy. After setting up a network by providing size and tiling style,
 train it with the `train` method. 
 
     import simpsom as sps
@@ -92,7 +92,7 @@ Contributions are always welcome. If you would like to help us improve this libr
 ## Citation
 <!-- To update with JOSS -->
 
-If using this library, please cite the appropriate version from [Zenodo](https://zenodo.org/badge/latestdoi/91130860)
+When using this library for your work, please cite the appropriate version from [Zenodo](https://zenodo.org/badge/latestdoi/91130860)
 
 > Federico Comitani. (2022). SimpSOM (v2.0.2). Zenodo. https://zenodo.org/record/7187332
 
