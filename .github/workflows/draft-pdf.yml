@@ -1,3 +1,4 @@
+name: JOSS draft
 on: [push]
 
 jobs:
