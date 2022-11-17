@@ -104,7 +104,7 @@ class TestNetwork:
 
         data = load_dataset
         system = platform.system()
-        system = 'Darwin' if system=='Windows' else system
+        system = 'Darwin' if system == 'Windows' else system
         hashed_name = int.from_bytes((str(PBC) + str(init) +
                                       str(metric) + str(topology) + str(neighborhood_fun) +
                                       str(train_algo) + str(epochs) + str(early_stop) +
@@ -138,7 +138,8 @@ class TestNetwork:
         assert_array_almost_equal(
             np.load(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)),
                     allow_pickle=True),
-            np.load(os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(hashed_name)), allow_pickle=True),
+            np.load(os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(
+                hashed_name)), allow_pickle=True),
             decimal=decimal)
 
         if load:
@@ -154,14 +155,13 @@ class TestNetwork:
                              [float(net_l.width)] *
                              net_l.nodes_list[0].weights.shape[0],
                              [float(net_l.PBC)] * net_l.nodes_list[0].weights.shape[0]] + \
-                            [net_l._get(node.weights) for node in net_l.nodes_list]
+                [net_l._get(node.weights) for node in net_l.nodes_list]
             assert_array_equal(np.array(weights_array),
                                np.load(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)),
                                        allow_pickle=True))
 
         if plotall:
-
-            net.plot_map_by_feature(feature=1, show=False, print_out=True)
+            net.plot_map_by_feature(feature_ix=1, show=False, print_out=True)
             assert (os.path.isfile(os.path.join(
                 Parameters.output_path, "som_feature_1.png")))
 
@@ -187,7 +187,7 @@ class TestNetwork:
             if clustering == 'KMeans':
                 clus_kwargs['random_state'] = 32
 
-            labs, points = net.cluster(
+            labs, _ = net.cluster(
                 data, algorithm=clustering, file_name="som_clusters_{:d}.npy".format(hashed_name), **clus_kwargs)
             assert (os.path.isfile(os.path.join(Parameters.output_path,
                                                 "som_clusters_{:d}.npy".format(hashed_name))))
@@ -220,7 +220,7 @@ class TestNetwork:
 
             if early_stop is not None:
                 net.plot_convergence(show=False, print_out=True,
-                                file_name=os.path.join(Parameters.output_path, "som_convergence.png"))
+                                     file_name=os.path.join(Parameters.output_path, "som_convergence.png"))
                 assert (os.path.isfile(os.path.join(
                     Parameters.output_path, "som_convergence.png")))
 
