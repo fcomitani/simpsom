@@ -46,11 +46,11 @@ CUDA toolkits [@cupy_learningsys2017][@raschka2020machine] for GPU-accelerated c
 <!-- figure efficiency -->
 <!-- are we the only one with a GPU implementation? -->
 
-Maps can be trained either with the online or the batch algorithm, isolated or within periodic boundary conditions to avoid artifacts at the border. Two separate tiling styles are available, square (XXX neighbours) and hexagonal (XX neighbours). Gaussian, bubble and mexican hat can be selected as neighbourhood functions. Euclidean, manhattan and cosine can be set as distance metrics for training, but we envisage the possibility to extend this list in the future and possibly allow custom functions from the user. 
+Maps can be trained either with the online or the batch algorithm, isolated or within periodic boundary conditions to avoid artifacts at the border. Two separate tiling styles are available, square (4 cardinal + 4 diagonal neighbours) and hexagonal (6 neighbours). Gaussian, bubble and mexican hat can be selected as neighbourhood functions. Euclidean, manhattan and cosine can be set as distance metrics for training, but we envisage the possibility to extend this list in the future and possibly allow custom functions from the user. 
 <!-- PBC and GPU major points -->
 
 Plotting functions for visualizing the map, nodes feature values and the local nodes' average difference (U-matrix) are available to the user, and so are a set of tools to project points onto the map at inference and visualize their arrangement.
-A wrapper for clustering projected points is also available, with this, a custom clustering algorithm can be provided, as long as they are defined in a scikit-learn-compatible format <!-- cite -->. Custom metrics for clustering can also be set by the user and are recommended when PBC are active. 
+A wrapper for clustering projected points is also available, with this, a custom clustering algorithm can be provided, as long as they are defined in a scikit-learn-compatible format [@scikit-learn]. Custom metrics for clustering can also be set by the user and are recommended when PBC are active. 
 
 Supporting its ease of use and flexibility, SimpSOM has minimal dependencies, including NumPy and scikit-learn for core calculations and Matplotlib for plotting.
 
@@ -127,7 +127,7 @@ The results can then be saved to disk as a `numpy` object.
 It is recommended that the user make sure to use a PBC-compatible algorithm when the map
 has been trained with the PBC flag activated.
 
-![U-matrix of weights differences of a SOM map trained on the MNIST dataset. The weight values of centroid nodes are shown as reconstructed digits.\label{fig:two}](figs/mnist_example.png){ width=60% }
+![U-matrix of weights differences of a SOM map trained on the MNIST dataset. The weight values of centroid nodes are shown as reconstructed digits.\label{fig:two}](figs/mnist_example.png){width=60%}
 
 # Documentation
 
