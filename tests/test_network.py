@@ -23,7 +23,7 @@ class Parameters:
 
 
 class TestNetwork:
-    BUILD_TRUTH = True
+    BUILD_TRUTH = False
 
     @classmethod
     def setup_method(cls, capsys):
