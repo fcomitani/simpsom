@@ -18,6 +18,12 @@ from simpsom.polygons import Squares, Hexagons, Polygon
 class SOMNet:
     """ Kohonen SOM Network class. """
 
+    __slots__ = ('output_path', 'cluster_algo', 'xp', 'nodes', 'data', 'metric',
+                 'polygons', 'distance', 'neighborhood_fun', 'neighborhoods',
+                 'convergence', 'height', 'width', 'init', 'PBC', 'GPU', 'CUML',
+                 'nodes_list', 'start_sigma', 'start_learning_rate', 'epochs',
+                 'tau', 'sigma', 'learning_rate')
+                 
     def __init__(self, net_height: int, net_width: int, data: np.ndarray,
                  load_file: str = None, metric: str = "euclidean",
                  topology: str = "hexagonal", neighborhood_fun: str = "gaussian",
@@ -891,6 +897,9 @@ class SOMNet:
 
 class SOMNode:
     """ Single Kohonen SOM node class. """
+
+    __slots__ = ('xp' , 'polygons', 'PBC', 'pos', 'weights', 'difference',
+                 'height', 'width')
 
     def __init__(self, x: int, y: int, num_weights: int, net_height: int, net_width: int,
                  PBC: bool, polygons: Polygon, xp: ModuleType = np,

@@ -212,6 +212,7 @@ def scatter_on_map(datagroups: Collection[np.ndarray], centers: Collection[np.nd
                        **kwargs)
 
     for i, group in enumerate(datagroups):
+        print(group[:,0])
         ax.scatter(group[:, 0], group[:, 1],
                    color=Distinct20()[i % 20], edgecolor="#ffffff",
                    linewidth=1, label='{:d}'.format(i))
