@@ -39,10 +39,10 @@ With this library, we aim at offering the scientific community an efficient yet 
 
 There are currently several libraries offering self-organizing maps in Python. Although some are excellent implementations, we argue SimpSOM offers the most complete one. 
 kohonen is one of the earliest scripts made available for Python and offers a trainable square grid of nodes [@kohonen2009github], together with other, less common vector quantizers approaches. SOMPY is inspired by an earlier implementation in Matlab and also works with a square topology only, but includes batch training [@moosavi2014]. An early Tensorflow-based implementation of SOM is instead included in NeuPy [@neupy]. minisom is one of the most popular and complete packages but has no periodic boundary conditions [@vettigli2018] and neither does GEMA, the most recent among this list, which however only works with a square topology [@garciatejodor2021]. Finally, som includes PBC but again only works with square tiling [@som].
+More recently, XPySom [@xpysom] has been published. Building from minisom, it improves its efficiency by a smart use of vectorization with `Numpy`[@harris2020array] on CPU and `CuPy`[@cupy_learningsys2017] on CPU.
 
 The first implementation of SimpSOM aimed at allowing streamlined pipelines for building SOM, with an object-oriented syntax for ease of reading and customization. It also offered a high-level interface with out-of-the-box functions for plotting and visualizing the trained map.
-As of the last version, v.3.0.0, the focus was improving performance while maintaining readability as the core principle. The computational cost of building and training a map with SimpSOM is now comparable to the best alternative in literature. As part of this effort, SimpSOM is now GPU-enabled with `CuPy` and `CuML, 
-CUDA toolkits [@cupy_learningsys2017][@raschka2020machine] for GPU-accelerated computing. 
+As of the last version, v.3.0.0, the focus shifted to improving performance by leveraging XPySom-style vectorized distance and neighbor functions while maintaining readability and flexibility as its core principles. As part of this effort, SimpSOM is now GPU-enabled with `CuPy` and `CuML`, CUDA toolkits [@cupy_learningsys2017][@raschka2020machine] for GPU-accelerated computing. The computational cost of building and training a map with SimpSOM is now comparable to the best alternative in literature. 
 <!-- figure efficiency -->
 
 Maps can be trained either with the online or the batch algorithm, isolated or within periodic boundary conditions to avoid artifacts at the border. Two separate tiling styles are available, square (4 cardinal + 4 diagonal neighbours) and hexagonal (6 neighbours). Gaussian, bubble and mexican hat can be selected as neighbourhood functions. Euclidean, manhattan and cosine can be set as distance metrics for training, but we envisage the possibility to extend this list in the future and possibly allow custom functions from the user. 
@@ -127,6 +127,10 @@ We recommende that the user make sure to use a PBC-compatible algorithm when the
 has been trained with the PBC flag activated.
 
 ![U-matrix of weights differences of a SOM map trained on the MNIST dataset. The weight values of centroid nodes are shown as reconstructed digits.\label{fig:two}](figs/mnist_example.png){width=60%}
+
+# Licence
+
+SimpSOM is released under a GPL-3 
 
 # Documentation
 
