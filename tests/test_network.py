@@ -1,6 +1,8 @@
 import os
 import platform
 import shutil
+import hashlib
+import base64
 
 import numpy as np
 import pytest
@@ -105,10 +107,10 @@ class TestNetwork:
         data = load_dataset
         system = platform.system()
         system = 'Darwin' if system == 'Windows' else system
-        hashed_name = int.from_bytes((str(PBC) + str(init) +
-                                      str(metric) + str(topology) + str(neighborhood_fun) +
-                                      str(train_algo) + str(epochs) + str(early_stop) +
-                                      str(clustering) + system).encode(), 'little')
+        hashed_name = base64.urlsafe_b64encode(hashlib.md5(''.join([str(PBC), str(init),
+                           str(metric), str(topology), str(neighborhood_fun),
+                           str(train_algo), str(epochs), str(early_stop),
+                           str(clustering), system]).encode('utf-8')).digest()).decode('ascii')
 
         net = sps.SOMNet(size, size, data,
                          topology=topology, PBC=PBC,
@@ -118,34 +120,30 @@ class TestNetwork:
         net.train(train_algo=train_algo, start_learning_rate=0.01, epochs=epochs,
                   batch_size=-1, early_stop=early_stop)
 
-        net.save_map("trained_som_{:d}.npy".format(hashed_name))
+        net.save_map("trained_som_{}.npy".format(hashed_name))
         assert (os.path.isfile(os.path.join(Parameters.output_path,
-                                            "trained_som_{:d}.npy".format(hashed_name))))
+                                            "trained_som_{}.npy".format(hashed_name))))
 
         if self.BUILD_TRUTH:
-            shutil.copyfile(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)),
-                            os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(hashed_name)))
-
-        # TODO: temporary workaround for precision discrepancy between GPU and CPU in batch training with PBC
-        # and hexagonal topology
+            shutil.copyfile(os.path.join(Parameters.output_path, "trained_som_{}.npy".format(hashed_name)),
+                            os.path.join(Parameters.truth_path, "trained_som_{}.npy".format(hashed_name)))
+        
         decimal = 4
-        # if GPU and PBC and train_algo == 'batch' and topology == 'hexagonal':
-        #    decimal = 1
 
-        print(np.max(np.load(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)),
+        print(np.max(np.load(os.path.join(Parameters.output_path, "trained_som_{}.npy".format(hashed_name)),
                              allow_pickle=True) - np.load(
-            os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(hashed_name)), allow_pickle=True)))
+            os.path.join(Parameters.truth_path, "trained_som_{}.npy".format(hashed_name)), allow_pickle=True)))
         assert_array_almost_equal(
-            np.load(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)),
+            np.load(os.path.join(Parameters.output_path, "trained_som_{}.npy".format(hashed_name)),
                     allow_pickle=True),
-            np.load(os.path.join(Parameters.truth_path, "trained_som_{:d}.npy".format(
+            np.load(os.path.join(Parameters.truth_path, "trained_som_{}.npy".format(
                 hashed_name)), allow_pickle=True),
             decimal=decimal)
 
         if load:
             net_l = sps.SOMNet(size, size, data,
                                load_file=os.path.join(
-                                   Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)),
+                                   Parameters.output_path, "trained_som_{}.npy".format(hashed_name)),
                                topology=topology, PBC=PBC,
                                init=init, metric=metric,
                                random_seed=32, GPU=GPU, debug=False,
@@ -157,7 +155,7 @@ class TestNetwork:
                              [float(net_l.PBC)] * net_l.nodes_list[0].weights.shape[0]] + \
                 [net_l._get(node.weights) for node in net_l.nodes_list]
             assert_array_equal(np.array(weights_array),
-                               np.load(os.path.join(Parameters.output_path, "trained_som_{:d}.npy".format(hashed_name)),
+                               np.load(os.path.join(Parameters.output_path, "trained_som_{}.npy".format(hashed_name)),
                                        allow_pickle=True))
 
         if plotall:
@@ -188,29 +186,29 @@ class TestNetwork:
                 clus_kwargs['random_state'] = 32
 
             labs, _ = net.cluster(
-                data, algorithm=clustering, file_name="som_clusters_{:d}.npy".format(hashed_name), **clus_kwargs)
+                data, algorithm=clustering, file_name="som_clusters_{}.npy".format(hashed_name), **clus_kwargs)
             assert (os.path.isfile(os.path.join(Parameters.output_path,
-                                                "som_clusters_{:d}.npy".format(hashed_name))))
+                                                "som_clusters_{}.npy".format(hashed_name))))
             assert (os.path.isfile(os.path.join(
                 Parameters.output_path, "som_projected_" + clustering + ".npy")))
 
             if self.BUILD_TRUTH:
-                shutil.copyfile(os.path.join(Parameters.output_path, "som_clusters_{:d}.npy".format(hashed_name)),
-                                os.path.join(Parameters.truth_path, "som_clusters_{:d}.npy".format(hashed_name)))
+                shutil.copyfile(os.path.join(Parameters.output_path, "som_clusters_{}.npy".format(hashed_name)),
+                                os.path.join(Parameters.truth_path, "som_clusters_{}.npy".format(hashed_name)))
 
                 shutil.copyfile(os.path.join(Parameters.output_path, "som_projected_" + clustering + ".npy"),
-                                os.path.join(Parameters.truth_path, "som_projected_{:d}.npy".format(hashed_name)))
+                                os.path.join(Parameters.truth_path, "som_projected_{}.npy".format(hashed_name)))
 
             assert_array_almost_equal(
-                np.load(os.path.join(Parameters.output_path, "som_clusters_{:d}.npy".format(hashed_name)),
+                np.load(os.path.join(Parameters.output_path, "som_clusters_{}.npy".format(hashed_name)),
                         allow_pickle=True),
-                np.load(os.path.join(Parameters.truth_path, "som_clusters_{:d}.npy".format(hashed_name)),
+                np.load(os.path.join(Parameters.truth_path, "som_clusters_{}.npy".format(hashed_name)),
                         allow_pickle=True), decimal=4)
 
             assert_array_almost_equal(
                 np.load(os.path.join(Parameters.output_path, "som_projected_" + clustering + ".npy"),
                         allow_pickle=True),
-                np.load(os.path.join(Parameters.truth_path, "som_projected_{:d}.npy".format(hashed_name)),
+                np.load(os.path.join(Parameters.truth_path, "som_projected_{}.npy".format(hashed_name)),
                         allow_pickle=True), decimal=4)
 
             net.plot_clusters(data, labs, project=True, show=False, print_out=True,
