@@ -8,15 +8,22 @@ from loguru import logger
 class Neighborhoods:
     """ Container class with functions to calculate neihgborhoods. """
 
-    def __init__(self, xp: ModuleType = None) -> None:
+    def __init__(self, xp: ModuleType, xx: np.ndarray, yy: np.ndarray, pbc_func: Union[Callable, None]) -> None:
         """ Instantiate the Neighborhoods class.
 
         Args:
             xp (numpy or cupy): the numeric labrary to use
                 to calculate distances.
+            xx (array): x coordinates in the grid mesh.
+            yy (array): y coordinates in the grid mesh.
+            pbc_function (Callable): function to extend a distance
+                function to account for pbc, as defined in polygons
         """
 
         self.xp = xp
+        self.xx = xx
+        self.yy = yy
+        self.pbc_func = pbc_func
 
     def gaussian(self, c: np.ndarray, n: np.ndarray,
                  denominator: float) -> np.ndarray:
@@ -60,20 +67,15 @@ class Neighborhoods:
 
         return self.xp.abs(n - c) < threshold
 
-    def neighborhood_caller(self, center: Tuple[np.ndarray], sigma: float,
-                            xx: np.ndarray, yy: np.ndarray,
-                            neigh_func: str, pbc_func: Union[Callable, None] = None) -> np.ndarray:
+    def neighborhood_caller(self, neigh_func: str, center: Tuple[np.ndarray], sigma: float) -> np.ndarray:
+
         """Returns a neighborhood selection on any 2d topology.
 
         Args:
             center (Tuple[np.ndarray]): index of the center point along the xx yy grid.
             sigma (float): standard deviation/size coefficient.
-            xx (array): x coordinates in the grid mesh.
-            yy (array): y coordinates in the grid mesh.
             nigh_func (str): neighborhood specific distance function name
                 (choose among 'gaussian', 'mexican_hat' or 'bubble')
-            pbc_function (Callable): function to extend a distance
-                function to account for pbc, as defined in polygons
 
         Returns:
             (array): the resulting neighborhood matrix.
@@ -81,10 +83,10 @@ class Neighborhoods:
 
         d = 2 * sigma ** 2
 
-        nx = xx[self.xp.newaxis, :, :]
-        ny = yy[self.xp.newaxis, :, :]
-        cx = xx.T[center][:, self.xp.newaxis, self.xp.newaxis]
-        cy = yy.T[center][:, self.xp.newaxis, self.xp.newaxis]
+        nx = self.xx[self.xp.newaxis, :, :]
+        ny = self.yy[self.xp.newaxis, :, :]
+        cx = self.xx.T[center][:, self.xp.newaxis, self.xp.newaxis]
+        cy = self.yy.T[center][:, self.xp.newaxis, self.xp.newaxis]
 
         if neigh_func == 'gaussian':
             shape_fun = lambda x, y: self.gaussian(x, y, denominator=d)
@@ -97,8 +99,8 @@ class Neighborhoods:
                          "Choose among 'gaussian', 'mexican_hat' or 'bubble'.")
             raise ValueError
 
-        if pbc_func is not None:
-            px, py = pbc_func((cx, cy), (nx, ny), (nx.shape[2], nx.shape[1]), shape_fun, self.xp)
+        if self.pbc_func is not None:
+            px, py = self.pbc_func((cx, cy), (nx, ny), (nx.shape[2], nx.shape[1]), shape_fun, self.xp)
         else:
             px = shape_fun(cx, nx)
             py = shape_fun(cy, ny)

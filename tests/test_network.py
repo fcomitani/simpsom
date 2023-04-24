@@ -9,7 +9,9 @@ import pytest
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 from sklearn.datasets import load_digits
 
-import simpsom as sps
+import sys
+sys.path.append("/project/Wellcome_Discovery/sriva/Git/simpsom/")
+import simpsom as sps 
 
 
 class Parameters:
@@ -25,7 +27,7 @@ class Parameters:
 
 
 class TestNetwork:
-    BUILD_TRUTH = False
+    BUILD_TRUTH = True
 
     @classmethod
     def setup_method(cls, capsys):
@@ -59,44 +61,25 @@ class TestNetwork:
                               metric,topology,neighborhood_fun,\
                               train_algo,epochs,early_stop,\
                               clustering,plotall,load", [
-        (False, 10, 'random', 'euclidean', 'hexagonal',
-         'gaussian', 'online', 10, None, None, False, False),
-        (False, 10, 'PCA', 'euclidean', 'hexagonal',
-         'gaussian', 'online', 10, None, None, False, True),
-        (False, 10, 'PCA', 'cosine', 'hexagonal', 'gaussian',
-         'online', 10, None, None, False, False),
-        (False, 10, 'PCA', 'manhattan', 'hexagonal',
-         'gaussian', 'online', 10, None, None, False, False),
-        (True, 10, 'PCA', 'euclidean', 'hexagonal',
-         'gaussian', 'online', 10, None, None, False, False),
-        (True, 10, 'PCA', 'euclidean', 'square',
-         'gaussian', 'online', 10, None, None, False, False),
-        (False, 10, 'PCA', 'euclidean', 'hexagonal',
-         'gaussian', 'batch', 10, None, None, False, False),
-        (False, 10, 'PCA', 'cosine', 'hexagonal',
-         'gaussian', 'batch', 10, None, None, False, False),
-        (False, 10, 'PCA', 'manhattan', 'hexagonal',
-         'gaussian', 'batch', 10, None, None, False, False),
-        (False, 10, 'PCA', 'euclidean', 'hexagonal',
-         'mexican_hat', 'batch', 10, None, None, False, False),
-        (False, 10, 'PCA', 'euclidean', 'hexagonal',
-         'bubble', 'batch', 10, None, None, False, False),
-        #(False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian',
-        # 'batch', 100, 'mapdiff', None, False, False),
-        #(False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian',
-        # 'online', 100, 'mapdiff', None, False, False),
-        (False, 10, 'PCA', 'euclidean', 'square', 'gaussian',
-         'online', 10, None, None, False, False),
-        #(False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'batch',
-        # 10, 'mapdiff', 'AgglomerativeClustering', True, False),
-        #(False, 10, 'PCA', 'euclidean', 'square', 'gaussian',
-        # 'batch', 10, 'mapdiff', 'DBSCAN', True, False),
-        #(False, 10, 'PCA', 'euclidean', 'square', 'gaussian',
-        # 'batch', 10, 'mapdiff', 'KMeans', True, False),
-        #(True, 10, 'PCA', 'euclidean', 'hexagonal',
-        # 'gaussian', 'batch', 10, None, None, False, False),
-        #(True, 10, 'PCA', 'euclidean', 'square',
-        # 'gaussian', 'batch', 10, None, None, False, False)
+        (False, 10, 'random', 'euclidean', 'hexagonal', 'gaussian', 'online', 10, None, None, False, False),
+        (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'online', 10, None, None, False, True),
+        (False, 10, 'PCA', 'cosine', 'hexagonal', 'gaussian', 'online', 10, None, None, False, False),
+        (False, 10, 'PCA', 'manhattan', 'hexagonal', 'gaussian', 'online', 10, None, None, False, False),
+        (True, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'online', 10, None, None, False, False),
+        (True, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'online', 10, None, None, False, False),
+        (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 10, None, None, False, False),
+        (False, 10, 'PCA', 'cosine', 'hexagonal', 'gaussian', 'batch', 10, None, None, False, False),
+        (False, 10, 'PCA', 'manhattan', 'hexagonal', 'gaussian', 'batch', 10, None, None, False, False),
+        (False, 10, 'PCA', 'euclidean', 'hexagonal', 'mexican_hat', 'batch', 10, None, None, False, False),
+        (False, 10, 'PCA', 'euclidean', 'hexagonal', 'bubble', 'batch', 10, None, None, False, False),
+        (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 100, 'mapdiff', None, False, False),
+        (False, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'online', 100, 'mapdiff', None, False, False),
+        (False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'online', 10, None, None, False, False),
+        (False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'batch', 10, 'mapdiff', 'AgglomerativeClustering', True, False),
+        (False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'batch', 10, 'mapdiff', 'DBSCAN', True, False),
+        (False, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'batch', 10, 'mapdiff', 'KMeans', True, False),
+        (True, 10, 'PCA', 'euclidean', 'hexagonal', 'gaussian', 'batch', 10, None, None, False, False),
+        (True, 10, 'PCA', 'euclidean', 'square', 'gaussian', 'batch', 10, None, None, False, False)
     ])
     @pytest.mark.parametrize("GPU", Parameters.GPU)
     def test_som(self, load_dataset, PBC, size, init,

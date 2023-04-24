@@ -18,7 +18,28 @@ class Distance:
 
         self.xp = xp
 
-    def euclidean_distance(self, x: np.ndarray, w: np.ndarray) -> float:
+    def __euclidean_squared_distance_part(self, x, w, w_flat_sq=None):
+        """Calculate partial squared L2 distance
+        This function does not sum x**2 to the result since it's not needed to 
+        compute the best matching unit (it's not dependent on the neuron but
+        it's a constant addition on the row).
+        NB: result shape is (N,X*Y)
+        """
+        w_flat = w.reshape(-1, w.shape[2])
+        if w_flat_sq is None:
+            w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
+        cross_term = self.xp.dot(x, w_flat.T)
+        return -2 * cross_term + w_flat_sq.T
+
+    def __euclidean_squared_distance(self, x, w, w_flat_sq=None):
+        """Calculate squared L2 distance
+        NB: result shape is (N,X*Y)
+        """
+        x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
+        return self.__euclidean_squared_distance_part(x, w, w_flat_sq) + x_sq
+
+
+    def euclidean_distance(self, x: np.ndarray, w: np.ndarray, w_flat_sq: np.ndarray) -> float:
         """Calculate the L2 distance between two arrays.
 
         Args:
@@ -29,17 +50,23 @@ class Distance:
             (float): the euclidean distance between two
                 provided arrays 
         """
+        return self.xp.nan_to_num(
+                self.xp.sqrt(
+                    self.__euclidean_squared_distance(x, w, w_flat_sq)
+                )
+            )
+        # x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
 
-        x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
+        # w_flat = w.reshape(-1, w.shape[2])
+        # # w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
 
-        w_flat = w.reshape(-1, w.shape[2])
-        w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
+        # cross_term = self.xp.dot(x, w_flat.T)
 
-        result = x_sq + w_flat_sq.T - 2 * self.xp.dot(x, w_flat.T)
+        # result = - 2 * cross_term + w_flat_sq.T + x_sq
 
-        return self.xp.nan_to_num(self.xp.sqrt(result))
+        # return self.xp.nan_to_num(self.xp.sqrt(result))
 
-    def cosine_distance(self, x: np.ndarray, w: np.ndarray) -> float:
+    def cosine_distance(self, x: np.ndarray, w: np.ndarray, w_flat_sq: np.ndarray) -> float:
         """Calculate the cosine distance between two arrays.
 
         Args:
@@ -54,10 +81,9 @@ class Distance:
         x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
 
         w_flat = w.reshape(-1, w.shape[2])
-        w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
+        # w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
 
-        similarity = self.xp.nan_to_num(
-            self.xp.dot(x, w_flat.T) / self.xp.sqrt(x_sq * w_flat_sq.T))
+        similarity = self.xp.nan_to_num(self.xp.dot(x, w_flat.T) / self.xp.sqrt(x_sq * w_flat_sq.T))
 
         return 1 - similarity
 
@@ -99,7 +125,7 @@ class Distance:
 
         return d.reshape(x.shape[0], w.shape[0] * w.shape[1])
 
-    def batchpairdist(self, x: np.ndarray, w: np.ndarray, metric: str) -> np.ndarray:
+    def batchpairdist(self, x: np.ndarray, w: np.ndarray, sq: np.ndarray, metric: str) -> np.ndarray:
         """ Calculates distances betweens points in batches. Two array-like objects
         must be provided, distances will be calculated between all points in the 
         first array and all those in the second array.
@@ -114,10 +140,10 @@ class Distance:
         """
 
         if metric == "euclidean":
-            return self.euclidean_distance(x, w)
+            return self.euclidean_distance(x, w, sq)
 
         elif metric == "cosine":
-            return self.cosine_distance(x, w)
+            return self.cosine_distance(x, w, sq)
 
         elif metric == "manhattan":
             return self.manhattan_distance(x, w)
