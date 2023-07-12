@@ -1,6 +1,7 @@
 import multiprocessing
 import os
 import sys
+import random
 from functools import partial
 from types import ModuleType
 from typing import Union, List, Tuple
@@ -97,6 +98,7 @@ class SOMNet:
         if random_seed is not None:
             os.environ["PYTHONHASHSEED"] = str(random_seed)
             np.random.seed(random_seed)
+            random.seed(random_seed)
             self.xp.random.seed(random_seed)
 
         self.PBC = bool(PBC)
@@ -104,7 +106,7 @@ class SOMNet:
             logger.info("Periodic Boundary Conditions active.")
 
         self.nodes_list = []
-        self.data = self.xp.array(data, dtype=np.float32)
+        self.data = self.xp.array(data, dtype=self.xp.float32)
 
         self.metric = metric
 
@@ -122,7 +124,6 @@ class SOMNet:
             logger.error("{} neighborhood function not recognized.".format(self.neighborhood_fun) +
                          "Choose among 'gaussian', 'mexican_hat' or 'bubble'.")
             raise ValueError
-        self.neighborhoods = Neighborhoods(self.xp)
 
         self.convergence = []
 
@@ -175,7 +176,7 @@ class SOMNet:
 
             if isinstance(self.init, str) and self.init == "pca":
                 logger.warning(
-                    "Please be sure that the data have been standardized before using PCA.")
+                    "Please make sure that the data have been standardized before using PCA.")
                 logger.info("The weights will be initialized with PCA.")
 
                 if self.GPU:
@@ -455,27 +456,30 @@ class SOMNet:
             # and parallelization at the cost of memory.
             # The object-oriented structure is kept to simplify code reading.
 
-            all_weights = self.xp.array([n.weights for n in self.nodes_list])
-            all_weights = all_weights.reshape(
-                self.width, self.height, self.data.shape[1])
+            all_weights = self.xp.array([n.weights for n in self.nodes_list], dtype=self.xp.float32)
+            all_weights = all_weights.reshape(self.width, self.height, self.data.shape[1])
 
             numerator = self.xp.zeros(all_weights.shape, dtype=self.xp.float32)
             denominator = self.xp.zeros(
                 (all_weights.shape[0], all_weights.shape[1], 1), dtype=self.xp.float32)
 
-            unravel_precomputed = self.xp.unravel_index(self.xp.arange(self.width * self.height),
-                                                        (self.width, self.height))
+            unravel_precomputed = self.xp.unravel_index(self.xp.arange(self.width * self.height, dtype=self.xp.int64), (self.width, self.height))
 
-            _xx, _yy = self.xp.meshgrid(self.xp.arange(
-                self.width), self.xp.arange(self.height))
+            _xx, _yy = self.xp.meshgrid(self.xp.arange(self.width), self.xp.arange(self.height))
 
-            neighborhood_caller = partial(
-                self.neighborhoods.neighborhood_caller, xx=_xx, yy=_yy,
-                neigh_func=self.neighborhood_fun,
-                pbc_func=self.polygons.neighborhood_pbc if self.PBC
-                else None)
+            if self.PBC:
+                pbc_func_params = self.polygons.neighborhood_pbc
+            else:
+                pbc_func_params = None
+
+            neighborhoods = Neighborhoods(self.xp, _xx, _yy, pbc_func_params)
+
+            sq_weights = None
 
             for n_iter in range(self.epochs):
+
+                if self.metric in ["euclidean", "cosine"]:
+                    sq_weights = (self.xp.power(all_weights.reshape(-1, all_weights.shape[2]), 2).sum(axis=1, keepdims=True))
 
                 if early_stopper.stop_training:
                     logger.info(
@@ -494,9 +498,8 @@ class SOMNet:
                     numerator.fill(0)
                     denominator.fill(0)
                 except AttributeError:
-                    numerator = self.xp.zeros(all_weights.shape)
-                    denominator = self.xp.zeros(
-                        (all_weights.shape[0], all_weights.shape[1], 1))
+                    numerator = self.xp.zeros(all_weights.shape, dtype=self.xp.float32)
+                    denominator = self.xp.zeros((all_weights.shape[0], all_weights.shape[1], 1), dtype=self.xp.float32)
 
                 for i in range(0, len(self.data), _n_parallel):
                     start = i
@@ -507,15 +510,12 @@ class SOMNet:
                     batchdata = self.data[start:end]
 
                     # Find BMUs for all points and subselect gaussian matrix.
-                    dists = self.distance.batchpairdist(
-                        batchdata, all_weights, self.metric)
+                    dists = self.distance.batchpairdist(batchdata, all_weights, sq_weights, self.metric)
 
                     raveled_idxs = dists.argmin(axis=1)
-                    wins = (
-                        unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
+                    wins = (unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
 
-                    g_gpu = neighborhood_caller(
-                        wins, sigma=self.sigma) * self.learning_rate
+                    g_gpu = neighborhoods.neighborhood_caller(self.neighborhood_fun, wins, self.sigma) * self.learning_rate
 
                     sum_g_gpu = self.xp.sum(g_gpu, axis=0)
                     g_flat_gpu = g_gpu.reshape(g_gpu.shape[0], -1)
@@ -535,8 +535,7 @@ class SOMNet:
                 all_weights = new_weights
 
             # Revert to object oriented
-            all_weights = all_weights.reshape(
-                self.width * self.height, self.data.shape[1])
+            all_weights = all_weights.reshape(self.width * self.height, self.data.shape[1])
             for n_node, node in enumerate(self.nodes_list):
                 node.weights = all_weights[n_node]
 
