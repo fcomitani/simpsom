@@ -1,5 +1,6 @@
 import sys
 from types import ModuleType
+from typing import Optional
 
 import numpy as np
 from loguru import logger
@@ -18,60 +19,63 @@ class Distance:
 
         self.xp = xp
 
-    def __euclidean_squared_distance_part(self, x, w, w_flat_sq=None):
-        """Calculate partial squared L2 distance
-        This function does not sum x**2 to the result since it's not needed to 
-        compute the best matching unit (it's not dependent on the neuron but
-        it's a constant addition on the row).
-        NB: result shape is (N,X*Y)
-        """
-        w_flat = w.reshape(-1, w.shape[2])
-        if w_flat_sq is None:
-            w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
-        cross_term = self.xp.dot(x, w_flat.T)
-        return -2 * cross_term + w_flat_sq.T
-
-    def __euclidean_squared_distance(self, x, w, w_flat_sq=None):
-        """Calculate squared L2 distance
-        NB: result shape is (N,X*Y)
-        """
-        x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
-        return self.__euclidean_squared_distance_part(x, w, w_flat_sq) + x_sq
-
-
-    def euclidean_distance(self, x: np.ndarray, w: np.ndarray, w_flat_sq: np.ndarray) -> float:
-        """Calculate the L2 distance between two arrays.
+    def _euclidean_squared_distance_part(self, x: np.ndarray, w: np.ndarray,
+                                         w_flat_sq: Optional[np.ndarray] = None) -> float:
+        """ Calculate the partial squared L2 distance.
 
         Args:
             x (array): first array.
             w (array): second array.
 
         Returns:
+            (float): the partial L2 squared distance between two
+                provided arrays
+        """
+
+        w_flat = w.reshape(-1, w.shape[2])
+        if w_flat_sq is None:
+            w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
+        cross_term = self.xp.dot(x, w_flat.T)
+        return -2 * cross_term + w_flat_sq.T
+
+    def _euclidean_squared_distance(self, x: np.ndarray, w: np.ndarray,
+                                    w_flat_sq: Optional[np.ndarray] = None) -> float:
+        """Calculate the full squared L2 distance.
+
+        Args:
+            x (array): first array.
+            w (array): second array.
+
+        Returns:
+            (float): the full L2 squared distance between two
+                provided arrays
+        """
+        x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
+        return self._euclidean_squared_distance_part(x, w, w_flat_sq) + x_sq
+
+    def euclidean_distance(self, x: np.ndarray, w: np.ndarray, w_flat_sq: np.ndarray) -> float:
+        """Calculate the L2 distance between two arrays.
+
+        Args:
+            x(array): first array.
+            w(array): second array.
+
+        Returns:
             (float): the euclidean distance between two
-                provided arrays 
+                provided arrays
         """
         return self.xp.nan_to_num(
-                self.xp.sqrt(
-                    self.__euclidean_squared_distance(x, w, w_flat_sq)
-                )
+            self.xp.sqrt(
+                self._euclidean_squared_distance(x, w, w_flat_sq)
             )
-        # x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
-
-        # w_flat = w.reshape(-1, w.shape[2])
-        # # w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
-
-        # cross_term = self.xp.dot(x, w_flat.T)
-
-        # result = - 2 * cross_term + w_flat_sq.T + x_sq
-
-        # return self.xp.nan_to_num(self.xp.sqrt(result))
+        )
 
     def cosine_distance(self, x: np.ndarray, w: np.ndarray, w_flat_sq: np.ndarray) -> float:
         """Calculate the cosine distance between two arrays.
 
         Args:
-            x (array): first array.
-            w (array): second array.
+            x(array): first array.
+            w(array): second array.
 
         Returns:
             (float): the euclidean distance between two
@@ -81,9 +85,9 @@ class Distance:
         x_sq = self.xp.power(x, 2).sum(axis=1, keepdims=True)
 
         w_flat = w.reshape(-1, w.shape[2])
-        # w_flat_sq = self.xp.power(w_flat, 2).sum(axis=1, keepdims=True)
 
-        similarity = self.xp.nan_to_num(self.xp.dot(x, w_flat.T) / self.xp.sqrt(x_sq * w_flat_sq.T))
+        similarity = self.xp.nan_to_num(self.xp.dot(
+            x, w_flat.T) / self.xp.sqrt(x_sq * w_flat_sq.T))
 
         return 1 - similarity
 
@@ -91,11 +95,11 @@ class Distance:
         """Calculate Manhattan distance between two arrays.
 
         Args:
-            x (array): first array.
-            w (array): second array.
+            x(array): first array.
+            w(array): second array.
 
         Returns:
-            (float): the manhattan distance 
+            (float): the manhattan distance
                 between two provided arrays.
         """
 
@@ -118,7 +122,8 @@ class Distance:
 
         else:
             d = self.xp.linalg.norm(
-                x[:, self.xp.newaxis, self.xp.newaxis, :] - w[self.xp.newaxis, :, :, :],
+                x[:, self.xp.newaxis, self.xp.newaxis, :] -
+                w[self.xp.newaxis, :, :, :],
                 ord=1,
                 axis=3
             )
@@ -127,16 +132,16 @@ class Distance:
 
     def batchpairdist(self, x: np.ndarray, w: np.ndarray, sq: np.ndarray, metric: str) -> np.ndarray:
         """ Calculates distances betweens points in batches. Two array-like objects
-        must be provided, distances will be calculated between all points in the 
+        must be provided, distances will be calculated between all points in the
         first array and all those in the second array.
 
         Args:
-            a (array): first array.
-            b (array): second array.
-            metric (string): distance metric. 
-                Accepted metrics are euclidean, manhattan, and cosine (default "euclidean").
+            a(array): first array.
+            b(array): second array.
+            metric(string): distance metric.
+                Accepted metrics are euclidean, manhattan, and cosine(default "euclidean").
         Returns:
-            d (array or list): the calculated distances. 
+            d(array or list): the calculated distances.
         """
 
         if metric == "euclidean":
@@ -148,23 +153,23 @@ class Distance:
         elif metric == "manhattan":
             return self.manhattan_distance(x, w)
 
-        logger.error("Available metrics are: " + \
+        logger.error("Available metrics are: " +
                      "\"euclidean\", \"cosine\" and \"manhattan\"")
         sys.exit(1)
 
     def pairdist(self, a: np.ndarray, b: np.ndarray, metric: str) -> np.ndarray:
         """ Calculates distances betweens points. Two array-like objects
-        must be provided, distances will be calculated between all points in the 
+        must be provided, distances will be calculated between all points in the
         first array and all those in the second array.
 
         Args:
-            a (array): first array.
-            b (array): second array.
-            metric (string): distance metric. 
-                Accepted metrics are euclidean, manhattan, and cosine (default "euclidean").
+            a(array): first array.
+            b(array): second array.
+            metric(string): distance metric.
+                Accepted metrics are euclidean, manhattan, and cosine(default "euclidean").
 
         Returns:
-            d (array or list): the calculated distances. 
+            d(array or list): the calculated distances.
         """
 
         if metric == "euclidean":
@@ -177,9 +182,9 @@ class Distance:
                                    (b / self.xp.linalg.norm(b, axis=1)[:, None]).T)
 
         elif metric == "manhattan":
-            func = lambda x, y: self.xp.sum(self.xp.abs(x.T - y), axis=-1)
+            def func(x, y): return self.xp.sum(self.xp.abs(x.T - y), axis=-1)
             return self.xp.stack([func(a[i], b) for i in range(a.shape[0])])
 
-        logger.error("Available metrics are: " + \
+        logger.error("Available metrics are: " +
                      "\"euclidean\", \"cosine\" and \"manhattan\"")
         sys.exit(1)

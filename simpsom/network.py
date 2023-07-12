@@ -124,7 +124,6 @@ class SOMNet:
             logger.error("{} neighborhood function not recognized.".format(self.neighborhood_fun) +
                          "Choose among 'gaussian', 'mexican_hat' or 'bubble'.")
             raise ValueError
-        # self.neighborhoods = Neighborhoods(self.xp)
 
         self.convergence = []
 
@@ -177,7 +176,7 @@ class SOMNet:
 
             if isinstance(self.init, str) and self.init == "pca":
                 logger.warning(
-                    "Please be sure that the data have been standardized before using PCA.")
+                    "Please make sure that the data have been standardized before using PCA.")
                 logger.info("The weights will be initialized with PCA.")
 
                 if self.GPU:
@@ -468,18 +467,12 @@ class SOMNet:
 
             _xx, _yy = self.xp.meshgrid(self.xp.arange(self.width), self.xp.arange(self.height))
 
-            # neighborhood_caller = partial(
-            #     self.neighborhoods.neighborhood_caller, xx=_xx, yy=_yy,
-            #     neigh_func=self.neighborhood_fun,
-            #     pbc_func=self.polygons.neighborhood_pbc if self.PBC
-            #     else None)
-
             if self.PBC:
                 pbc_func_params = self.polygons.neighborhood_pbc
             else:
                 pbc_func_params = None
 
-            self.neighborhoods = Neighborhoods(self.xp, _xx, _yy, pbc_func_params)
+            neighborhoods = Neighborhoods(self.xp, _xx, _yy, pbc_func_params)
 
             sq_weights = None
 
@@ -522,8 +515,7 @@ class SOMNet:
                     raveled_idxs = dists.argmin(axis=1)
                     wins = (unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
 
-                    # g_gpu = neighborhood_caller(wins, self.sigma) * self.learning_rate
-                    g_gpu = self.neighborhoods.neighborhood_caller(self.neighborhood_fun, wins, self.sigma) * self.learning_rate
+                    g_gpu = neighborhoods.neighborhood_caller(self.neighborhood_fun, wins, self.sigma) * self.learning_rate
 
                     sum_g_gpu = self.xp.sum(g_gpu, axis=0)
                     g_flat_gpu = g_gpu.reshape(g_gpu.shape[0], -1)

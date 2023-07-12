@@ -6,7 +6,7 @@ from loguru import logger
 
 
 class Neighborhoods:
-    """ Container class with functions to calculate neihgborhoods. """
+    """ Container class with functions to calculate neighborhoods. """
 
     def __init__(self, xp: ModuleType, xx: np.ndarray, yy: np.ndarray, pbc_func: Union[Callable, None]) -> None:
         """ Instantiate the Neighborhoods class.
@@ -68,8 +68,7 @@ class Neighborhoods:
         return self.xp.abs(n - c) < threshold
 
     def neighborhood_caller(self, neigh_func: str, center: Tuple[np.ndarray], sigma: float) -> np.ndarray:
-
-        """Returns a neighborhood selection on any 2d topology.
+        """ Returns a neighborhood selection on any 2d topology.
 
         Args:
             center (Tuple[np.ndarray]): index of the center point along the xx yy grid.
