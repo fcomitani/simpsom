@@ -30,4 +30,3 @@ This version introduces a number of changes, while attempting to maintain
 the original philosophy of this project: a SOM library easy to understand and customize.
 Functions and classes names have been changed to improve readability.
 If you are migrating from an older version (<=1.3.4), please make sure to check the API first!
-

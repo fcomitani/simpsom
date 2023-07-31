@@ -19,6 +19,7 @@ setup(
 
     description='Simple Self-Organizing Maps in Python',
     long_description=long_description,
+    long_description_content_type='text/markdown',
 
     url='https://github.com/fcomitani/simpsom',
     download_url = 'https://github.com/fcomitani/simpsom/archive/'+version+'.tar.gz', 
