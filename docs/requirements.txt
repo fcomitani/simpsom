@@ -6,4 +6,4 @@ pylettes>=0.2.0
 
 sphinx==3.5.4
 sphinx_rtd_theme==0.5.1
-readthedocs-sphinx-search==0.1.0
+readthedocs-sphinx-search==0.3.2
